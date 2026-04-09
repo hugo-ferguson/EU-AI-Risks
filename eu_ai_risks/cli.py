@@ -1,27 +1,38 @@
+"""
+CLI entry point for eu-ai-risks.
+"""
+
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
 from eu_ai_risks.db import NEO4J_URI
-from eu_ai_risks.parse_ai_act import extract_segments
-from eu_ai_risks.generate_graph import (
-	build_in_memory_graph,
-	edges,
-	nodes,
-	write_to_neo4j,
-	SEGMENT_TYPES,
-	PDF_PATH,
-)
-from eu_ai_risks.query_graph import (
+from eu_ai_risks.db.graph import (
 	articles_in_chapter,
 	referenced_by,
 	references_from,
 	shortest_path,
 )
+from eu_ai_risks.legislation.eu_ai_act.parser import extract_segments
+from eu_ai_risks.legislation.eu_ai_act.graph_builder import (
+	build_in_memory_graph,
+	write_to_neo4j,
+	SEGMENT_TYPES,
+)
+
+load_dotenv()
+
 
 def main():
+	pdf_path = Path(os.environ["PDF_PATH"])
+
 	# Parse the Act .PDF file into segments.
-	print(f"Parsing {PDF_PATH} ...")
-	segments = extract_segments(PDF_PATH)
+	print(f"Parsing {pdf_path} ...")
+	segments = extract_segments(pdf_path)
 
 	# Build a graph from the segments.
-	build_in_memory_graph(segments)
+	nodes, edges = build_in_memory_graph(segments)
 
 	# Show the graph metrics.
 	for segment_type, type_config in SEGMENT_TYPES.items():

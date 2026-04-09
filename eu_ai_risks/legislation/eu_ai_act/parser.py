@@ -1,19 +1,13 @@
 """
-The idea of this script is to break the EU AI Act .PDF file into pieces.
-	These are called 'segments' in the code, and contain some metadata about
-	them.
-The segmented AI Act can then be loaded into a graph using the segments types.
+Break the EU AI Act PDF into segments (chapters, articles, paragraphs).
 """
 
-import os
 import re
-from dataclasses import dataclass, field
 from pathlib import Path
 
 import pdfplumber
-from dotenv import load_dotenv
 
-load_dotenv()
+from eu_ai_risks.models import Segment
 
 RE_CHAPTER = re.compile(r'^CHAPTER ([IVX]+)$')
 RE_ARTICLE = re.compile(r'^Article (\d+)$')
@@ -25,26 +19,6 @@ ROMAN_TO_INT = {
 	"VI": 6, "VII": 7, "VIII": 8, "IX": 9, "X": 10,
 	"XI": 11, "XII": 12, "XIII": 13,
 }
-
-
-@dataclass
-class Segment:
-	"""
-	type: chapter/article/paragraph
-	id: a unique identifier
-	num: the chapter/article/paragraph number from the Act
-	title: the chapter/article title (paragraphs aren't titled)
-	parent_id: the id of the parent node (chapter or article id)
-	body: the text following the title of a chapter/article, or a paragraph's
-		text.
-	"""
-
-	type: str
-	id: str
-	num: int
-	title: str | None = None
-	body: list[str] = field(default_factory=list)
-	parent_id: str | None = None
 
 
 def _read_pdf_lines(pdf_path: Path) -> list[str | None]:
@@ -234,18 +208,3 @@ def extract_segments(pdf_path: Path) -> list[Segment]:
 	# Return the flat list of segments.
 	# Chapters, articles, and paragraphs.
 	return segments_with_paragraphs
-
-
-if __name__ == "__main__":
-	pdf_path = Path(os.environ["PDF_PATH"])
-	print(f"Parsing {pdf_path} ...")
-	segments = extract_segments(pdf_path)
-
-	chapters = [seg for seg in segments if seg.type == "chapter"]
-	articles = [seg for seg in segments if seg.type == "article"]
-	paragraphs = [seg for seg in segments if seg.type == "paragraph"]
-	print(f"Found {len(chapters)} chapters, {len(articles)} articles, {len(paragraphs)} paragraphs.\n")
-
-	for chapter in chapters:
-		article_count = sum(1 for article in articles if article.parent_id == chapter.id)
-		print(f"  {chapter.id}: {chapter.title}  [{article_count} articles]")

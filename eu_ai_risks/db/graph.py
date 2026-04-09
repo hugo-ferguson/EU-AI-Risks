@@ -1,8 +1,8 @@
 """
-Various queries that can be performed on the EU AI Act graph.
+Generic graph query operations on the Neo4j database.
 """
 
-from eu_ai_risks.db import get_session
+from eu_ai_risks.db.session import get_session
 
 
 def articles_in_chapter(chapter_id: str) -> list[tuple[str, str]]:
@@ -29,7 +29,6 @@ def articles_in_chapter(chapter_id: str) -> list[tuple[str, str]]:
 def references_from(article_id: str) -> list[tuple[str, str]]:
 	"""
 	List the articles that an article references.
-	Uses the 'CONTAINS' edge.
 
 	:param article_id: the id of the article.
 	:return: a list of tuples containing article ids and article titles.
@@ -51,7 +50,6 @@ def references_from(article_id: str) -> list[tuple[str, str]]:
 def referenced_by(article_id: str) -> list[tuple[str, str]]:
 	"""
 	List the articles that reference an article.
-	Uses the 'CONTAINS' edge.
 
 	:param article_id: the id of the article.
 	:return: a list of tuples containing article ids and article titles.
@@ -92,25 +90,3 @@ def shortest_path(source_id: str, target_id: str) -> list[str]:
 		path_record = query_result.single()
 
 		return path_record["path"] if path_record else []
-
-
-if __name__ == "__main__":
-	"""
-	Tests.
-	"""
-
-	print("=== Articles in Chapter III (first 8) ===")
-	for article_id, title in articles_in_chapter("ch:III")[:8]:
-		print(f"  {article_id}: {title}")
-
-	print("\n=== Articles that reference Article 6 ===")
-	for article_id, title in referenced_by("art:6"):
-		print(f"  {article_id}: {title}")
-
-	print("\n=== Article 5 outgoing references ===")
-	for article_id, title in references_from("art:5"):
-		print(f"  {article_id}: {title}")
-
-	print("\n=== Shortest reference path: Article 5 → Article 85 ===")
-	reference_path = shortest_path("art:5", "art:85")
-	print("  " + (" -> ".join(reference_path) if reference_path else "No path found."))

@@ -10,4 +10,4 @@ dependencies = [
 ]
 
 [project.scripts]
-eu-ai-risks = "eu_ai_risks.main:main"
+eu-ai-risks = "eu_ai_risks.cli:main"
