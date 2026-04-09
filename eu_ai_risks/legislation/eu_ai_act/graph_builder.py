@@ -7,6 +7,8 @@ from collections import defaultdict
 from typing import cast, LiteralString
 
 from eu_ai_risks.db import get_session
+from eu_ai_risks.embeddings import embed_batch
+from eu_ai_risks.embeddings.client import EMBEDDING_DIMENSIONS
 from eu_ai_risks.models import Segment
 
 # Regex that matches when an article references another. This defines
@@ -23,6 +25,7 @@ SEGMENT_TYPES = {
 		"parent_rel": None,
 		"parent_id": None,
 		"cross_refs": None,
+		"embedding_text": None,
 	},
 	"article": {
 		"label": "Article",
@@ -38,6 +41,10 @@ SEGMENT_TYPES = {
 			for article_num in set(RE_ARTICLE_REF.findall(" ".join(segment.body)))
 			if f"art:{article_num}" != segment.id and f"art:{article_num}" in all_nodes
 		],
+		"embedding_text": lambda props, parent_props: (
+			f"Article {props.get('num', '')}: {props.get('title', '')}. "
+			f"{props.get('text', '')}"
+		),
 	},
 	"paragraph": {
 		"label": "Paragraph",
@@ -48,6 +55,12 @@ SEGMENT_TYPES = {
 		"parent_rel": "HAS_PARAGRAPH",
 		"parent_id": lambda segment: segment.parent_id,
 		"cross_refs": None,
+		"embedding_text": lambda props, parent_props: (
+			f"Article {parent_props.get('num', '')}: {parent_props.get('title', '')}, "
+			f"Paragraph {props.get('num', '')}. {props.get('text', '')}"
+			if parent_props else
+			f"Paragraph {props.get('num', '')}. {props.get('text', '')}"
+		),
 	},
 }
 
@@ -162,3 +175,73 @@ def write_to_neo4j(graph_nodes: dict, graph_edges: list) -> None:
 			)
 
 			print(f"  Wrote {len(relationship_edges)} {relationship_type} relationships.")
+
+
+def generate_and_write_embeddings(graph_nodes: dict) -> None:
+	"""
+	Generate embeddings for Article and Paragraph nodes and write them to
+	Neo4j, then create vector indexes.
+
+	:param graph_nodes: the nodes dict from build_in_memory_graph.
+	"""
+
+	# Build (node_id, label, text) tuples for nodes that should be embedded.
+	to_embed = []
+
+	for node_id, node_props in graph_nodes.items():
+		node_type = node_props["type"]
+		type_config = SEGMENT_TYPES[node_type]
+
+		# Skip node types that don't have embedding text defined.
+		if type_config["embedding_text"] is None:
+			continue
+
+		# Look up parent properties for child nodes.
+		parent_props = None
+		if type_config["parent_id"]:
+			parent_id = ":".join(node_id.split(":")[:2])
+			parent_props = graph_nodes.get(parent_id)
+
+		text = type_config["embedding_text"](node_props, parent_props)
+		label = type_config["label"]
+		to_embed.append((node_id, label, text))
+
+	if not to_embed:
+		return
+
+	# Generate embeddings in a single batch.
+	texts = [text for _, _, text in to_embed]
+	print(f"  Generating embeddings for {len(texts)} nodes ...")
+	embeddings = embed_batch(texts)
+
+	# Write embeddings to Neo4j.
+	with get_session() as session:
+		# Group by label for batch writes.
+		by_label = defaultdict(list)
+		for (node_id, label, _), embedding in zip(to_embed, embeddings):
+			by_label[label].append({"id": node_id, "embedding": embedding})
+
+		for label, rows in by_label.items():
+			session.run(
+				cast(LiteralString, f"""
+					UNWIND $rows AS row
+					MATCH (n:{label} {{id: row.id}})
+					SET n.embedding = row.embedding
+					"""),
+				rows=rows,
+			)
+			print(f"  Wrote embeddings for {len(rows)} {label} nodes.")
+
+		# Create vector indexes.
+		for label in by_label:
+			session.run(
+				cast(LiteralString, f"""
+					CREATE VECTOR INDEX {label.lower()}_embedding IF NOT EXISTS
+					FOR (n:{label}) ON (n.embedding)
+					OPTIONS {{indexConfig: {{
+						`vector.dimensions`: {EMBEDDING_DIMENSIONS},
+						`vector.similarity_function`: 'cosine'
+					}}}}
+					"""),
+			)
+			print(f"  Created vector index for {label}.")

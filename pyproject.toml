@@ -7,6 +7,8 @@ dependencies = [
     "neo4j",
     "pdfplumber",
     "python-dotenv",
+    "sentence-transformers",
+    "typer",
 ]
 
 [project.scripts]

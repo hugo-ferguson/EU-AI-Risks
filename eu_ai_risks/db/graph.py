@@ -90,3 +90,51 @@ def shortest_path(source_id: str, target_id: str) -> list[str]:
 		path_record = query_result.single()
 
 		return path_record["path"] if path_record else []
+
+
+def vector_search_articles(
+		query_embedding: list[float], top_k: int = 5
+) -> list[tuple[str, str, float]]:
+	"""
+	Find the most similar articles by vector similarity.
+
+	:param query_embedding: the query embedding vector.
+	:param top_k: the number of results to return.
+	:return: a list of (article_id, title, score) tuples.
+	"""
+	with get_session() as session:
+		query_result = session.run(
+			"""
+			CALL db.index.vector.queryNodes('article_embedding', $top_k, $embedding)
+			YIELD node, score
+			RETURN node.id AS id, node.title AS title, score
+			""",
+			top_k=top_k,
+			embedding=query_embedding,
+		)
+
+		return [(row["id"], row["title"], row["score"]) for row in query_result]
+
+
+def vector_search_paragraphs(
+		query_embedding: list[float], top_k: int = 5
+) -> list[tuple[str, int, float]]:
+	"""
+	Find the most similar paragraphs by vector similarity.
+
+	:param query_embedding: the query embedding vector.
+	:param top_k: the number of results to return.
+	:return: a list of (paragraph_id, num, score) tuples.
+	"""
+	with get_session() as session:
+		query_result = session.run(
+			"""
+			CALL db.index.vector.queryNodes('paragraph_embedding', $top_k, $embedding)
+			YIELD node, score
+			RETURN node.id AS id, node.num AS num, score
+			""",
+			top_k=top_k,
+			embedding=query_embedding,
+		)
+
+		return [(row["id"], row["num"], row["score"]) for row in query_result]
