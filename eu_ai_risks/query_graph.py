@@ -2,7 +2,7 @@
 Various queries that can be performed on the EU AI Act graph.
 """
 
-from db import get_session
+from eu_ai_risks.db import get_session
 
 
 def articles_in_chapter(chapter_id: str) -> list[tuple[str, str]]:

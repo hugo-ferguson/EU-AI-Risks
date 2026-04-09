@@ -7,8 +7,8 @@ from typing import cast, LiteralString
 from dotenv import load_dotenv
 from neo4j import GraphDatabase
 
-from db import get_session, NEO4J_URI
-from parse_ai_act import Segment, extract_segments
+from eu_ai_risks.db import get_session, NEO4J_URI
+from eu_ai_risks.parse_ai_act import Segment, extract_segments
 
 load_dotenv()
 

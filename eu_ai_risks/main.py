@@ -1,6 +1,6 @@
-from db import NEO4J_URI
-from parse_ai_act import extract_segments
-from generate_graph import (
+from eu_ai_risks.db import NEO4J_URI
+from eu_ai_risks.parse_ai_act import extract_segments
+from eu_ai_risks.generate_graph import (
 	build_in_memory_graph,
 	edges,
 	nodes,
@@ -8,14 +8,14 @@ from generate_graph import (
 	SEGMENT_TYPES,
 	PDF_PATH,
 )
-from query_graph import (
+from eu_ai_risks.query_graph import (
 	articles_in_chapter,
 	referenced_by,
 	references_from,
 	shortest_path,
 )
 
-if __name__ == "__main__":
+def main():
 	# Parse the Act .PDF file into segments.
 	print(f"Parsing {PDF_PATH} ...")
 	segments = extract_segments(PDF_PATH)
@@ -50,3 +50,7 @@ if __name__ == "__main__":
 	print("\n=== Shortest reference path: Article 5 → Article 85 ===")
 	reference_path = shortest_path("art:5", "art:85")
 	print("  " + (" -> ".join(reference_path) if reference_path else "No path found."))
+
+
+if __name__ == "__main__":
+	main()
