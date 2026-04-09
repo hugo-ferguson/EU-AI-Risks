@@ -1,8 +1,8 @@
 """
-Various queries that can be performed on the EU AI Act graph.
+Generic graph query operations on the Neo4j database.
 """
 
-from db import get_session
+from eu_ai_risks.db.session import get_session
 
 
 def articles_in_chapter(chapter_id: str) -> list[tuple[str, str]]:
@@ -29,7 +29,6 @@ def articles_in_chapter(chapter_id: str) -> list[tuple[str, str]]:
 def references_from(article_id: str) -> list[tuple[str, str]]:
 	"""
 	List the articles that an article references.
-	Uses the 'CONTAINS' edge.
 
 	:param article_id: the id of the article.
 	:return: a list of tuples containing article ids and article titles.
@@ -51,7 +50,6 @@ def references_from(article_id: str) -> list[tuple[str, str]]:
 def referenced_by(article_id: str) -> list[tuple[str, str]]:
 	"""
 	List the articles that reference an article.
-	Uses the 'CONTAINS' edge.
 
 	:param article_id: the id of the article.
 	:return: a list of tuples containing article ids and article titles.
@@ -94,23 +92,49 @@ def shortest_path(source_id: str, target_id: str) -> list[str]:
 		return path_record["path"] if path_record else []
 
 
-if __name__ == "__main__":
+def vector_search_articles(
+		query_embedding: list[float], top_k: int = 5
+) -> list[tuple[str, str, float]]:
 	"""
-	Tests.
+	Find the most similar articles by vector similarity.
+
+	:param query_embedding: the query embedding vector.
+	:param top_k: the number of results to return.
+	:return: a list of (article_id, title, score) tuples.
 	"""
+	with get_session() as session:
+		query_result = session.run(
+			"""
+			CALL db.index.vector.queryNodes('article_embedding', $top_k, $embedding)
+			YIELD node, score
+			RETURN node.id AS id, node.title AS title, score
+			""",
+			top_k=top_k,
+			embedding=query_embedding,
+		)
 
-	print("=== Articles in Chapter III (first 8) ===")
-	for article_id, title in articles_in_chapter("ch:III")[:8]:
-		print(f"  {article_id}: {title}")
+		return [(row["id"], row["title"], row["score"]) for row in query_result]
 
-	print("\n=== Articles that reference Article 6 ===")
-	for article_id, title in referenced_by("art:6"):
-		print(f"  {article_id}: {title}")
 
-	print("\n=== Article 5 outgoing references ===")
-	for article_id, title in references_from("art:5"):
-		print(f"  {article_id}: {title}")
+def vector_search_paragraphs(
+		query_embedding: list[float], top_k: int = 5
+) -> list[tuple[str, int, float]]:
+	"""
+	Find the most similar paragraphs by vector similarity.
 
-	print("\n=== Shortest reference path: Article 5 → Article 85 ===")
-	reference_path = shortest_path("art:5", "art:85")
-	print("  " + (" -> ".join(reference_path) if reference_path else "No path found."))
+	:param query_embedding: the query embedding vector.
+	:param top_k: the number of results to return.
+	:return: a list of (paragraph_id, num, score) tuples.
+	"""
+	with get_session() as session:
+		query_result = session.run(
+			"""
+			CALL db.index.vector.queryNodes('paragraph_embedding', $top_k, $embedding)
+			YIELD node, score
+			RETURN node.id AS id, node.num AS num, score
+			""",
+			top_k=top_k,
+			embedding=query_embedding,
+		)
+
+		return [(row["id"], row["num"], row["score"]) for row in query_result]

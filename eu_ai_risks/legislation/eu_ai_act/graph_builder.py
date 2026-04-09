@@ -1,25 +1,21 @@
-import os
+"""
+Build an in-memory graph from EU AI Act segments and write it to Neo4j.
+"""
+
 import re
 from collections import defaultdict
-from pathlib import Path
 from typing import cast, LiteralString
 
-from dotenv import load_dotenv
-from neo4j import GraphDatabase
-
-from db import get_session, NEO4J_URI
-from parse_ai_act import Segment, extract_segments
-
-load_dotenv()
-
-PDF_PATH = Path(os.environ["PDF_PATH"])
+from eu_ai_risks.db import get_session
+from eu_ai_risks.embeddings import embed_batch
+from eu_ai_risks.embeddings.client import EMBEDDING_DIMENSIONS
+from eu_ai_risks.models import Segment
 
 # Regex that matches when an article references another. This defines
 # 'REFERENCES' edges.
 RE_ARTICLE_REF = re.compile(r'\bArticle\s+(\d+)\b')
 
-# Types of Act segments (from the parse_ai_act script) and functions to
-# construct them.
+# Types of Act segments (from the parser) and functions to construct them.
 # Each props key contains a lambda function that returns the correct properties
 # for the given segment type, based on the segment data provided.
 SEGMENT_TYPES = {
@@ -29,6 +25,7 @@ SEGMENT_TYPES = {
 		"parent_rel": None,
 		"parent_id": None,
 		"cross_refs": None,
+		"embedding_text": None,
 	},
 	"article": {
 		"label": "Article",
@@ -44,6 +41,10 @@ SEGMENT_TYPES = {
 			for article_num in set(RE_ARTICLE_REF.findall(" ".join(segment.body)))
 			if f"art:{article_num}" != segment.id and f"art:{article_num}" in all_nodes
 		],
+		"embedding_text": lambda props, parent_props: (
+			f"Article {props.get('num', '')}: {props.get('title', '')}. "
+			f"{props.get('text', '')}"
+		),
 	},
 	"paragraph": {
 		"label": "Paragraph",
@@ -54,65 +55,43 @@ SEGMENT_TYPES = {
 		"parent_rel": "HAS_PARAGRAPH",
 		"parent_id": lambda segment: segment.parent_id,
 		"cross_refs": None,
+		"embedding_text": lambda props, parent_props: (
+			f"Article {parent_props.get('num', '')}: {parent_props.get('title', '')}, "
+			f"Paragraph {props.get('num', '')}. {props.get('text', '')}"
+			if parent_props else
+			f"Paragraph {props.get('num', '')}. {props.get('text', '')}"
+		),
 	},
 }
 
-# Graph nodes.
-nodes = {}
-# Set of (unique) edges.
-edge_set = set()
-# List of edges to send to the database.
-edges = []
 
-
-def _add_node(node_id: str, node_type: str, **properties) -> None:
-	"""
-	Add a node to the graph with some properties that depend on the node type.
-
-	:param node_id: a unique identifier for the node.
-	:param node_type: the type of the node.
-	:param properties: the properties of the node (based on its type).
-	:return: None
-	"""
-
-	nodes[node_id] = {"type": node_type, **properties}
-
-
-def _add_edge(source_id: str, relationship: str, destination_id: str) -> None:
-	"""
-	Add an edge to the graph with some properties that depend on the
-		relationship type.
-
-	:param source_id: the source node identifier.
-	:param relationship: the relationship type.
-	:param destination_id: the destination node identifier.
-	:return: None
-	"""
-	# Unique hash of the edge.
-	key = (source_id, relationship, destination_id)
-
-	# Add the edge if not in the set.
-	if key not in edge_set:
-		edge_set.add(key)
-		edges.append({
-			"src": source_id, "rel": relationship, "dst": destination_id
-		})
-
-
-def build_in_memory_graph(segments: list[Segment]) -> None:
+def build_in_memory_graph(segments: list[Segment]) -> tuple[dict, list]:
 	"""
 	Build an in-memory graph from a list of segments.
-	This is done before pushing to the database to save time/API calls.
 
 	:param segments: the segments to build.
-	:return: None
+	:return: (nodes dict, edges list)
 	"""
+
+	nodes = {}
+	edge_set = set()
+	edges = []
+
+	def add_node(node_id: str, node_type: str, **properties) -> None:
+		nodes[node_id] = {"type": node_type, **properties}
+
+	def add_edge(source_id: str, relationship: str, destination_id: str) -> None:
+		key = (source_id, relationship, destination_id)
+		if key not in edge_set:
+			edge_set.add(key)
+			edges.append({
+				"src": source_id, "rel": relationship, "dst": destination_id
+			})
 
 	# Add the nodes.
 	for segment in segments:
 		type_config = SEGMENT_TYPES[segment.type]
-		# Add the node based on the segment.
-		_add_node(segment.id, segment.type, **type_config["props"](segment))
+		add_node(segment.id, segment.type, **type_config["props"](segment))
 
 	# Add the edges (relationships) between nodes (segments).
 	for segment in segments:
@@ -122,12 +101,14 @@ def build_in_memory_graph(segments: list[Segment]) -> None:
 		if type_config["parent_id"]:
 			parent_id = type_config["parent_id"](segment)
 			if parent_id and parent_id in nodes:
-				_add_edge(parent_id, type_config["parent_rel"], segment.id)
+				add_edge(parent_id, type_config["parent_rel"], segment.id)
 
 		# Add the references relationship.
 		if type_config["cross_refs"]:
 			for referenced_id, relationship in type_config["cross_refs"](segment, nodes):
-				_add_edge(segment.id, relationship, referenced_id)
+				add_edge(segment.id, relationship, referenced_id)
+
+	return nodes, edges
 
 
 def write_to_neo4j(graph_nodes: dict, graph_edges: list) -> None:
@@ -196,21 +177,71 @@ def write_to_neo4j(graph_nodes: dict, graph_edges: list) -> None:
 			print(f"  Wrote {len(relationship_edges)} {relationship_type} relationships.")
 
 
-if __name__ == "__main__":
+def generate_and_write_embeddings(graph_nodes: dict) -> None:
 	"""
-	Generate the graph and send to the database.
+	Generate embeddings for Article and Paragraph nodes and write them to
+	Neo4j, then create vector indexes.
+
+	:param graph_nodes: the nodes dict from build_in_memory_graph.
 	"""
 
-	print(f"Parsing {PDF_PATH} ...")
-	segments = extract_segments(PDF_PATH)
+	# Build (node_id, label, text) tuples for nodes that should be embedded.
+	to_embed = []
 
-	print("Building graph ...")
-	build_in_memory_graph(segments)
-	for segment_type, type_config in SEGMENT_TYPES.items():
-		node_count = sum(1 for node_properties in nodes.values() if node_properties["type"] == segment_type)
-		print(f"  {node_count} {type_config['label']} nodes")
-	print(f"  {len(edges)} edges total")
+	for node_id, node_props in graph_nodes.items():
+		node_type = node_props["type"]
+		type_config = SEGMENT_TYPES[node_type]
 
-	print(f"\nWriting to Neo4j at {NEO4J_URI} ...")
-	write_to_neo4j(nodes, edges)
-	print("Done.")
+		# Skip node types that don't have embedding text defined.
+		if type_config["embedding_text"] is None:
+			continue
+
+		# Look up parent properties for child nodes.
+		parent_props = None
+		if type_config["parent_id"]:
+			parent_id = ":".join(node_id.split(":")[:2])
+			parent_props = graph_nodes.get(parent_id)
+
+		text = type_config["embedding_text"](node_props, parent_props)
+		label = type_config["label"]
+		to_embed.append((node_id, label, text))
+
+	if not to_embed:
+		return
+
+	# Generate embeddings in a single batch.
+	texts = [text for _, _, text in to_embed]
+	print(f"  Generating embeddings for {len(texts)} nodes ...")
+	embeddings = embed_batch(texts)
+
+	# Write embeddings to Neo4j.
+	with get_session() as session:
+		# Group by label for batch writes.
+		by_label = defaultdict(list)
+		for (node_id, label, _), embedding in zip(to_embed, embeddings):
+			by_label[label].append({"id": node_id, "embedding": embedding})
+
+		for label, rows in by_label.items():
+			session.run(
+				cast(LiteralString, f"""
+					UNWIND $rows AS row
+					MATCH (n:{label} {{id: row.id}})
+					SET n.embedding = row.embedding
+					"""),
+				rows=rows,
+			)
+			print(f"  Wrote embeddings for {len(rows)} {label} nodes.")
+
+		# Create vector indexes.
+		for label in by_label:
+			session.run(
+				cast(LiteralString, f"""
+					CREATE VECTOR INDEX {label.lower()}_embedding IF NOT EXISTS
+					FOR (n:{label}) ON (n.embedding)
+					OPTIONS {{indexConfig: {{
+						`vector.dimensions`: {EMBEDDING_DIMENSIONS},
+						`vector.similarity_function`: 'cosine'
+					}}}}
+					"""),
+			)
+			print(f"  Created vector index for {label}.")
