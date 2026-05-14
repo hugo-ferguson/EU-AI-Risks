@@ -11,5 +11,10 @@ dependencies = [
     "typer",
 ]
 
+[project.optional-dependencies]
+gpu = [
+    "torch>=2.0",
+]
+
 [project.scripts]
 eu-ai-risks = "eu_ai_risks.cli:main"
