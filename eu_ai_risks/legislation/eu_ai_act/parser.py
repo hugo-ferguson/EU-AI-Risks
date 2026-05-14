@@ -11,7 +11,11 @@ from eu_ai_risks.models import Segment
 
 RE_CHAPTER = re.compile(r'^CHAPTER ([IVX]+)$')
 RE_ARTICLE = re.compile(r'^Article (\d+)$')
-RE_PARAGRAPH = re.compile(r'^(\d+)\.\s')
+# EU legislation uses two paragraph numbering styles. 'N.' is standard;
+# '(N)' appears in definition and amendment articles (e.g. Art 3, 108).
+# Articles that have both use 'N.' for paragraphs and '(N)' for footnotes.
+RE_PARAGRAPH_DOT = re.compile(r'^(\d+)\.\s')
+RE_PARAGRAPH_PAREN = re.compile(r'^\((\d+)\)\s')
 RE_FOOTER = re.compile(r'^(EN\s*$|OJ L,|ELI:|/144)')
 
 ROMAN_TO_INT = {
@@ -21,7 +25,7 @@ ROMAN_TO_INT = {
 }
 
 
-def _read_pdf_lines(pdf_path: Path) -> list[str | None]:
+def read_pdf_lines(pdf_path: Path) -> list[str | None]:
 	"""
 	Read all the lines of the .PDF file into a list of line strings.
 
@@ -40,7 +44,7 @@ def _read_pdf_lines(pdf_path: Path) -> list[str | None]:
 	return all_lines
 
 
-def _is_footer(line: str) -> bool:
+def is_footer(line: str) -> bool:
 	"""
 	Check whether a line is a page footer.
 
@@ -50,7 +54,7 @@ def _is_footer(line: str) -> bool:
 	return bool(RE_FOOTER.search(line))
 
 
-def _find_title_after_heading(
+def find_title_after_heading(
 		all_lines: list[str | None], heading_index: int
 ) -> tuple[int, str]:
 	"""
@@ -67,13 +71,13 @@ def _find_title_after_heading(
 
 		# None lines are page breaks, so ignore those.
 		# Footers will never contain titles, so ignore those too.
-		if line is not None and line.strip() and not _is_footer(line):
+		if line is not None and line.strip() and not is_footer(line):
 			return i, line.strip()
 
 	return heading_index, ""
 
 
-def _extract_paragraphs(article_segment: Segment) -> list[Segment]:
+def extract_paragraphs(article_segment: Segment) -> list[Segment]:
 	"""
 	Get the numbered paragraphs from an article segment.
 	These will be lines inside the body of the article to be trimmed made into
@@ -86,24 +90,27 @@ def _extract_paragraphs(article_segment: Segment) -> list[Segment]:
 	:return: a list of paragraph segments (these do not have titles).
 	"""
 
+	# Prefer 'N.' paragraphs. Fall back to '(N)' only if none exist — articles
+	# that have both use '(N)' for footnotes, not paragraphs.
+	pattern = (
+		RE_PARAGRAPH_DOT
+		if any(RE_PARAGRAPH_DOT.match(line) for line in article_segment.body)
+		else RE_PARAGRAPH_PAREN
+	)
+
 	paragraphs = []
 
-	# Iterate over lines in the article to gather the lines into paragraphs.
 	for i, line in enumerate(article_segment.body):
-		# Check whether this line is the start of a numbered paragraph.
-		paragraph_match = RE_PARAGRAPH.match(line)
+		paragraph_match = pattern.match(line)
 
 		if not paragraph_match:
 			continue
 
-		# If it is, save it as the number..
 		paragraph_num = int(paragraph_match.group(1))
 		paragraph_lines = [line]
 
-		# Gather the following lines until we hit another numbered one.
-		# If so, break and collect into the paragraph segment.
 		for following_line in article_segment.body[i + 1:]:
-			if RE_PARAGRAPH.match(following_line):
+			if pattern.match(following_line):
 				break
 			paragraph_lines.append(following_line)
 
@@ -126,7 +133,7 @@ def extract_segments(pdf_path: Path) -> list[Segment]:
 	:return: the list of segments in the .PDF file.
 	"""
 
-	all_lines = _read_pdf_lines(pdf_path)
+	all_lines = read_pdf_lines(pdf_path)
 	segments: list[Segment] = []
 	current_chapter = None
 
@@ -139,7 +146,7 @@ def extract_segments(pdf_path: Path) -> list[Segment]:
 		line = all_lines[i]
 
 		# Skip empty (page break) or footer lines.
-		if line is None or _is_footer(line):
+		if line is None or is_footer(line):
 			i += 1
 			continue
 
@@ -151,7 +158,7 @@ def extract_segments(pdf_path: Path) -> list[Segment]:
 		# Add a chapter segment.
 		if chapter_match:
 			chapter_roman = chapter_match.group(1)
-			title_line_index, title = _find_title_after_heading(
+			title_line_index, title = find_title_after_heading(
 				all_lines, i + 1
 			)
 			current_chapter = chapter_roman
@@ -172,7 +179,7 @@ def extract_segments(pdf_path: Path) -> list[Segment]:
 		article_match = RE_ARTICLE.match(stripped_line)
 		if article_match:
 			article_number = article_match.group(1)
-			title_line_index, title = _find_title_after_heading(
+			title_line_index, title = find_title_after_heading(
 				all_lines, i + 1
 			)
 			if RE_ARTICLE.match(title) or RE_CHAPTER.match(title):
@@ -189,7 +196,7 @@ def extract_segments(pdf_path: Path) -> list[Segment]:
 
 			continue
 
-		if segments and stripped_line and not _is_footer(stripped_line):
+		if segments and stripped_line and not is_footer(stripped_line):
 			segments[-1].body.append(stripped_line)
 
 		i += 1
@@ -203,7 +210,7 @@ def extract_segments(pdf_path: Path) -> list[Segment]:
 	for segment in segments:
 		segments_with_paragraphs.append(segment)
 		if segment.type == "article":
-			segments_with_paragraphs.extend(_extract_paragraphs(segment))
+			segments_with_paragraphs.extend(extract_paragraphs(segment))
 
 	# Return the flat list of segments.
 	# Chapters, articles, and paragraphs.

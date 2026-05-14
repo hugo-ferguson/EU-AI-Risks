@@ -103,7 +103,7 @@ def build_in_memory_graph(segments: list[Segment]) -> tuple[dict, list]:
 			if parent_id and parent_id in nodes:
 				add_edge(parent_id, type_config["parent_rel"], segment.id)
 
-		# Add the references relationship.
+		# Add the 'references' relationship.
 		if type_config["cross_refs"]:
 			for referenced_id, relationship in type_config["cross_refs"](segment, nodes):
 				add_edge(segment.id, relationship, referenced_id)

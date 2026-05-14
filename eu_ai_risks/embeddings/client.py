@@ -10,7 +10,7 @@ MODEL_NAME = "BAAI/bge-base-en-v1.5"
 EMBEDDING_DIMENSIONS = 768
 
 
-def _resolve_device() -> str:
+def resolve_device() -> str:
 	if torch.cuda.is_available():
 		return "cuda"
 	if torch.backends.mps.is_available():
@@ -31,7 +31,7 @@ class EmbeddingClient:
 
 	def _get_model(self) -> SentenceTransformer:
 		if self._model is None:
-			device = _resolve_device()
+			device = resolve_device()
 			self._model = SentenceTransformer(MODEL_NAME, device=device)
 		return self._model
 
