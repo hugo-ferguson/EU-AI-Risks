@@ -11,6 +11,9 @@ from dotenv import load_dotenv
 from eu_ai_risks.db import NEO4J_URI
 from eu_ai_risks.db.graph import (
 	articles_in_chapter,
+	build_requirements_graph,
+	create_affected_by_relationships,
+	generate_requirements_embeddings,
 	referenced_by,
 	references_from,
 	shortest_path,
@@ -79,6 +82,10 @@ def build():
 	print(f"\nWriting graph to Neo4j at {NEO4J_URI} ...")
 	write_to_neo4j(nodes, edges)
 
+	print("\nBuilding requirements document graph ...")
+	requirement_count = build_requirements_graph()
+	print(f"  Built {requirement_count} requirements.")
+
 
 @app.command()
 def embed():
@@ -87,6 +94,14 @@ def embed():
 
 	print("\nGenerating embeddings ...")
 	generate_and_write_embeddings(nodes)
+
+	print("\nBuilding requirements document graph ...")
+	build_requirements_graph()
+	print(f"  Added embeddings for {generate_requirements_embeddings()} requirements.")
+
+	print("\nLinking requirements to relevant paragraphs ...")
+	relationship_count = create_affected_by_relationships()
+	print(f"  Added {relationship_count} 'affected by' relationships.")
 
 
 @app.command()
