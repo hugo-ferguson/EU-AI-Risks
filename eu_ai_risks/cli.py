@@ -101,7 +101,7 @@ def embed():
 
 	print("\nLinking requirements to relevant paragraphs ...")
 	relationship_count = create_affected_by_relationships()
-	print(f"  Added {relationship_count} 'affected by' relationships.")
+	print(f"  Added {relationship_count} 'AFFECTED_BY' relationships.")
 
 
 @app.command()
