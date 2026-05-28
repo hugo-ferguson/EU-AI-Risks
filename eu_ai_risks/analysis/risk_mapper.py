@@ -190,7 +190,7 @@ def _create_relationships_for_label(label: str, match_key: str, top_k: int) -> i
             UNWIND $rows AS row
             MATCH (r:{label} {{{match_key}: row.identifier}})
             MATCH (p:Paragraph {{id: row.paragraph_id}})
-            MERGE (r)-[:`affected by`]->(p)
+            MERGE (r)-[:`AFFECTED_TEST`]->(p)
             """,
             rows=rows,
         )

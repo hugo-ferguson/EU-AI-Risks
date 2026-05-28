@@ -255,7 +255,7 @@ def build_requirements_graph(file_path: str | Path = DEFAULT_REQUIREMENTS_PDF) -
 	return len(parsed_requirements)
 
 
-def create_affected_by_relationships(top_k: int = 3) -> int:
+def create_affected_by_relationships(top_k: int = 10) -> int:
 	"""Create affected by relationships from Requirement nodes to similar Paragraph nodes."""
 	with get_session() as session:
 		result = session.run(
@@ -263,9 +263,14 @@ def create_affected_by_relationships(top_k: int = 3) -> int:
 			MATCH (r:Requirement)
 			WHERE r.embedding IS NOT NULL
 			WITH r
-			CALL db.index.vector.queryNodes('paragraph_embedding', $top_k, r.embedding)
-			YIELD node, score
-			RETURN r.title AS title, node.id AS paragraph_id
+			MATCH (node)
+			SEARCH node IN (
+				VECTOR INDEX paragraph_embedding
+				FOR r.embedding
+				LIMIT $top_k
+			) SCORE AS score
+			WHERE score > 0.799
+			RETURN r.title AS title, node.id AS paragraph_id, score
 			""",
 			top_k=top_k,
 		)
