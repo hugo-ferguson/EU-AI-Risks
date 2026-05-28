@@ -2,9 +2,12 @@ import re
 from neo4j import GraphDatabase
 import PyPDF2
 
+from eu_ai_risks.db import get_session
+
 # Connection details for Neo4j Aura
-URI = "neo4j+s://065e0bc1.databases.neo4j.io"
-AUTH = ("065e0bc1", "65r_h9wvgNKtrUYRDlONVT4s3283PbxcEH2v7fLTwqM")
+# URI = "neo4j+s://065e0bc1.databases.neo4j.io"
+# AUTH = ("065e0bc1", "65r_h9wvgNKtrUYRDlONVT4s3283PbxcEH2v7fLTwqM")
+
 
 def extract_text_from_pdf(file_path):
     text = ""
@@ -65,11 +68,20 @@ def create_graph(tx, req):
 if __name__ == "__main__":
     file_name = "the_story_web_requirements_document.pdf"
     raw_text = extract_text_from_pdf(file_name)
-    with GraphDatabase.driver(URI, auth=AUTH) as driver:
-        with driver.session() as session:
-            parsed_data = parse_requirements(raw_text)
-                # Now pass 'parsed_data' to your Neo4j session functions
-            print(f"Successfully parsed {len(parsed_data)} requirements.")
-            print(parsed_data)
-            for r in parsed_data:
-                session.execute_write(create_graph, r)
+
+    # with GraphDatabase.driver(NEO4J_URI, (NEO4J_USERNAME, NEO4J_PASSWORD)) as driver:
+    #     with driver.session() as session:
+    #         parsed_data = parse_requirements(raw_text)
+    #             # Now pass 'parsed_data' to your Neo4j session functions
+    #         print(f"Successfully parsed {len(parsed_data)} requirements.")
+    #         print(parsed_data)
+    #         for r in parsed_data:
+    #             session.execute_write(create_graph, r)
+
+    with get_session() as session:
+        parsed_data = parse_requirements(raw_text)
+            # Now pass 'parsed_data' to your Neo4j session functions
+        print(f"Successfully parsed {len(parsed_data)} requirements.")
+        print(parsed_data)
+        for r in parsed_data:
+            session.execute_write(create_graph, r)
