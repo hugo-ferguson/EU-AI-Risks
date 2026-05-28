@@ -288,7 +288,7 @@ def create_affected_by_relationships(top_k: int = 10) -> int:
 			UNWIND $rows AS row
 			MATCH (r:Requirement {title: row.title})
 			MATCH (p:Paragraph {id: row.paragraph_id})
-			MERGE (r)-[:`affected by`]->(p)
+			MERGE (r)-[:`AFFECTED_BY`]->(p)
 			""",
 			rows=rows,
 		)
