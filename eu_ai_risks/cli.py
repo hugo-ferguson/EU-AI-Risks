@@ -29,6 +29,7 @@ from eu_ai_risks.legislation.eu_ai_act.enrichment import (
 	add_obligation_types,
 	add_concepts,
 )
+from eu_ai_risks.legislation.eu_ai_act.dimensions import add_dimensions
 
 load_dotenv()
 
@@ -114,11 +115,37 @@ def concepts():
 
 
 @app.command()
+def dimensions():
+	"""Tag provisions with responsible-party, requirement, risk, system, and
+	data dimension nodes."""
+	print("Tagging provisions with dimensions ...")
+	add_dimensions()
+
+
+@app.command()
 def enrich():
-	"""Run all enrichment passes: tiers, obligation-types, concepts."""
+	"""Run all enrichment passes: tiers, obligation-types, concepts,
+	dimensions."""
 	tiers()
 	obligation_types()
 	concepts()
+	dimensions()
+
+
+@app.command("all")
+def run_all():
+	"""Build the graph, generate embeddings, and run all enrichment passes."""
+	# Parse once and reuse the nodes for both the write and the embeddings.
+	nodes, edges = _parse_and_build()
+
+	print(f"\nWriting graph to Neo4j at {NEO4J_URI} ...")
+	write_to_neo4j(nodes, edges)
+
+	print("\nGenerating embeddings ...")
+	generate_and_write_embeddings(nodes)
+
+	print("\nEnriching ...")
+	enrich()
 
 
 @app.command()

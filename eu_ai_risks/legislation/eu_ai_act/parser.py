@@ -1,5 +1,6 @@
 """
-Break the EU AI Act PDF into segments (chapters, articles, paragraphs).
+Break the EU AI Act PDF into segments (chapters, sections, articles,
+paragraphs, annexes).
 """
 
 import re
@@ -10,7 +11,9 @@ import pdfplumber
 from eu_ai_risks.models import Segment
 
 RE_CHAPTER = re.compile(r'^CHAPTER ([IVX]+)$')
+RE_SECTION = re.compile(r'^SECTION (\d+)$')
 RE_ARTICLE = re.compile(r'^Article (\d+)$')
+RE_ANNEX = re.compile(r'^ANNEX ([IVX]+)$')
 # EU legislation uses two paragraph numbering styles. 'N.' is standard;
 # '(N)' appears in definition and amendment articles (e.g. Art 3, 108).
 # Articles that have both use 'N.' for paragraphs and '(N)' for footnotes.
@@ -90,7 +93,7 @@ def extract_paragraphs(article_segment: Segment) -> list[Segment]:
 	:return: a list of paragraph segments (these do not have titles).
 	"""
 
-	# Prefer 'N.' paragraphs. Fall back to '(N)' only if none exist — articles
+	# Prefer 'N.' paragraphs. Fall back to '(N)' only if none exist. Articles
 	# that have both use '(N)' for footnotes, not paragraphs.
 	pattern = (
 		RE_PARAGRAPH_DOT
@@ -127,7 +130,8 @@ def extract_paragraphs(article_segment: Segment) -> list[Segment]:
 
 def extract_segments(pdf_path: Path) -> list[Segment]:
 	"""
-	Extract all chapter, article, and paragraph segments from the .PDF file.
+	Extract all chapter, section, article, paragraph, and annex segments from
+	the .PDF file.
 
 	:param pdf_path: the path to the source .PDF file.
 	:return: the list of segments in the .PDF file.
@@ -136,9 +140,15 @@ def extract_segments(pdf_path: Path) -> list[Segment]:
 	all_lines = read_pdf_lines(pdf_path)
 	segments: list[Segment] = []
 	current_chapter = None
+	current_section = None
 
-	# Start at the first line.
-	# Lines can be skipped if they are not useful.
+	# The Act has three regions in order: the preamble before the first
+	# chapter, the enacting terms (chapters, sections, articles), then the
+	# annexes. Headings only count inside the enacting terms. An "Article 49"
+	# line in an annex is a cross-reference, not a new article, so track the
+	# region to keep recital and annex text out of the articles.
+	in_enacting_terms = False
+	in_annexes = False
 	i = 0
 
 	# Iterate over lines.
@@ -152,22 +162,84 @@ def extract_segments(pdf_path: Path) -> list[Segment]:
 
 		stripped_line = line.strip()
 
+		# Handle annexes.
+		# The annexes follow the enacting terms and run to the end of the
+		# file. After the first one, chapters and articles are not parsed.
+		annex_match = RE_ANNEX.match(stripped_line)
+		if annex_match:
+			in_annexes = True
+			current_chapter = None
+			current_section = None
+			annex_roman = annex_match.group(1)
+			title_line_index, title = find_title_after_heading(
+				all_lines, i + 1
+			)
+
+			segments.append(Segment(
+				type="annex",
+				id=f"annex:{annex_roman}",
+				num=ROMAN_TO_INT[annex_roman],
+				title=title,
+			))
+
+			i = title_line_index + 1
+
+			continue
+
+		# Everything after the first annex heading is annex body text.
+		if in_annexes:
+			if segments and stripped_line:
+				segments[-1].body.append(stripped_line)
+			i += 1
+			continue
+
 		chapter_match = RE_CHAPTER.match(stripped_line)
 
 		# Handle chapters.
 		# Add a chapter segment.
 		if chapter_match:
+			in_enacting_terms = True
 			chapter_roman = chapter_match.group(1)
 			title_line_index, title = find_title_after_heading(
 				all_lines, i + 1
 			)
 			current_chapter = chapter_roman
+			current_section = None
 
 			segments.append(Segment(
 				type="chapter",
 				id=f"ch:{chapter_roman}",
 				num=ROMAN_TO_INT[chapter_roman],
 				title=title,
+			))
+
+			i = title_line_index + 1
+
+			continue
+
+		# The preamble comes before the first chapter. Its numbered "(N)"
+		# recital clauses are context, not provisions, so skip them.
+		if not in_enacting_terms:
+			i += 1
+			continue
+
+		# Handle sections.
+		# A section subdivides a chapter and groups its articles. Section
+		# numbers restart in each chapter, so qualify the id with the chapter.
+		section_match = RE_SECTION.match(stripped_line)
+		if section_match:
+			section_num = int(section_match.group(1))
+			title_line_index, title = find_title_after_heading(
+				all_lines, i + 1
+			)
+			current_section = f"sec:{current_chapter}:{section_num}"
+
+			segments.append(Segment(
+				type="section",
+				id=current_section,
+				num=section_num,
+				title=title,
+				parent_id=f"ch:{current_chapter}",
 			))
 
 			i = title_line_index + 1
@@ -182,27 +254,35 @@ def extract_segments(pdf_path: Path) -> list[Segment]:
 			title_line_index, title = find_title_after_heading(
 				all_lines, i + 1
 			)
-			if RE_ARTICLE.match(title) or RE_CHAPTER.match(title):
+			if any(pattern.match(title) for pattern in
+				   (RE_ARTICLE, RE_CHAPTER, RE_SECTION, RE_ANNEX)):
 				title = ""
+
+			# Articles sit under their section if the chapter has sections,
+			# otherwise directly under the chapter.
+			parent_id = current_section or (
+				f"ch:{current_chapter}" if current_chapter else None
+			)
+
 			segments.append(Segment(
 				type="article",
 				id=f"art:{article_number}",
 				num=int(article_number),
 				title=title,
-				parent_id=f"ch:{current_chapter}" if current_chapter else None,
+				parent_id=parent_id,
 			))
 
 			i = title_line_index + 1
 
 			continue
 
-		if segments and stripped_line and not is_footer(stripped_line):
+		if segments and stripped_line:
 			segments[-1].body.append(stripped_line)
 
 		i += 1
 
-	# Build the flat list by going over chapters and articles and storing the
-	# paragraphs.
+	# Build the flat list by going over segments and expanding each article
+	# into its numbered paragraphs.
 	segments_with_paragraphs: list[Segment] = []
 
 	# For each segment, if it is an article, extract its paragraphs from its
@@ -213,5 +293,5 @@ def extract_segments(pdf_path: Path) -> list[Segment]:
 			segments_with_paragraphs.extend(extract_paragraphs(segment))
 
 	# Return the flat list of segments.
-	# Chapters, articles, and paragraphs.
+	# Chapters, sections, articles, paragraphs, and annexes.
 	return segments_with_paragraphs
