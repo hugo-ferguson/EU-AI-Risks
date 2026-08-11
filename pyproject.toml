@@ -6,6 +6,7 @@ requires-python = ">=3.12"
 dependencies = [
     "neo4j",
     "pdfplumber",
+    "python-docx",
     "python-dotenv",
     "sentence-transformers",
     "typer",
