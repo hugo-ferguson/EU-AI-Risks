@@ -7,8 +7,6 @@ from collections import defaultdict
 from typing import cast, LiteralString
 
 from eu_ai_risks.db import get_session
-from eu_ai_risks.embeddings import embed_batch
-from eu_ai_risks.embeddings.client import EMBEDDING_DIMENSIONS
 from eu_ai_risks.models import Segment
 
 # Regex that matches when an article references another. This defines
@@ -184,6 +182,8 @@ def generate_and_write_embeddings(graph_nodes: dict) -> None:
 
 	:param graph_nodes: the nodes dict from build_in_memory_graph.
 	"""
+	from eu_ai_risks.embeddings import embed_batch
+	from eu_ai_risks.embeddings.client import EMBEDDING_DIMENSIONS
 
 	# Build (node_id, label, text) tuples for nodes that should be embedded.
 	to_embed = []
