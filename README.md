@@ -1,10 +1,12 @@
 # EU AI Risks
 
-Parse the [EU AI Act](https://eur-lex.europa.eu/eli/reg/2024/1689/oj) into a Neo4j graph database, generate semantic embeddings, and query the legislation structure.
+Parse the [EU AI Act](https://eur-lex.europa.eu/eli/reg/2024/1689/oj) into a Neo4j graph database, generate semantic embeddings, query the legislation structure, and map software requirements documents to candidate EU AI Act compliance risks.
 
 ## Overview
 
 The tool parses the EU AI Act PDF into a graph of **chapters**, **articles**, and **paragraphs**, with edges representing containment (`CONTAINS`, `HAS_PARAGRAPH`) and cross-references (`REFERENCES`) between articles. Embeddings are generated using [sentence-transformers](https://www.sbert.net/) (`BAAI/bge-base-en-v1.5`) to enable semantic search over the legislation.
+
+The requirements analysis pipeline extracts candidate software requirements from an SRS document, embeds each requirement, retrieves similar EU AI Act paragraphs from Neo4j, classifies likely risk themes, and writes a traceable Markdown/JSON report.
 
 ## Setup
 
@@ -99,6 +101,36 @@ This can be used to find legislation relevant to a given requirement, e.g.:
 eu-ai-risks search "The system shall log all automated decisions for human review"
 ```
 
+### Requirements analysis
+
+Extract candidate requirements from a software requirements document:
+
+```bash
+eu-ai-risks parse-requirements ./sample-srs.pdf
+```
+
+Save extracted requirements as JSON:
+
+```bash
+eu-ai-risks parse-requirements ./sample-srs.pdf --output extracted-requirements.json
+```
+
+Generate a traceable EU AI Act risk report:
+
+```bash
+eu-ai-risks analyze-requirements ./sample-srs.pdf --output risk-report.md --json-output risk-report.json
+```
+
+The analysis command expects the EU AI Act graph and paragraph embeddings to already exist in Neo4j:
+
+```bash
+eu-ai-risks build
+eu-ai-risks embed
+eu-ai-risks analyze-requirements ./sample-srs.pdf
+```
+
+Supported requirements document formats are `.txt`, `.md`, `.pdf`, and `.docx`.
+
 ## Project structure
 
 ```
@@ -114,6 +146,10 @@ eu_ai_risks/
     eu_ai_act/
       parser.py                       # PDF parsing into segments
       graph_builder.py                # Graph construction and Neo4j writes
-  requirements/                       # (planned) Requirement parsing
-  analysis/                           # (planned) Requirement-to-legislation mapping
+  requirements/
+    loader.py                         # Requirement document parsing
+    models.py                         # Requirement data structures
+  analysis/
+    risk_mapper.py                    # Requirement-to-legislation mapping
+    risk_report.py                    # Markdown/JSON report generation
 ```
