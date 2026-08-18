@@ -1,5 +1,11 @@
 """
 Tag EU AI Act provisions with controlled-vocabulary dimension nodes.
+
+This is quite a fixed process of matching AI act risks, systems, actors, etc.
+to the text. This is quite AI Act specific - something else would be required
+(without analysing using an LLM, anyway) for other texts.
+
+This makes the graph more useful for analysis by an LLM.
 """
 
 import re
@@ -7,14 +13,9 @@ from typing import cast, LiteralString
 
 from eu_ai_risks.db import get_session
 
-# Each dimension is a closed vocabulary lifted from the Act itself, so the tags
-# are grounded rather than invented. A provision links to a dimension node by a
-# typed edge, mirroring the Concept nodes, so a parsed requirement can later
-# align to the same node. Every dimension has a deterministic derivation; an
-# LLM pass can prune false positives later but never introduces new categories.
+# Each dimension is a set list of words derived from the act.
+# These are used to tag things like risks, systems, actors, etc. in the act.
 
-# Operator roles defined in Article 3, keyed to the surface forms used in the
-# text. These are the parties an obligation is addressed to.
 RESPONSIBLE_PARTIES = {
 	"provider": (r"\bproviders?\b", "Provider"),
 	"deployer": (r"\bdeployers?\b", "Deployer"),
@@ -31,9 +32,6 @@ RESPONSIBLE_PARTIES = {
 	"member_state": (r"\bMember States?\b", "Member State"),
 }
 
-# Requirement themes, taken from the titles of the high-risk requirement and
-# obligation articles. This is the Act's own decomposition of what a compliant
-# system must do, so it is the natural target for a software requirement.
 REQUIREMENT_CATEGORIES = {
 	"ai_literacy": "AI literacy",
 	"risk_management": "Risk management system",
@@ -51,8 +49,7 @@ REQUIREMENT_CATEGORIES = {
 	"fundamental_rights_impact_assessment": "Fundamental rights impact assessment",
 }
 
-# The article that establishes each requirement theme. An obligation's theme is
-# the article it sits in, so these anchors are deterministic.
+# Each article talks about a requirement, so map these here.
 REQUIREMENT_ARTICLE_MAP = {
 	"art:4": "ai_literacy",
 	"art:9": "risk_management",
@@ -73,8 +70,7 @@ REQUIREMENT_ARTICLE_MAP = {
 	"art:73": "serious_incident_reporting",
 }
 
-# The four risk tiers plus the two general-purpose classes. Which tier an
-# article belongs to is fixed by the chapter it sits in.
+# The four risk tiers plus the two general-purpose classes. 
 RISK_CATEGORIES = {
 	"prohibited": "Prohibited (unacceptable risk)",
 	"high_risk": "High-risk",
@@ -83,16 +79,16 @@ RISK_CATEGORIES = {
 	"gpai_systemic": "General-purpose AI model with systemic risk",
 }
 
-# The chapter each risk tier is defined in. Chapter V is split: the articles
-# about systemic risk are the systemic class, the rest are baseline GPAI.
+# The chapter each risk tier is defined in. 
 RISK_CHAPTER_MAP = {
 	"II": "prohibited",
 	"III": "high_risk",
 	"IV": "transparency",
 }
+
 GPAI_SYSTEMIC_ARTICLES = {"art:51", "art:55"}
 
-# The eight high-risk areas enumerated in Annex III.
+# The eight high-risk areas in Annex III.
 SYSTEM_CATEGORIES = {
 	"biometrics": "Biometrics",
 	"critical_infrastructure": "Critical infrastructure",
@@ -104,8 +100,7 @@ SYSTEM_CATEGORIES = {
 	"justice_democracy": "Administration of justice and democratic processes",
 }
 
-# Data types defined in Article 3, keyed to the surface forms used in the text.
-# 'personal data' is guarded so it does not fire on 'non-personal data'.
+# Data types defined in Article 3.
 DATA_CATEGORIES = {
 	"special_category_personal_data": (r"special categories of personal data", "Special categories of personal data"),
 	"biometric_data": (r"\bbiometric data\b", "Biometric data"),
@@ -121,7 +116,7 @@ DATA_CATEGORIES = {
 
 def _match_terms(text: str, vocabulary: dict[str, tuple[str, str]]) -> list[str]:
 	"""
-	Find which vocabulary keys have a surface form present in the text.
+	Find which vocabulary keys have are present in text.
 
 	:param text: the provision text to scan.
 	:param vocabulary: a dimension vocabulary of key to (regex, name).
@@ -135,7 +130,7 @@ def _match_terms(text: str, vocabulary: dict[str, tuple[str, str]]) -> list[str]
 
 def responsible_parties(text: str) -> list[str]:
 	"""
-	Derive the responsible parties an article addresses.
+	Find the responsible parties an article addresses.
 
 	:param text: the article text.
 	:return: the responsible-party keys present in the text.
@@ -145,7 +140,7 @@ def responsible_parties(text: str) -> list[str]:
 
 def data_categories(text: str) -> list[str]:
 	"""
-	Derive the data categories an article concerns.
+	Find the data categories an article concerns.
 
 	:param text: the article text.
 	:return: the data-category keys present in the text.
@@ -155,7 +150,7 @@ def data_categories(text: str) -> list[str]:
 
 def risk_category(article_id: str, chapter_roman: str) -> str | None:
 	"""
-	Derive the risk tier of an article from the chapter it sits in.
+	Find the risk tier of an article from the chapter it sits in.
 
 	:param article_id: the article id.
 	:param chapter_roman: the Roman numeral of the article's chapter.
@@ -287,21 +282,14 @@ def add_risk_categories() -> None:
 		rows = session.run(
 			"""
 			MATCH (c:Chapter)-[:CONTAINS*1..2]->(a:Article)
-			RETURN a.id AS id, c.num AS chapter_num
+			RETURN a.id AS id, c.id AS chapter_id
 			"""
 		).data()
 
-	# Map the chapter number back to its Roman numeral for the derivation.
-	int_to_roman = {
-		1: "I", 2: "II", 3: "III", 4: "IV", 5: "V", 6: "VI", 7: "VII",
-		8: "VIII", 9: "IX", 10: "X", 11: "XI", 12: "XII", 13: "XIII",
-	}
-
 	assignments = []
 	for row in rows:
-		category = risk_category(
-			row["id"], int_to_roman.get(row["chapter_num"], "")
-		)
+		roman = row["chapter_id"].split(":")[1]
+		category = risk_category(row["id"], roman)
 		if category:
 			assignments.append((row["id"], [category]))
 

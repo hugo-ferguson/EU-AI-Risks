@@ -8,49 +8,6 @@ import re
 from eu_ai_risks.db import get_session
 from eu_ai_risks.llm import complete, complete_json
 
-CHAPTER_RISK_TIERS: dict[int, str] = {
-	1: "scope",
-	2: "unacceptable",
-	3: "high",
-	4: "limited",
-	5: "general_purpose",
-}
-DEFAULT_RISK_TIER = "governance"
-
-
-def add_risk_tiers() -> None:
-	"""
-	Write a risk_tier property to every Article node in Neo4j based on the
-	chapter it belongs to.
-
-	:return: None
-	"""
-	rows = [
-		{"chapter_num": chapter_num, "risk_tier": tier}
-		for chapter_num, tier in CHAPTER_RISK_TIERS.items()
-	]
-
-	with get_session() as session:
-		session.run(
-			"""
-			UNWIND $rows AS row
-			MATCH (c:Chapter {num: row.chapter_num})-[:CONTAINS*1..2]->(a:Article)
-			SET a.risk_tier = row.risk_tier
-			""",
-			rows=rows,
-		)
-		session.run(
-			"""
-			MATCH (c:Chapter)-[:CONTAINS*1..2]->(a:Article)
-			WHERE a.risk_tier IS NULL
-			SET a.risk_tier = $risk_tier
-			""",
-			risk_tier=DEFAULT_RISK_TIER,
-		)
-
-	print("  Added risk_tier to article nodes.")
-
-
 OBLIGATION_TYPES = (
 	"requirement",
 	"prohibition",

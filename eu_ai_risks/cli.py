@@ -25,7 +25,6 @@ from eu_ai_risks.legislation.eu_ai_act.graph_builder import (
 	SEGMENT_TYPES,
 )
 from eu_ai_risks.legislation.eu_ai_act.enrichment import (
-	add_risk_tiers,
 	add_obligation_types,
 	add_concepts,
 )
@@ -90,14 +89,6 @@ def embed():
 	generate_and_write_embeddings(nodes)
 
 
-@app.command()
-def tiers():
-	"""Annotate Article nodes with a risk_tier property based on their
-	chapter."""
-	print("Annotating articles with risk tiers ...")
-	add_risk_tiers()
-
-
 @app.command("obligation-types")
 def obligation_types():
 	"""Classify and annotate Paragraph nodes with an obligation_type
@@ -124,9 +115,7 @@ def dimensions():
 
 @app.command()
 def enrich():
-	"""Run all enrichment passes: tiers, obligation-types, concepts,
-	dimensions."""
-	tiers()
+	"""Run all enrichment passes: obligation-types, concepts, dimensions."""
 	obligation_types()
 	concepts()
 	dimensions()

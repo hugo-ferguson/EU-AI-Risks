@@ -86,13 +86,13 @@ eu-ai-risks embed
 
 ### Enrich the graph
 
-Tag the graph with risk tiers, obligation types, Article 3 concepts, and the five dimensions:
+Tag the graph with obligation types, Article 3 concepts, and the five dimensions:
 
 ```bash
 eu-ai-risks enrich
 ```
 
-The individual passes `tiers`, `obligation-types`, `concepts`, and `dimensions` can be run on their own. `dimensions` is deterministic and needs no LLM; `obligation-types` and `concepts` require `LLM_MODEL`.
+The individual passes `obligation-types`, `concepts`, and `dimensions` can be run on their own. `dimensions` is deterministic and needs no LLM; `obligation-types` and `concepts` require `LLM_MODEL`.
 
 ### Query the graph
 
@@ -157,7 +157,7 @@ eu_ai_risks/
     eu_ai_act/
       parser.py                       # PDF parsing into segments
       graph_builder.py                # Graph construction and Neo4j writes
-      enrichment.py                   # Risk tiers, obligation types, concepts
+      enrichment.py                   # Obligation types, Article 3 concepts
       dimensions.py                   # Controlled-vocabulary dimension tagging
   requirements/                       # (planned) Requirement parsing
   analysis/                           # (planned) Requirement-to-legislation mapping
