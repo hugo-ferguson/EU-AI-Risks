@@ -9,9 +9,63 @@ from typing import cast, LiteralString
 from eu_ai_risks.db import get_session
 from eu_ai_risks.models import Segment
 
-# Regex that matches when an article references another. This defines
-# 'REFERENCES' edges.
-RE_ARTICLE_REF = re.compile(r'\bArticle\s+(\d+)\b')
+# Article and annex cross-references define 'REFERENCES' edges. Citations
+# appear in singular ('Article 6'), plural ('Articles 5 and 6'), and ranges
+# ('Articles 8 to 15'). 
+RE_ARTICLE_REF = re.compile(r'\bArticles?\s+(\d+(?:\s*(?:,|and|to)\s+\d+)*)')
+RE_ANNEX_REF = re.compile(r'\bAnnex(?:es)?\s+([IVX]+(?:\s*(?:,|and)\s+[IVX]+)*)')
+RE_ROMAN = re.compile(r'^[IVX]+$')
+
+
+def expand_article_refs(number_list: str) -> set[int]:
+	"""
+	Expand a matched run of article numbers into the set it names.
+
+	:param number_list: the text captured after 'Article(s)', e.g. '8 to 15'.
+	:return: the set of article numbers referred to.
+	"""
+	numbers = set()
+
+	# Split the run into its listed items, then expand any 'N to M' range.
+	for item in re.split(r'\s*(?:,|and)\s+', number_list):
+		range_match = re.match(r'(\d+)\s+to\s+(\d+)', item)
+		if range_match:
+			start, end = int(range_match.group(1)), int(range_match.group(2))
+			numbers.update(range(start, end + 1))
+		elif item.strip().isdigit():
+			numbers.add(int(item.strip()))
+
+	return numbers
+
+
+def find_references(
+		text: str, source_id: str, all_nodes: dict
+) -> list[tuple[str, str]]:
+	"""
+	Find the articles and annexes that a block of text references.
+
+	:param text: the text to scan for cross-references.
+	:param source_id: the id of the referencing node, excluded from the result.
+	:param all_nodes: the built nodes, used to drop references to unknown ids.
+	:return: a list of (target id, 'REFERENCES') tuples.
+	"""
+	target_ids = set()
+
+	for match in RE_ARTICLE_REF.finditer(text):
+		for number in expand_article_refs(match.group(1)):
+			target_ids.add(f"art:{number}")
+
+	# Annex numbers are Roman, so list expansion is enough without ranges.
+	for match in RE_ANNEX_REF.finditer(text):
+		for roman in re.split(r'\s*(?:,|and)\s+', match.group(1)):
+			if RE_ROMAN.match(roman.strip()):
+				target_ids.add(f"annex:{roman.strip()}")
+
+	return [
+		(target_id, "REFERENCES")
+		for target_id in target_ids
+		if target_id != source_id and target_id in all_nodes
+	]
 
 # Types of Act segments (from the parser) and functions to construct them.
 # Each props key contains a lambda function that returns the correct properties
@@ -25,6 +79,14 @@ SEGMENT_TYPES = {
 		"cross_refs": None,
 		"embedding_text": None,
 	},
+	"section": {
+		"label": "Section",
+		"props": lambda segment: {"num": segment.num, "title": segment.title},
+		"parent_rel": "CONTAINS",
+		"parent_id": lambda segment: segment.parent_id,
+		"cross_refs": None,
+		"embedding_text": None,
+	},
 	"article": {
 		"label": "Article",
 		"props": lambda segment: {
@@ -34,11 +96,9 @@ SEGMENT_TYPES = {
 		},
 		"parent_rel": "CONTAINS",
 		"parent_id": lambda segment: segment.parent_id,
-		"cross_refs": lambda segment, all_nodes: [
-			(f"art:{article_num}", "REFERENCES")
-			for article_num in set(RE_ARTICLE_REF.findall(" ".join(segment.body)))
-			if f"art:{article_num}" != segment.id and f"art:{article_num}" in all_nodes
-		],
+		"cross_refs": lambda segment, all_nodes: find_references(
+			" ".join(segment.body), segment.id, all_nodes
+		),
 		"embedding_text": lambda props, parent_props: (
 			f"Article {props.get('num', '')}: {props.get('title', '')}. "
 			f"{props.get('text', '')}"
@@ -58,6 +118,23 @@ SEGMENT_TYPES = {
 			f"Paragraph {props.get('num', '')}. {props.get('text', '')}"
 			if parent_props else
 			f"Paragraph {props.get('num', '')}. {props.get('text', '')}"
+		),
+	},
+	"annex": {
+		"label": "Annex",
+		"props": lambda segment: {
+			"num": segment.num,
+			"title": segment.title,
+			"text": " ".join(segment.body),
+		},
+		"parent_rel": None,
+		"parent_id": None,
+		"cross_refs": lambda segment, all_nodes: find_references(
+			" ".join(segment.body), segment.id, all_nodes
+		),
+		"embedding_text": lambda props, parent_props: (
+			f"Annex {props.get('num', '')}: {props.get('title', '')}. "
+			f"{props.get('text', '')}"
 		),
 	},
 }
@@ -101,7 +178,7 @@ def build_in_memory_graph(segments: list[Segment]) -> tuple[dict, list]:
 			if parent_id and parent_id in nodes:
 				add_edge(parent_id, type_config["parent_rel"], segment.id)
 
-		# Add the references relationship.
+		# Add the 'references' relationship.
 		if type_config["cross_refs"]:
 			for referenced_id, relationship in type_config["cross_refs"](segment, nodes):
 				add_edge(segment.id, relationship, referenced_id)

@@ -1,5 +1,5 @@
 """
-Returns a context manager for the Neo4j database.
+Neo4j driver singleton and session context manager.
 """
 
 import os

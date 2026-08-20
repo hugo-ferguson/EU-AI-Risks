@@ -14,9 +14,11 @@ def articles_in_chapter(chapter_id: str) -> list[tuple[str, str]]:
 	:return: a list of tuples containing article ids and article titles.
 	"""
 	with get_session() as session:
+		# Articles hang off the chapter directly or via a section, so allow
+		# one or two CONTAINS hops.
 		query_result = session.run(
 			"""
-			MATCH (c:Chapter {id: $chapter_id})-[:CONTAINS]->(a:Article)
+			MATCH (c:Chapter {id: $chapter_id})-[:CONTAINS*1..2]->(a:Article)
 			RETURN a.id AS id, a.title AS title
 			ORDER BY a.num
 			""",

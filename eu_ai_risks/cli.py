@@ -9,6 +9,28 @@ from pathlib import Path
 import typer
 from dotenv import load_dotenv
 
+from eu_ai_risks.db import NEO4J_URI
+from eu_ai_risks.db.graph import (
+	articles_in_chapter,
+	referenced_by,
+	references_from,
+	shortest_path,
+	vector_search_articles,
+	vector_search_paragraphs,
+)
+from eu_ai_risks.legislation.eu_ai_act.parser import extract_segments
+from eu_ai_risks.legislation.eu_ai_act.graph_builder import (
+	build_in_memory_graph,
+	write_to_neo4j,
+	generate_and_write_embeddings,
+	SEGMENT_TYPES,
+)
+from eu_ai_risks.legislation.eu_ai_act.enrichment import (
+	add_obligation_types,
+	add_concepts,
+)
+from eu_ai_risks.legislation.eu_ai_act.dimensions import add_dimensions
+
 load_dotenv()
 
 app = typer.Typer(help="Parse the EU AI Act into a Neo4j graph and query it.")
@@ -40,6 +62,23 @@ def _parse_and_build() -> tuple[dict, list]:
 
 
 @app.command()
+def reset(confirm: bool = typer.Option(
+	False,
+	"--confirm",
+	help="Required to prevent accidental deletion."
+)):
+	"""Delete all nodes and relationships from the Neo4j database."""
+	if not confirm:
+		typer.echo("Pass --confirm to reset the graph.")
+		raise typer.Exit(1)
+
+	from eu_ai_risks.db import get_session
+	with get_session() as session:
+		session.run("MATCH (n) DETACH DELETE n")
+	print("Graph cleared.")
+
+
+@app.command()
 def build():
 	"""Parse the EU AI Act PDF and write the graph to Neo4j."""
 	from eu_ai_risks.db import NEO4J_URI
@@ -62,6 +101,54 @@ def embed():
 
 	print("\nGenerating embeddings ...")
 	generate_and_write_embeddings(nodes)
+
+
+@app.command("obligation-types")
+def obligation_types():
+	"""Classify and annotate Paragraph nodes with an obligation_type
+	property."""
+	print("Classifying paragraph obligation types ...")
+	add_obligation_types()
+
+
+@app.command()
+def concepts():
+	"""Extract Concept nodes from Art 3 and write DEFINES/USES edges to
+	all articles."""
+	print("Extracting concepts ...")
+	add_concepts()
+
+
+@app.command()
+def dimensions():
+	"""Tag provisions with responsible-party, requirement, risk, system, and
+	data dimension nodes."""
+	print("Tagging provisions with dimensions ...")
+	add_dimensions()
+
+
+@app.command()
+def enrich():
+	"""Run all enrichment passes: obligation-types, concepts, dimensions."""
+	obligation_types()
+	concepts()
+	dimensions()
+
+
+@app.command("all")
+def run_all():
+	"""Build the graph, generate embeddings, and run all enrichment passes."""
+	# Parse once and reuse the nodes for both the write and the embeddings.
+	nodes, edges = _parse_and_build()
+
+	print(f"\nWriting graph to Neo4j at {NEO4J_URI} ...")
+	write_to_neo4j(nodes, edges)
+
+	print("\nGenerating embeddings ...")
+	generate_and_write_embeddings(nodes)
+
+	print("\nEnriching ...")
+	enrich()
 
 
 @app.command()
