@@ -12,7 +12,6 @@ from eu_ai_risks.requirements.models import Requirement
 from eu_ai_risks.embeddings import embed_batch
 from eu_ai_risks.embeddings.client import EMBEDDING_DIMENSIONS
 from eu_ai_risks.db import get_session
-
 from eu_ai_risks.llm import complete_json
 
 RE_REQUIREMENT_ID = re.compile(
@@ -88,7 +87,8 @@ def _read_docx_blocks(document_path: Path) -> list[dict]:
             "with its current dependencies, or convert the document to PDF/text."
         ) from exc
 
-    document = Document(document_path)
+    document = Document(str(document_path))
+
     return [
         {"text": paragraph.text.strip(), "page": None}
         for paragraph in document.paragraphs
@@ -205,6 +205,10 @@ def _split_requirement(requirement_text: str) -> str:
         prompt=f'Extract triples from: "{requirement_text}"',
         system=_TRIPLE_EXTRACTION_SYSTEM,
     )
+    if isinstance(result, dict):
+        for value in result.values():
+            if isinstance(value, list):
+                return json.dumps(value)
     return json.dumps(result)
 
 

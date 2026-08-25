@@ -11,6 +11,10 @@ from eu_ai_risks.db.graph import (
     find_paragraphs,
     text_search,
     get_references,
+    list_requirements,
+    get_requirement,
+    get_related_requirements,
+    search_entities,
 )
 from eu_ai_risks.embeddings import embed_text
 
@@ -164,6 +168,97 @@ TOOL_DEFINITIONS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_requirements",
+            "description": (
+                "List all software requirements that have been extracted "
+                "from the input document(s). Returns requirement IDs and "
+                "text."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_requirement",
+            "description": (
+                "Read a specific requirement with its semantic triples "
+                "(subject-predicate-object decomposition). Use to "
+                "understand what a requirement actually specifies."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "requirement_id": {
+                        "type": "string",
+                        "description": (
+                            "The requirement ID, e.g. 'REQ-001'."
+                        ),
+                    },
+                },
+                "required": ["requirement_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_related_requirements",
+            "description": (
+                "Find other requirements that share entities with a given "
+                "requirement. Use to discover related requirements that "
+                "should be assessed together (e.g. data collection and "
+                "data usage requirements)."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "requirement_id": {
+                        "type": "string",
+                        "description": (
+                            "The requirement ID, e.g. 'REQ-001'."
+                        ),
+                    },
+                },
+                "required": ["requirement_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_requirement_entities",
+            "description": (
+                "Semantic search over entities extracted from software "
+                "requirements. Returns matching entities with the "
+                "requirements they belong to. Use to find requirements "
+                "related to a concept."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query for entity names.",
+                    },
+                    "top_k": {
+                        "type": "integer",
+                        "description": (
+                            "Number of results (default 8, max 15)."
+                        ),
+                    },
+                },
+                "required": ["query"],
+            },
+        },
+    },
 ]
 
 
@@ -184,6 +279,17 @@ _DISPATCH = {
     ),
     "read_article": lambda args: get_article(args["article_id"]),
     "get_references": lambda args: get_references(args["article_id"]),
+    "list_requirements": lambda args: list_requirements(),
+    "get_requirement": lambda args: get_requirement(
+        args["requirement_id"],
+    ),
+    "get_related_requirements": lambda args: get_related_requirements(
+        args["requirement_id"],
+    ),
+    "search_requirement_entities": lambda args: search_entities(
+        embed_text(args["query"]),
+        top_k=min(args.get("top_k", 8), 15),
+    ),
 }
 
 

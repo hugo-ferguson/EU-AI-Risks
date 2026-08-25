@@ -181,10 +181,6 @@ def paragraph_details(paragraph_ids: list[str]) -> dict[str, dict]:
         }
 
 
-# ---------------------------------------------------------------------------
-# Read functions for the agent tool layer
-# ---------------------------------------------------------------------------
-
 def list_categories() -> list[dict]:
     """
     List all 14 RequirementCategory nodes with their anchor article IDs.
@@ -478,3 +474,135 @@ def get_references(article_id: str) -> dict:
             "references_to": references_to,
             "referenced_by": referenced_by,
         }
+
+
+def list_requirements() -> list[dict]:
+    """
+    List all Requirement nodes in the graph.
+
+    :return: list of dicts with keys: id, text.
+    """
+    with get_session() as session:
+        query_result = session.run(
+            """
+			MATCH (r:Requirement)
+			RETURN r.id AS id, r.text AS text
+			ORDER BY r.id
+			"""
+        )
+
+        return [
+            {"id": row["id"], "text": row["text"]}
+            for row in query_result
+        ]
+
+
+def get_requirement(req_id: str) -> dict | None:
+    """
+    Return a requirement with its entity triples.
+
+    :param req_id: the requirement ID, e.g. "REQ-001".
+    :return: dict with requirement details and triples, or None.
+    """
+    with get_session() as session:
+        query_result = session.run(
+            """
+			MATCH (r:Requirement {id: $req_id})
+			OPTIONAL MATCH (r)-[:EXTRACTED_FROM]->(s:Entity)
+			OPTIONAL MATCH (s)-[rel:RELATION]->(o:Entity)
+			RETURN r.id AS id, r.text AS text,
+			       collect({
+			           subject: s.name,
+			           predicate: rel.type,
+			           object: o.name
+			       }) AS triples
+			""",
+            req_id=req_id,
+        )
+
+        record = query_result.single()
+        if not record or record["id"] is None:
+            return None
+
+        triples = [
+            t for t in record["triples"]
+            if t["subject"] is not None
+        ]
+
+        return {
+            "id": record["id"],
+            "text": record["text"],
+            "triples": triples,
+        }
+
+
+def get_related_requirements(req_id: str) -> list[dict]:
+    """
+    Find requirements that share entities with the given requirement.
+
+    :param req_id: the requirement ID, e.g. "REQ-001".
+    :return: list of related requirements with shared entity names.
+    """
+    with get_session() as session:
+        query_result = session.run(
+            """
+			MATCH (r:Requirement {id: $req_id})-[:EXTRACTED_FROM]->(s:Entity)
+			OPTIONAL MATCH (s)-[:RELATION*0..1]-(e:Entity)
+			MATCH (other:Requirement)-[:EXTRACTED_FROM]->(e)
+			WHERE other.id <> $req_id
+			RETURN DISTINCT other.id AS id, other.text AS text,
+			       collect(DISTINCT e.name) AS shared_entities
+			ORDER BY size(collect(DISTINCT e.name)) DESC
+			""",
+            req_id=req_id,
+        )
+
+        return [
+            {
+                "id": row["id"],
+                "text": row["text"],
+                "shared_entities": row["shared_entities"],
+            }
+            for row in query_result
+        ]
+
+
+def search_entities(
+    query_embedding: list[float],
+    top_k: int = 8,
+) -> list[dict]:
+    """
+    Vector search over Entity nodes from the requirements graph.
+
+    :param query_embedding: the query embedding vector.
+    :param top_k: number of results to return.
+    :return: list of entity dicts with linked requirements.
+    """
+    with get_session() as session:
+        query_result = session.run(
+            """
+			CALL db.index.vector.queryNodes(
+			    'entity_embedding', $top_k, $embedding
+			)
+			YIELD node, score
+			OPTIONAL MATCH (r:Requirement)-[:EXTRACTED_FROM]->(node)
+			RETURN node.name AS entity_name,
+			       score,
+			       collect({id: r.id, text: r.text}) AS requirements
+			ORDER BY score DESC
+			""",
+            top_k=top_k,
+            embedding=query_embedding,
+        )
+
+        return [
+            {
+                "entity_name": row["entity_name"],
+                "score": round(row["score"], 4),
+                "requirements": [
+                    r for r in row["requirements"]
+                    if r["id"] is not None
+                ],
+            }
+            for row in query_result
+        ]
