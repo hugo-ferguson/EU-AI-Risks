@@ -18,5 +18,8 @@ gpu = [
     "torch>=2.0",
 ]
 
+[tool.setuptools.packages.find]
+include = ["eu_ai_risks*"]
+
 [project.scripts]
 eu-ai-risks = "eu_ai_risks.cli:main"
