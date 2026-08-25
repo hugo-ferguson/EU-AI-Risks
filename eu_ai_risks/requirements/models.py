@@ -18,6 +18,7 @@ class Requirement:
 	title: str | None = None
 	page: int | None = None
 	metadata: dict[str, str] = field(default_factory=dict)
+	triples: str | None = None
 
 	def to_dict(self) -> dict:
 		return {
@@ -28,4 +29,5 @@ class Requirement:
 			"title": self.title,
 			"page": self.page,
 			"metadata": self.metadata,
+			"triples": self.triples,
 		}
