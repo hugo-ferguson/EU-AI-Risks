@@ -305,6 +305,51 @@ def analyze_requirements(
 		print(f"Wrote JSON risk report to {json_output}.")
 
 
+@app.command("ask")
+def ask(
+	query: str = typer.Argument(help="Question about the EU AI Act"),
+	verbose: bool = typer.Option(
+		False, "--verbose", "-v",
+		help="Show tool calls and iteration count",
+	),
+):
+	"""Ask a question about the EU AI Act using the knowledge graph."""
+	from eu_ai_risks.alignment.agent import AgentLoop
+	from eu_ai_risks.alignment.tools import TOOL_DEFINITIONS, execute_tool
+	from eu_ai_risks.alignment.prompts import GRAPH_READER_PROMPT
+
+	agent = AgentLoop(
+		system_prompt=GRAPH_READER_PROMPT,
+		tools=TOOL_DEFINITIONS,
+		tool_executor=execute_tool,
+	)
+
+	if verbose:
+		print("Running agent...")
+
+	result = agent.run(query)
+
+	if verbose:
+		print(
+			f"\n[{result.iterations} iterations, "
+			f"{result.tool_calls_made} tool calls]\n"
+		)
+
+	print(result.answer.summary)
+
+	if result.answer.citations:
+		print("\nCitations:")
+		for c in result.answer.citations:
+			label = c.article_title or c.article_id
+			if c.paragraph_num:
+				label += f"({c.paragraph_num})"
+			print(f"  - {label}")
+
+	if verbose:
+		print(f"\nConfidence: {result.answer.confidence}")
+		print(f"Raw output: {result.raw_content[:200]}...")
+
+
 def main():
 	app()
 
