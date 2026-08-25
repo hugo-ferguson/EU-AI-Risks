@@ -13,7 +13,7 @@ from eu_ai_risks.embeddings import embed_batch
 from eu_ai_risks.embeddings.client import EMBEDDING_DIMENSIONS
 from eu_ai_risks.db import get_session
 
-from ollama import generate
+from eu_ai_risks.llm import complete_json
 
 RE_REQUIREMENT_ID = re.compile(
     r'\b((?:FR|NFR|REQ|R|UC|SR|SYS|SRS)[-_ ]?\d+(?:\.\d+)*)\b',
@@ -39,7 +39,8 @@ def load_requirements(document_path: Path) -> list[Requirement]:
 
     document_path = document_path.expanduser()
     if not document_path.exists():
-        raise FileNotFoundError(f"Requirements document not found: {document_path}")
+        raise FileNotFoundError(
+            f"Requirements document not found: {document_path}")
 
     extension = document_path.suffix.lower()
     if extension not in SUPPORTED_EXTENSIONS:
@@ -181,48 +182,31 @@ def _deduplicate_requirements(
     return unique_requirements
 
 
-def _build_extraction_prompt(requirement_text: str) -> str:
-    return f"""
-        You are a requirements analysis assistant. Your task is to extract semantic triples from a software requirement.
+_TRIPLE_EXTRACTION_SYSTEM = """\
+You are a requirements analysis assistant. Extract semantic triples from \
+a software requirement.
 
-        A triple consists of:
-        - Subject: the entity or system performing or being described
-        - Predicate: the relationship, action, or constraint (often the requirement verb)
-        - Object: what the action is performed on, or what the constraint applies to
+A triple consists of:
+- Subject: the entity or system performing or being described
+- Predicate: the relationship, action, or constraint
+- Object: what the action is performed on or the constraint applies to
 
-        Rules:
-        - Extract only what is explicitly stated in the requirement
-        - Do not infer or assume information not present in the text
-        - A single requirement may contain multiple triples
-        - Use concise, normalised terms (e.g. "the system" not "it")
-        - Respond ONLY with a JSON array, no explanation or preamble
-        - Split compound objects into separate triples
-        - Each triple should have exactly ONE subject, predicate, and object
-        - Objects should be a single entity or concept, not a list
-
-        Requirement:
-        \"{requirement_text}\"
-
-        Respond in this exact format:
-        [
-            {{
-                "subject": "...",
-                "predicate": "...",
-                "object": "..."
-            }}
-        ]
-        """
+Rules:
+- Extract only what is explicitly stated
+- A single requirement may contain multiple triples
+- Use concise, normalised terms (e.g. "the system" not "it")
+- Split compound objects into separate triples
+- Each triple must have exactly one subject, predicate, and object
+- Respond with a JSON array of triple objects, nothing else"""
 
 
-def _split_requirement(requirement_text: str):
-    response = generate(
-        model="qwen3",
-        prompt=_build_extraction_prompt(requirement_text),
-        think=False,
-        stream=False
+def _split_requirement(requirement_text: str) -> str:
+    result = complete_json(
+        prompt=f'Extract triples from: "{requirement_text}"',
+        system=_TRIPLE_EXTRACTION_SYSTEM,
     )
+    return json.dumps(result)
 
-    return response.response
 
 def write_triples(document_path: Path):
     requirements = load_requirements(document_path)
@@ -236,7 +220,7 @@ def write_triples(document_path: Path):
             except json.JSONDecodeError as e:
                 print(f"Failed to parse triple: {e}")
                 continue
-            
+
             for triple in parsed:
                 print(triple)
                 # Skip malformed triples missing required keys
@@ -279,15 +263,14 @@ def write_triples(document_path: Path):
                 // Link requirement to its subject entity
                 MERGE (req)-[:EXTRACTED_FROM]->(s)
                 """,
-                rows=batch
-            )
+                        rows=batch
+                        )
 
             print(f"  Wrote {i + len(batch)}/{len(all_triples)} triples")
 
             generate_and_write_triple_embeddings(session, batch)
-    
 
-    
+
 def generate_and_write_triple_embeddings(session, all_triples: list[dict]) -> None:
     # Collect unique entities to embed
     # Use dict to deduplicate by name/id
@@ -300,12 +283,13 @@ def generate_and_write_triple_embeddings(session, all_triples: list[dict]) -> No
             if name not in entities:
                 entities[name] = name  # text to embed is just the entity name
 
-    # Embed and write Entity nodes 
+    # Embed and write Entity nodes
     if entities:
-        entity_ids   = list(entities.keys())
+        entity_ids = list(entities.keys())
         entity_texts = list(entities.values())
 
-        print(f"  Generating embeddings for {len(entity_texts)} Entity nodes...")
+        print(
+            f"  Generating embeddings for {len(entity_texts)} Entity nodes...")
         entity_embeddings = embed_batch(entity_texts)
 
         entity_rows = [
@@ -318,8 +302,8 @@ def generate_and_write_triple_embeddings(session, all_triples: list[dict]) -> No
             MATCH (n:Entity {name: row.name})
             SET n.embedding = row.embedding
             """,
-            rows=entity_rows
-        )
+                    rows=entity_rows
+                    )
         print(f"  Wrote embeddings for {len(entity_rows)} Entity nodes.")
 
     # Create vector indexes
@@ -332,7 +316,7 @@ def generate_and_write_triple_embeddings(session, all_triples: list[dict]) -> No
                 `vector.similarity_function`: 'cosine'
             }}}}
             """
-        )
+                    )
         print(f"  Created vector index for {label}.")
 
 
