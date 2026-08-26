@@ -41,3 +41,32 @@ class AgentResult(BaseModel):
     messages: list[dict] = Field(
         default_factory=list, description="Full conversation history"
     )
+
+
+class RiskItem(BaseModel):
+    """A single compliance risk identified for a requirement."""
+
+    description: str = Field(description="What the risk is")
+    severity: str = Field(
+        default="medium", description="high, medium, or low"
+    )
+    article_id: str = Field(
+        default="", description="Graph node ID, e.g. art:14"
+    )
+    paragraph_num: int | None = Field(
+        default=None, description="e.g. 1 for paragraph (1)"
+    )
+    provision: str = Field(
+        default="", description="Human-readable, e.g. Article 14(1)"
+    )
+
+
+class RequirementRisk(BaseModel):
+    """Risk assessment result for a single requirement."""
+
+    summary: str = Field(description="Overall compliance analysis")
+    risks: list[RiskItem] = Field(default_factory=list)
+    risk_level: str = Field(
+        default="medium", description="Overall risk level: high, medium, low"
+    )
+    recommendations: list[str] = Field(default_factory=list)

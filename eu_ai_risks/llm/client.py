@@ -9,6 +9,8 @@ from typing import cast
 import litellm
 from litellm import ModelResponse
 
+litellm.suppress_debug_info = True
+
 # Configured via .env. Supports any LiteLLM-compatible model string and API.
 LLM_MODEL: str = os.environ.get("LLM_MODEL", "")
 LLM_API_BASE: str | None = os.environ.get("LLM_API_BASE")

@@ -9,28 +9,6 @@ from pathlib import Path
 import typer
 from dotenv import load_dotenv
 
-from eu_ai_risks.db import NEO4J_URI
-from eu_ai_risks.db.graph import (
-    articles_in_chapter,
-    referenced_by,
-    references_from,
-    shortest_path,
-    vector_search_articles,
-    vector_search_paragraphs,
-)
-from eu_ai_risks.legislation.eu_ai_act.parser import extract_segments
-from eu_ai_risks.legislation.eu_ai_act.graph_builder import (
-    build_in_memory_graph,
-    write_to_neo4j,
-    generate_and_write_embeddings,
-    SEGMENT_TYPES,
-)
-from eu_ai_risks.legislation.eu_ai_act.enrichment import (
-    add_obligation_types,
-    add_concepts,
-)
-from eu_ai_risks.legislation.eu_ai_act.dimensions import add_dimensions
-
 load_dotenv()
 
 app = typer.Typer(help="Parse the EU AI Act into a Neo4j graph and query it.")
@@ -107,6 +85,8 @@ def embed():
 def obligation_types():
     """Classify and annotate Paragraph nodes with an obligation_type
     property."""
+    from eu_ai_risks.legislation.eu_ai_act.enrichment import add_obligation_types
+
     print("Classifying paragraph obligation types ...")
     add_obligation_types()
 
@@ -115,6 +95,8 @@ def obligation_types():
 def concepts():
     """Extract Concept nodes from Art 3 and write DEFINES/USES edges to
     all articles."""
+    from eu_ai_risks.legislation.eu_ai_act.enrichment import add_concepts
+
     print("Extracting concepts ...")
     add_concepts()
 
@@ -123,6 +105,8 @@ def concepts():
 def dimensions():
     """Tag provisions with responsible-party, requirement, risk, system, and
     data dimension nodes."""
+    from eu_ai_risks.legislation.eu_ai_act.dimensions import add_dimensions
+
     print("Tagging provisions with dimensions ...")
     add_dimensions()
 
@@ -138,7 +122,11 @@ def enrich():
 @app.command("all")
 def run_all():
     """Build the graph, generate embeddings, and run all enrichment passes."""
-    # Parse once and reuse the nodes for both the write and the embeddings.
+    from eu_ai_risks.db import NEO4J_URI
+    from eu_ai_risks.legislation.eu_ai_act.graph_builder import (
+        write_to_neo4j, generate_and_write_embeddings,
+    )
+
     nodes, edges = _parse_and_build()
 
     print(f"\nWriting graph to Neo4j at {NEO4J_URI} ...")
@@ -284,6 +272,7 @@ def analyze_requirements(
     from eu_ai_risks.requirements.loader import load_requirements
     from eu_ai_risks.analysis.risk_mapper import map_requirements_to_legislation
     from eu_ai_risks.analysis.risk_report import (
+        entries_from_mappings,
         write_json_report,
         write_markdown_report,
     )
@@ -301,11 +290,12 @@ def analyze_requirements(
         min_score=min_score,
     )
 
-    write_markdown_report(mappings, output)
+    entries = entries_from_mappings(mappings)
+    write_markdown_report(entries, output)
     print(f"Wrote Markdown risk report to {output}.")
 
     if json_output:
-        write_json_report(mappings, json_output)
+        write_json_report(entries, json_output)
         print(f"Wrote JSON risk report to {json_output}.")
 
 
@@ -332,106 +322,55 @@ def assess_risks(
     ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v",
-        help="Print raw agent output for each requirement",
+        help="Print raw LLM output for each requirement",
+    ),
+    agent: bool = typer.Option(
+        False, "--agent",
+        help="Use the multi-turn agent loop instead of the deterministic pipeline",
     ),
 ):
-    """Assess EU AI Act risks for each requirement using the agent."""
-    from eu_ai_risks.alignment.agent import AgentLoop
-    from eu_ai_risks.alignment.tools import TOOL_DEFINITIONS, execute_tool
-    from eu_ai_risks.alignment.prompts import GRAPH_READER_PROMPT
-    from eu_ai_risks.db.graph import find_paragraphs, list_categories
-    from eu_ai_risks.embeddings import embed_text
+    """Assess EU AI Act risks for each requirement."""
+    if agent:
+        from eu_ai_risks.alignment.risk_assessor_agent import assess_requirement
+    else:
+        from eu_ai_risks.alignment.risk_assessor import assess_requirement
+    from eu_ai_risks.analysis.risk_report import (
+        collect_citations, entries_from_assessments,
+        write_markdown_report,
+    )
+    from eu_ai_risks.db.graph import list_categories
 
     requirements = json.loads(input_path.read_text(encoding="utf-8"))
     print(f"Loaded {len(requirements)} requirements from {input_path}")
 
     categories = list_categories()
-    agent = AgentLoop(
-        system_prompt=GRAPH_READER_PROMPT,
-        tools=TOOL_DEFINITIONS,
-        tool_executor=execute_tool,
-    )
+    article_cache: dict[str, dict] = {}
 
-    results = []
-    for i, req in enumerate(requirements, 1):
-        req_id = req.get("id", f"REQ-{i}")
-        req_text = req.get("text", "")
-        print(f"  [{i}/{len(requirements)}] {req_id}...")
+    assessment_entries: list[dict] = []
+    for i, requirement in enumerate(requirements, 1):
+        requirement_id = requirement.get("id", f"REQ-{i}")
+        requirement_text = requirement.get("text", "")
+        print(f"  [{i}/{len(requirements)}] {requirement_id}...")
 
-        embedding = embed_text(req_text)
-        paragraphs = find_paragraphs(embedding, top_k=5)
-
-        context_parts = [
-            f"Identify the EU AI Act compliance risks for this "
-            f"requirement.\n",
-            f"**Requirement {req_id}:** {req_text}\n",
-            "## Pre-fetched context\n",
-            "### Relevant EU AI Act paragraphs "
-            "(found by semantic search):\n",
-        ]
-        for p in paragraphs:
-            context_parts.append(
-                f"- **{p['article_id']} "
-                f"({p['article_title']})** para {p['paragraph_num']} "
-                f"[{p['obligation_type']}] "
-                f"(score: {p['score']}): "
-                f"{p['paragraph_text']}\n"
-            )
-
-        context_parts.append(
-            "\n### Available requirement categories:\n"
+        assessment, fetched_articles, raw = assess_requirement(
+            requirement_id, requirement_text, categories=categories,
         )
-        for cat in categories:
-            context_parts.append(
-                f"- {cat['key']} → {', '.join(cat['article_ids'])}\n"
-            )
-
-        context_parts.append(
-            "\nUse the pre-fetched context above as your starting point. "
-            "Use tools to read full articles or follow references if "
-            "you need more detail. Then provide your risk assessment."
-        )
-
-        result = agent.run("\n".join(context_parts))
-        results.append({"requirement": req, "result": result})
+        article_cache.update(fetched_articles)
+        citations = collect_citations(assessment.risks, article_cache)
 
         if verbose:
-            print(
-                f"    [{result.iterations} iterations, "
-                f"{result.tool_calls_made} tool calls]"
-            )
-            print(f"    Raw: {result.raw_content}")
+            print(f"    Raw: {json.dumps(raw, indent=2)}")
             print()
 
-    lines = ["# EU AI Act Risk Assessment\n"]
-    for entry in results:
-        req = entry["requirement"]
-        result = entry["result"]
-        answer = result.answer
+        assessment_entries.append({
+            "requirement": requirement,
+            "assessment": assessment,
+            "citations": citations,
+        })
 
-        lines.append(f"## {req.get('id', 'Unknown')}\n")
-        lines.append(f"**Requirement:** {req.get('text', '')}\n")
-        lines.append(f"**Confidence:** {answer.confidence}\n")
-        lines.append(f"### Analysis\n")
-        lines.append(f"{answer.summary}\n")
-
-        if answer.citations:
-            lines.append("### Citations\n")
-            for c in answer.citations:
-                label = c.article_title or c.article_id
-                if c.paragraph_num:
-                    label += f"({c.paragraph_num})"
-                lines.append(f"- **{label}**")
-                if c.text:
-                    lines.append(f"  > {c.text}\n")
-                else:
-                    lines.append("")
-
-        lines.append("---\n")
-
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text("\n".join(lines), encoding="utf-8")
-    print(f"\nWrote risk assessment to {output}")
+    entries = entries_from_assessments(assessment_entries)
+    write_markdown_report(entries, output)
+    print(f"Wrote {output}")
 
 
 @app.command("ask")
