@@ -330,15 +330,22 @@ def assess_risks(
         "--output", "-o",
         help="Markdown output path",
     ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v",
+        help="Print raw agent output for each requirement",
+    ),
 ):
     """Assess EU AI Act risks for each requirement using the agent."""
     from eu_ai_risks.alignment.agent import AgentLoop
     from eu_ai_risks.alignment.tools import TOOL_DEFINITIONS, execute_tool
     from eu_ai_risks.alignment.prompts import GRAPH_READER_PROMPT
+    from eu_ai_risks.db.graph import find_paragraphs, list_categories
+    from eu_ai_risks.embeddings import embed_text
 
     requirements = json.loads(input_path.read_text(encoding="utf-8"))
     print(f"Loaded {len(requirements)} requirements from {input_path}")
 
+    categories = list_categories()
     agent = AgentLoop(
         system_prompt=GRAPH_READER_PROMPT,
         tools=TOOL_DEFINITIONS,
@@ -351,13 +358,50 @@ def assess_risks(
         req_text = req.get("text", "")
         print(f"  [{i}/{len(requirements)}] {req_id}...")
 
-        result = agent.run(
-            f"Identify the EU AI Act compliance risks for this software "
-            f"requirement:\n\n"
-            f"ID: {req_id}\n"
-            f"Text: {req_text}"
+        embedding = embed_text(req_text)
+        paragraphs = find_paragraphs(embedding, top_k=5)
+
+        context_parts = [
+            f"Identify the EU AI Act compliance risks for this "
+            f"requirement.\n",
+            f"**Requirement {req_id}:** {req_text}\n",
+            "## Pre-fetched context\n",
+            "### Relevant EU AI Act paragraphs "
+            "(found by semantic search):\n",
+        ]
+        for p in paragraphs:
+            context_parts.append(
+                f"- **{p['article_id']} "
+                f"({p['article_title']})** para {p['paragraph_num']} "
+                f"[{p['obligation_type']}] "
+                f"(score: {p['score']}): "
+                f"{p['paragraph_text']}\n"
+            )
+
+        context_parts.append(
+            "\n### Available requirement categories:\n"
         )
+        for cat in categories:
+            context_parts.append(
+                f"- {cat['key']} → {', '.join(cat['article_ids'])}\n"
+            )
+
+        context_parts.append(
+            "\nUse the pre-fetched context above as your starting point. "
+            "Use tools to read full articles or follow references if "
+            "you need more detail. Then provide your risk assessment."
+        )
+
+        result = agent.run("\n".join(context_parts))
         results.append({"requirement": req, "result": result})
+
+        if verbose:
+            print(
+                f"    [{result.iterations} iterations, "
+                f"{result.tool_calls_made} tool calls]"
+            )
+            print(f"    Raw: {result.raw_content}")
+            print()
 
     lines = ["# EU AI Act Risk Assessment\n"]
     for entry in results:

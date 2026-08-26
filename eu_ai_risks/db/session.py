@@ -2,11 +2,14 @@
 Neo4j driver singleton and session context manager.
 """
 
+import logging
 import os
 from contextlib import contextmanager
 
 from dotenv import load_dotenv
 from neo4j import GraphDatabase
+
+logging.getLogger("neo4j").setLevel(logging.ERROR)
 
 load_dotenv()
 

@@ -202,7 +202,7 @@ Rules:
 /no_think"""
 
 
-def _split_requirement(requirement_text: str) -> str:
+def _split_requirement(requirement_text: str) -> list[dict]:
     result = complete_json(
         prompt=f'Extract triples from: "{requirement_text}"',
         system=_TRIPLE_EXTRACTION_SYSTEM,
@@ -210,8 +210,11 @@ def _split_requirement(requirement_text: str) -> str:
     if isinstance(result, dict):
         for value in result.values():
             if isinstance(value, list):
-                return json.dumps(value)
-    return json.dumps(result)
+                result = value
+                break
+    if not isinstance(result, list):
+        result = [result] if isinstance(result, dict) else []
+    return [t for t in result if isinstance(t, dict) and "subject" in t]
 
 
 def write_triples(document_path: Path):
@@ -220,25 +223,14 @@ def write_triples(document_path: Path):
     # Collect all triples from all requirements into a flat list
     all_triples = []
     for req in requirements:
-        if req.triples:
-            try:
-                parsed = json.loads(req.triples)
-            except json.JSONDecodeError as e:
-                print(f"Failed to parse triple: {e}")
-                continue
-
-            for triple in parsed:
-                print(triple)
-                # Skip malformed triples missing required keys
-                if not all(k in triple for k in ("subject", "predicate", "object")):
-                    continue
-                all_triples.append({
-                    "subject":   triple["subject"],
-                    "predicate": triple["predicate"],
-                    "object":    triple["object"],
-                    "req_id":    req.id,
-                    "req_text":  req.text,
-                })
+        for triple in req.triples:
+            all_triples.append({
+                "subject":   triple["subject"],
+                "predicate": triple["predicate"],
+                "object":    triple["object"],
+                "req_id":    req.id,
+                "req_text":  req.text,
+            })
 
     if not all_triples:
         print("No triples to write.")
