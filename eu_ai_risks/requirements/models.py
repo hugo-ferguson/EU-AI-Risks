@@ -2,6 +2,7 @@
 Data structures for parsed requirements.
 """
 
+import json
 from dataclasses import dataclass, field
 
 
@@ -20,6 +21,19 @@ class Requirement:
     metadata: dict[str, str] = field(default_factory=dict)
     triples: str | None = None
 
+    def parsed_triples(self) -> list[dict]:
+        if not self.triples:
+            return []
+        try:
+            data = json.loads(self.triples)
+            if isinstance(data, list):
+                return [t for t in data if "subject" in t]
+            if isinstance(data, dict) and "subject" in data:
+                return [data]
+            return []
+        except (json.JSONDecodeError, ValueError):
+            return []
+
     def to_dict(self) -> dict:
         return {
             "id": self.id,
@@ -29,5 +43,5 @@ class Requirement:
             "title": self.title,
             "page": self.page,
             "metadata": self.metadata,
-            "triples": self.triples,
+            "triples": self.parsed_triples(),
         }

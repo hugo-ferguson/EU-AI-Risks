@@ -132,4 +132,5 @@ anchor, then search for additional provisions.
 - Keep answers grounded in the actual text from the graph. Do not fabricate \
 provisions.
 - Summarise and explain — do not just repeat tool output back to the user.
-"""
+
+/no_think"""

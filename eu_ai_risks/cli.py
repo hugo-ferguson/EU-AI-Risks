@@ -322,6 +322,74 @@ def load_reqs(
     print("Done.")
 
 
+@app.command("assess-risks")
+def assess_risks(
+    input_path: Path = typer.Argument(help="JSON file of requirements"),
+    output: Path = typer.Option(
+        Path("risk-assessment.md"),
+        "--output", "-o",
+        help="Markdown output path",
+    ),
+):
+    """Assess EU AI Act risks for each requirement using the agent."""
+    from eu_ai_risks.alignment.agent import AgentLoop
+    from eu_ai_risks.alignment.tools import TOOL_DEFINITIONS, execute_tool
+    from eu_ai_risks.alignment.prompts import GRAPH_READER_PROMPT
+
+    requirements = json.loads(input_path.read_text(encoding="utf-8"))
+    print(f"Loaded {len(requirements)} requirements from {input_path}")
+
+    agent = AgentLoop(
+        system_prompt=GRAPH_READER_PROMPT,
+        tools=TOOL_DEFINITIONS,
+        tool_executor=execute_tool,
+    )
+
+    results = []
+    for i, req in enumerate(requirements, 1):
+        req_id = req.get("id", f"REQ-{i}")
+        req_text = req.get("text", "")
+        print(f"  [{i}/{len(requirements)}] {req_id}...")
+
+        result = agent.run(
+            f"Identify the EU AI Act compliance risks for this software "
+            f"requirement:\n\n"
+            f"ID: {req_id}\n"
+            f"Text: {req_text}"
+        )
+        results.append({"requirement": req, "result": result})
+
+    lines = ["# EU AI Act Risk Assessment\n"]
+    for entry in results:
+        req = entry["requirement"]
+        result = entry["result"]
+        answer = result.answer
+
+        lines.append(f"## {req.get('id', 'Unknown')}\n")
+        lines.append(f"**Requirement:** {req.get('text', '')}\n")
+        lines.append(f"**Confidence:** {answer.confidence}\n")
+        lines.append(f"### Analysis\n")
+        lines.append(f"{answer.summary}\n")
+
+        if answer.citations:
+            lines.append("### Citations\n")
+            for c in answer.citations:
+                label = c.article_title or c.article_id
+                if c.paragraph_num:
+                    label += f"({c.paragraph_num})"
+                lines.append(f"- **{label}**")
+                if c.text:
+                    lines.append(f"  > {c.text}\n")
+                else:
+                    lines.append("")
+
+        lines.append("---\n")
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text("\n".join(lines), encoding="utf-8")
+    print(f"\nWrote risk assessment to {output}")
+
+
 @app.command("ask")
 def ask(
         query: str = typer.Argument(help="Question about the EU AI Act"),

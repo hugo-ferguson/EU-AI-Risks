@@ -197,7 +197,9 @@ Rules:
 - Use concise, normalised terms (e.g. "the system" not "it")
 - Split compound objects into separate triples
 - Each triple must have exactly one subject, predicate, and object
-- Respond with a JSON array of triple objects, nothing else"""
+- Respond with a JSON array of triple objects, nothing else
+
+/no_think"""
 
 
 def _split_requirement(requirement_text: str) -> str:
