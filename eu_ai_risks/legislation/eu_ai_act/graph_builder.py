@@ -7,7 +7,7 @@ from collections import defaultdict
 from typing import cast, LiteralString
 
 from eu_ai_risks.db import get_session
-from eu_ai_risks.models import Segment
+from eu_ai_risks.legislation.eu_ai_act.models import Segment
 
 # Article and annex cross-references define 'REFERENCES' edges. Citations
 # appear in singular ('Article 6'), plural ('Articles 5 and 6'), and ranges

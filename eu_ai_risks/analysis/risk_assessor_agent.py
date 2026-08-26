@@ -7,10 +7,10 @@ before synthesising a risk assessment for each requirement.
 
 import json
 
-from eu_ai_risks.alignment.agent import AgentLoop
-from eu_ai_risks.alignment.models import RequirementRisk, RiskItem
-from eu_ai_risks.alignment.prompts import RISK_ASSESSMENT_AGENT_PROMPT
-from eu_ai_risks.alignment.tools import TOOL_DEFINITIONS, execute_tool
+from eu_ai_risks.analysis.agent import AgentLoop
+from eu_ai_risks.analysis.models import RequirementRisk, RiskItem
+from eu_ai_risks.analysis.prompts import RISK_ASSESSMENT_AGENT_PROMPT
+from eu_ai_risks.analysis.tools import TOOL_DEFINITIONS, execute_tool
 
 MAX_AGENT_ITERATIONS = 10
 MAX_AGENT_TOKENS = 4096

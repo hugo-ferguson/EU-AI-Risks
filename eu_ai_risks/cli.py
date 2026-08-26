@@ -331,9 +331,9 @@ def assess_risks(
 ):
     """Assess EU AI Act risks for each requirement."""
     if agent:
-        from eu_ai_risks.alignment.risk_assessor_agent import assess_requirement
+        from eu_ai_risks.analysis.risk_assessor_agent import assess_requirement
     else:
-        from eu_ai_risks.alignment.risk_assessor import assess_requirement
+        from eu_ai_risks.analysis.risk_assessor import assess_requirement
     from eu_ai_risks.analysis.risk_report import (
         collect_citations, entries_from_assessments,
         write_markdown_report,
@@ -382,9 +382,9 @@ def ask(
         ),
 ):
     """Ask a question about the EU AI Act using the knowledge graph."""
-    from eu_ai_risks.alignment.agent import AgentLoop
-    from eu_ai_risks.alignment.tools import TOOL_DEFINITIONS, execute_tool
-    from eu_ai_risks.alignment.prompts import GRAPH_READER_PROMPT
+    from eu_ai_risks.analysis.agent import AgentLoop
+    from eu_ai_risks.analysis.tools import TOOL_DEFINITIONS, execute_tool
+    from eu_ai_risks.analysis.prompts import GRAPH_READER_PROMPT
 
     agent = AgentLoop(
         system_prompt=GRAPH_READER_PROMPT,

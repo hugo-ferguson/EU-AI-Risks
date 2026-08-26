@@ -5,8 +5,8 @@ Pre-fetches context from the Neo4j knowledge graph, then uses a single
 LLM call per requirement to synthesise a risk assessment.
 """
 
-from eu_ai_risks.alignment.models import RequirementRisk
-from eu_ai_risks.alignment.prompts import RISK_ASSESSMENT_PROMPT
+from eu_ai_risks.analysis.models import RequirementRisk
+from eu_ai_risks.analysis.prompts import RISK_ASSESSMENT_PROMPT
 from eu_ai_risks.db.graph import (
     find_paragraphs, list_categories, get_article,
     get_references, get_related_requirements,

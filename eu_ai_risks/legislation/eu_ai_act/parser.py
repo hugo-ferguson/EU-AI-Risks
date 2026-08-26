@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pdfplumber
 
-from eu_ai_risks.models import Segment
+from eu_ai_risks.legislation.eu_ai_act.models import Segment
 
 RE_CHAPTER = re.compile(r'^CHAPTER ([IVX]+)$')
 RE_SECTION = re.compile(r'^SECTION (\d+)$')

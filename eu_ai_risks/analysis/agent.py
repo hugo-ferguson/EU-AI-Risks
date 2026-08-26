@@ -5,7 +5,7 @@ LLM agent loop with tool calling.
 import json
 import uuid
 from collections.abc import Callable
-from eu_ai_risks.alignment.models import AgentAnswer, AgentResult
+from eu_ai_risks.analysis.models import AgentAnswer, AgentResult
 from eu_ai_risks.llm import complete_with_tools
 
 
