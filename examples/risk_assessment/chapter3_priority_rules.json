@@ -1,0 +1,31 @@
+{
+  "purpose": "Project-specific relevance rules for recruitment-screening requirements against EU AI Act Chapter 3.",
+  "boost_articles": ["6", "9", "10", "11", "12", "13", "14", "15", "16", "26", "27"],
+  "boost_context": ["Annex III", "employment", "recruitment", "candidate screening", "candidate ranking", "suitability scoring"],
+  "downrank_articles_unless_directly_relevant": ["28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "43", "46", "74", "75", "79", "80", "81", "91", "92", "93", "112", "113"],
+  "obligation_labels": [
+    "high_risk_classification",
+    "risk_management",
+    "data_governance",
+    "technical_documentation",
+    "record_keeping",
+    "transparency",
+    "human_oversight",
+    "accuracy_robustness_cybersecurity",
+    "provider_obligation",
+    "deployer_obligation",
+    "post_market_monitoring",
+    "safeguard_or_control"
+  ],
+  "safeguards_to_treat_as_partial_controls": [
+    "human review",
+    "manual review",
+    "override",
+    "logging",
+    "audit record",
+    "prevent biometric use",
+    "prevent emotion recognition",
+    "dataset validation",
+    "rollback"
+  ]
+}
