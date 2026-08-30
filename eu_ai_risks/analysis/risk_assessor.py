@@ -29,7 +29,7 @@ MAX_PARAGRAPHS_PER_ARTICLE = 4
 MAX_CROSS_REFERENCES = 5
 MAX_RELATED_REQUIREMENTS = 3
 MAX_SHARED_ENTITIES = 3
-MAX_TOKENS = 2048
+MAX_TOKENS = 1200
 
 # Generic fallbacks by obligation category. These are not requirement-specific
 # patches; they provide a safe article anchor when the LLM returns no retained
@@ -108,6 +108,117 @@ CATEGORY_FALLBACK_RISKS = {
     },
 }
 
+# Intents that should be treated primarily as safeguards/controls. These are
+# generic software-engineering intents, not requirement-ID patches. They prevent
+# the assessor from escalating requirements that already specify a control.
+LOW_RISK_CONTROL_INTENTS = {
+    "logging_or_audit",
+    "prohibited_feature_prevention",
+}
+
+MEDIUM_MAX_CONTROL_INTENTS = {
+    "data_validation_or_bias_testing",
+    "protected_attribute_control",
+}
+
+# Some categories have a clear Chapter 3 anchor. If the LLM returns the right
+# category but cites a weak classification/admin article, normalise it back to
+# the category anchor so the report remains useful at requirement level.
+CATEGORY_ANCHORS = {
+    key: (value["article_id"], value["paragraph_num"], value["provision"])
+    for key, value in CATEGORY_FALLBACK_RISKS.items()
+}
+
+
+def _downgrade_risk(risk: RiskItem, severity: str) -> None:
+    risk.severity = severity
+
+
+def _normalise_risk_provision_to_category(risk: RiskItem) -> None:
+    category = _normalise_category(risk.obligation_category)
+    anchor = CATEGORY_ANCHORS.get(category)
+    if not anchor:
+        return
+
+    # Article 6 is useful as classification context, but when a risk is labelled
+    # as data_governance/transparency/etc. the cited article should be the
+    # obligation article, not the classification exception.
+    weak_for_category = {"art:6", "art:7", "art:43", "art:74", "art:79",
+                         "art:81", "art:92", "art:93", "art:112", "art:113"}
+    if risk.article_id in weak_for_category:
+        risk.article_id, risk.paragraph_num, risk.provision = anchor
+
+
+def _apply_control_severity_policy(
+    assessment: RequirementRisk,
+    profile,
+) -> RequirementRisk:
+    """Calibrate severity for requirements that already describe controls.
+
+    This is deliberately intent/category-based rather than requirement-specific.
+    Logging, audit, and prohibited-feature-prevention requirements should usually
+    be low risk unless a clear unsupported gap remains. Dataset validation and
+    protected-attribute controls can retain a medium remaining governance gap,
+    but should not be escalated to high simply because broader Article 10 duties
+    exist.
+    """
+    intent = getattr(profile, "requirement_intent", "")
+
+    if intent == "prohibited_feature_prevention":
+        assessment.risks = []
+        assessment.risk_level = "low"
+        assessment.summary = (
+            "No requirement-level risk was retained because the requirement is "
+            "framed as an existing safeguard/control that prevents a sensitive "
+            "or prohibited feature. Manual review may still confirm how the "
+            "control is implemented."
+        )
+        assessment.recommendations = []
+        return assessment
+
+    if intent in LOW_RISK_CONTROL_INTENTS:
+        for risk in assessment.risks:
+            _normalise_risk_provision_to_category(risk)
+            if risk.severity in {"high", "medium"}:
+                _downgrade_risk(risk, "low")
+        if assessment.risks:
+            assessment.risk_level = "low"
+            assessment.summary = (
+                "The requirement already describes a control/safeguard. A low "
+                "remaining clarification risk is retained for manual review."
+            )
+        return assessment
+
+    if intent in MEDIUM_MAX_CONTROL_INTENTS or getattr(profile, "is_safeguard_or_control", False):
+        for risk in assessment.risks:
+            _normalise_risk_provision_to_category(risk)
+            if risk.severity == "high":
+                _downgrade_risk(risk, "medium")
+        if assessment.risk_level == "high":
+            assessment.risk_level = "medium"
+        return assessment
+
+    for risk in assessment.risks:
+        _normalise_risk_provision_to_category(risk)
+    return assessment
+
+
+def _remove_duplicate_risks(assessment: RequirementRisk) -> RequirementRisk:
+    seen: set[tuple[str, str, int | None, str]] = set()
+    unique: list[RiskItem] = []
+    for risk in assessment.risks:
+        key = (
+            risk.description.strip().lower(),
+            risk.article_id,
+            risk.paragraph_num,
+            _normalise_category(risk.obligation_category),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(risk)
+    assessment.risks = unique
+    return assessment
 
 def _build_prompt(
     requirement_id: str,
@@ -134,7 +245,7 @@ def _build_prompt(
             f"({paragraph['article_title']})** "
             f"paragraph {paragraph['paragraph_num']} "
             f"[{paragraph['obligation_type']}]: "
-            f"{paragraph['paragraph_text']} "
+            f"{str(paragraph['paragraph_text'])[:500]} "
             f"(vector score={paragraph.get('score')}, "
             f"adjusted score={paragraph.get('adjusted_score', paragraph.get('score'))})\n"
         )
@@ -164,7 +275,7 @@ def _build_prompt(
             for article_paragraph in binding:
                 parts.append(
                     f"- ({article_paragraph['num']}) "
-                    f"{article_paragraph['text'][:300]}\n"
+                    f"{article_paragraph['text'][:220]}\n"
                 )
 
     if referenced_articles:
@@ -406,15 +517,35 @@ def assess_requirement(
         semantic_profile_text=format_semantic_profile(profile),
     )
 
-    raw = complete_json(
-        prompt=prompt,
-        system=RISK_ASSESSMENT_PROMPT,
-        max_tokens=MAX_TOKENS,
-    )
-
-    assessment = _parse_assessment(raw)
+    try:
+        raw = complete_json(
+            prompt=prompt,
+            system=RISK_ASSESSMENT_PROMPT,
+            max_tokens=MAX_TOKENS,
+        )
+        assessment = _parse_assessment(raw)
+    except ValueError as exc:
+        # Local/small LLMs occasionally return truncated or repetitive JSON.
+        # Do not crash the full batch; fall back to the deterministic semantic
+        # profile/category policy so the report can still be generated and
+        # manually reviewed.
+        raw = {
+            "fallback_used": True,
+            "error": str(exc)[:500],
+        }
+        assessment = RequirementRisk(
+            summary=(
+                "The model returned invalid JSON, so a deterministic "
+                "semantic-profile fallback was used for manual review."
+            ),
+            risks=[],
+            risk_level="low",
+            recommendations=[],
+        )
     assessment = _align_assessment_with_profile(assessment, profile)
     assessment = _apply_profile_gap_fallback(assessment, profile, articles)
+    assessment = _apply_control_severity_policy(assessment, profile)
+    assessment = _remove_duplicate_risks(assessment)
     return assessment, articles, raw
 
 

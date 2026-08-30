@@ -49,6 +49,8 @@ INTENT_VALUES = {
     "monitoring_or_alerting",
     "rollback_or_corrective_action",
     "prohibited_feature_prevention",
+    "data_validation_or_bias_testing",
+    "protected_attribute_control",
     "technical_documentation",
     "risk_management_process",
     "other",
@@ -149,9 +151,23 @@ INTENT_CATEGORY_POLICY = {
     },
     "prohibited_feature_prevention": {
         "primary": "",
-        "secondary": ["transparency"],
+        "secondary": [],
         "missing": [],
         "existing": [],
+        "safeguard": True,
+    },
+    "data_validation_or_bias_testing": {
+        "primary": "data_governance",
+        "secondary": ["accuracy_robustness_cybersecurity", "risk_management"],
+        "missing": ["data_governance"],
+        "existing": ["data_governance"],
+        "safeguard": True,
+    },
+    "protected_attribute_control": {
+        "primary": "data_governance",
+        "secondary": ["risk_management"],
+        "missing": ["data_governance"],
+        "existing": ["data_governance"],
         "safeguard": True,
     },
     "technical_documentation": {
@@ -182,6 +198,8 @@ INTENT_SEMANTIC_DESCRIPTIONS = {
     "monitoring_or_alerting": "monitoring deployed performance, alerts, thresholds, drift, bias metrics or data-quality metrics",
     "rollback_or_corrective_action": "rollback, reverting model versions, corrective action, fail-safe response or recovery after failed checks",
     "prohibited_feature_prevention": "preventing or banning the use of biometric identification, emotion recognition or other disallowed features",
+    "data_validation_or_bias_testing": "validating training, evaluation or testing datasets, checking missing values, duplicates, labels, representativeness, demographic performance, bias or fairness metrics",
+    "protected_attribute_control": "preventing protected attributes such as race, religion, disability, political opinion, gender or age from being used as model inputs or ranking factors",
     "technical_documentation": "creating or maintaining technical documentation, system design records or compliance evidence",
     "risk_management_process": "risk assessment, risk management, risk review, mitigation planning or documenting harms",
 }
@@ -226,6 +244,9 @@ Intent guidance:
 - rollback/alerts normally map to robustness, risk management, and monitoring.
 - preventing a prohibited/sensitive feature is a safeguard/control; do not treat
   it as active use of that feature.
+- dataset validation, demographic performance testing, and protected-attribute
+  exclusion are controls/safeguards. They may still have remaining governance
+  gaps, but they should not be treated as if no control exists.
 
 Use only the obligation category keys listed in the user prompt.
 
@@ -457,6 +478,8 @@ def stabilise_profile_with_semantic_intent(
                     "logging_or_audit",
                     "rollback_or_corrective_action",
                     "prohibited_feature_prevention",
+                    "data_validation_or_bias_testing",
+                    "protected_attribute_control",
                 }
                 and score >= 0.38
             )
@@ -604,6 +627,7 @@ def build_profile_retrieval_query(
     parts.extend(profile.actors)
     parts.extend(profile.missing_or_unclear_categories)
     parts.extend(profile.secondary_obligation_categories)
+    parts.extend(profile.existing_control_categories)
 
     if profile.is_safeguard_or_control and profile.safeguards_or_controls:
         parts.append("existing control or safeguard with remaining compliance gap")

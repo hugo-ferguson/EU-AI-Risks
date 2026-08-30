@@ -154,6 +154,14 @@ Important:
 - Distinguish a missing compliance gap from an existing safeguard/control. If
   the requirement already addresses an obligation, either skip it or describe
   the remaining gap specifically.
+- Dataset validation, protected-attribute exclusion, logging/audit records,
+  human override, monitoring alerts, rollback, and prevention of biometric or
+  emotion-recognition features are controls/safeguards. Do not assess them as
+  if the control is absent.
+- For controls/safeguards, retain only specific implementation gaps. Use low
+  severity for clarification gaps and medium severity for remaining governance
+  gaps; do not use high severity unless the exact requirement creates an
+  unsupported high-impact risk.
 - If none of the supplied provisions supports a strong requirement-level gap,
   return an empty risks list and risk_level "low".
 - Frame outputs as engineering review support, not final legal advice.
@@ -174,6 +182,11 @@ Schema rules:
 - recommendations: one short action per risk.
 - If no risks: summary says why, risks is [], risk_level is "low".
 - Be specific: "reviewer competency not specified" not "may not comply".
+- Keep the JSON small: summary must be at most 35 words, risks must contain at most 2 items, and each description/action must be one short sentence.
+- Do not repeat the same article or explanation. If several provisions point to the same category, keep only the strongest one.
+- Use the obligation article for the risk category. For example, data_governance
+  risks should cite Article 10 rather than Article 6 classification text, and
+  record_keeping risks should cite Article 12 rather than general admin text.
 - Use article IDs exactly as they appear in the supplied provisions.
 
 /no_think"""
