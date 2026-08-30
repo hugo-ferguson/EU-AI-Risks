@@ -59,6 +59,18 @@ class RiskItem(BaseModel):
     provision: str = Field(
         default="", description="Human-readable, e.g. Article 14(1)"
     )
+    obligation_category: str = Field(
+        default="",
+        description=(
+            "RequirementCategory key such as transparency, human_oversight, "
+            "data_governance, or risk_management"
+        ),
+    )
+    engineering_action: str = Field(
+        default="",
+        description="Practical software-engineering action suggested for this risk",
+    )
+
 
 
 class RequirementRisk(BaseModel):
