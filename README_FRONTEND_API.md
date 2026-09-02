@@ -1,70 +1,80 @@
-# Frontend + API demo integration
+# Frontend + API flow
 
-This adds a lightweight API and frontend flow for the proof of concept.
+The frontend can upload a requirements document and call the FastAPI backend to run the EU AI Act risk assessment.
 
-## What changed
+## Run the API
 
-- Added `eu_ai_risks/api.py`.
-- Added a FastAPI endpoint at `POST /api/assess-risks`.
-- The endpoint accepts an uploaded requirements document.
-- Supported uploads: `.json`, `.txt`, `.md`, `.pdf`, `.docx`.
-- The API extracts requirement-like statements and runs the existing semantic-profile risk assessment pipeline.
-- The frontend now uploads a requirements document instead of requiring JSON copy/paste.
-- The frontend still supports uploading a generated Markdown report for viewing only.
-
-## Run backend
-
-From the project root:
+From the repo root:
 
 ```bash
+pip install -e .
 uvicorn eu_ai_risks.api:app --reload --host 0.0.0.0 --port 8000
 ```
 
-The backend requires the same environment as the CLI pipeline, including Neo4j and LLM configuration.
+The API exposes:
 
-## Run frontend
+```text
+POST /api/assess-risks
+GET  /api/health
+```
+
+Open the API docs at:
+
+```text
+http://localhost:8000/docs
+```
+
+## Run the frontend
 
 ```bash
 cd frontend
 npm install
-```
-
-Create `frontend/.env`:
-
-```bash
-VITE_API_URL=http://localhost:8000
-```
-
-Then run:
-
-```bash
 npm run dev
 ```
 
-Open:
+The frontend runs on:
 
 ```text
-http://localhost:5174/
+http://localhost:5174
 ```
 
-## Current demo limitation
+## Upload flow
 
-The API runs the assessment in the request/response cycle. For a small requirements file this is fine for the POC, but a full production version should use a background job queue with progress updates.
+The frontend accepts requirements files in:
 
-
-## Qwen3 / faster local model option
-
-For a faster local model, pull Qwen3 with Ollama and update `.env`:
-
-```bash
-ollama pull qwen3:8b
+```text
+.json, .txt, .md, .markdown, .pdf, .docx
 ```
+
+Recommended fastest testing format is JSON:
+
+```json
+[
+  {
+    "id": "FR-1",
+    "text": "The system shall explain automated decisions to users in plain language."
+  }
+]
+```
+
+The API extracts requirements, runs the semantic-profile risk assessment, and returns frontend-ready findings.
+
+## Performance settings
+
+For local Ollama testing, use the root `.env` settings from `.env.example`. The fastest useful setup is:
 
 ```env
-LLM_MODEL=ollama/qwen3:8b
-LLM_API_BASE=http://localhost:11434
-LLM_TEMPERATURE=0.2
-LLM_JSON_NO_THINK=true
+LLM_MODEL=ollama/qwen3:4b
+EU_AI_RISKS_PROFILE_MODE=semantic
+EU_AI_RISKS_WARMUP=true
 ```
 
-Restart the Python API after changing `.env`. If 8B is still too slow, try `ollama/qwen3:4b` for demo testing.
+`EU_AI_RISKS_PROFILE_MODE=semantic` reduces latency by using embedding-based semantic profiling and keeping one final LLM call per requirement. For higher quality on difficult examples, switch to:
+
+```env
+EU_AI_RISKS_PROFILE_MODE=hybrid
+```
+
+## Demo advice
+
+For a live supervisor demo, use a small 3-4 requirement JSON first. Keep demo mode available as a backup because local LLM responses can still be slow on CPU.

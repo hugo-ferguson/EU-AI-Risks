@@ -1,35 +1,41 @@
-# Using Qwen3 with the EU AI Risks pipeline
+# Qwen3 / Ollama setup
 
-This project uses LiteLLM, so switching models is mainly an `.env` change. For a faster local demo, Qwen3 8B is a good first option; Qwen3 4B is faster but may be less accurate.
+Use Qwen3 for local testing. For this semantic optimised branch, the recommended balance is `qwen3:4b`. It should be faster than `qwen3:8b` while giving better mapping quality than `qwen3:1.7b`.
 
-## 1. Pull/run the model in Ollama
+## Pull and test the model
 
-```bash
-ollama pull qwen3:8b
-ollama run qwen3:8b
+```powershell
+ollama pull qwen3:4b
+ollama run qwen3:4b
 ```
 
-Keep Ollama running. If Ollama is on another team member's machine, keep their existing IP in `LLM_API_BASE` instead of using localhost.
+Then type `/bye` to exit the chat.
 
-## 2. Update `.env`
-
-```env
-LLM_MODEL=ollama/qwen3:8b
-LLM_API_BASE=http://localhost:11434
-LLM_TEMPERATURE=0.2
-LLM_JSON_NO_THINK=true
-```
-
-If 8B is still too slow for the frontend demo, try:
+## Root `.env`
 
 ```env
 LLM_MODEL=ollama/qwen3:4b
+LLM_API_BASE=http://localhost:11434
+LLM_TEMPERATURE=0.1
+LLM_JSON_NO_THINK=true
+LLM_NUM_RETRIES=1
+LLM_TIMEOUT=300
+
+EU_AI_RISKS_PROFILE_MODE=semantic
+EU_AI_RISKS_WARMUP=true
 ```
 
-## 3. Restart the API
+## Speed/quality options
 
-```bash
-uvicorn eu_ai_risks.api:app --reload --host 0.0.0.0 --port 8000
+```env
+# Fastest smoke test, weaker mapping
+LLM_MODEL=ollama/qwen3:1.7b
+
+# Recommended demo balance
+LLM_MODEL=ollama/qwen3:4b
+
+# Better quality, slower
+LLM_MODEL=ollama/qwen3:8b
 ```
 
-The LLM client now strips Qwen-style `<think>...</think>` blocks and tries to extract valid JSON from fenced or slightly wrapped responses. This is mainly to make local Qwen/Ollama runs less likely to crash the assessment pipeline.
+There is not usually an Ollama tag called `qwen3:3b` or `qwen3:3.2`. The closest Qwen3 option for your use case is `qwen3:4b`.

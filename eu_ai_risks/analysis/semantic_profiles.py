@@ -14,11 +14,17 @@ The intent-aware version is stricter than the initial semantic-profile layer:
 
 from __future__ import annotations
 
+import os
+from functools import lru_cache
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from eu_ai_risks.llm import complete_json
 
-PROFILE_MAX_TOKENS = 1400
+PROFILE_MAX_TOKENS = int(os.environ.get("EU_AI_RISKS_PROFILE_MAX_TOKENS", "700"))
+PROFILE_MODE = os.environ.get("EU_AI_RISKS_PROFILE_MODE", "semantic").strip().lower()
+PROFILE_CONFIDENCE_SCORE = float(os.environ.get("EU_AI_RISKS_PROFILE_CONFIDENCE_SCORE", "0.38"))
+PROFILE_CONFIDENCE_MARGIN = float(os.environ.get("EU_AI_RISKS_PROFILE_CONFIDENCE_MARGIN", "0.012"))
 
 DEFAULT_CATEGORY_KEYS = {
     "ai_literacy",
@@ -85,15 +91,15 @@ INTENT_CATEGORY_POLICY = {
         "existing": [],
     },
     "ranking_or_prioritisation": {
-        "primary": "human_oversight",
+        "primary": "transparency",
         "secondary": [
-            "transparency",
+            "human_oversight",
             "accuracy_robustness_cybersecurity",
             "data_governance",
         ],
         "missing": [
-            "human_oversight",
             "transparency",
+            "human_oversight",
             "accuracy_robustness_cybersecurity",
         ],
         "existing": [],
@@ -203,6 +209,44 @@ INTENT_SEMANTIC_DESCRIPTIONS = {
     "technical_documentation": "creating or maintaining technical documentation, system design records or compliance evidence",
     "risk_management_process": "risk assessment, risk management, risk review, mitigation planning or documenting harms",
 }
+
+HIGH_RISK_DOMAIN_DESCRIPTIONS = {
+    "employment_recruitment": "AI system used for recruitment, candidate screening, employment decisions, worker management, hiring, selection or promotion",
+    "education_training": "AI system used for access to education, assessment, grading, admissions, learning evaluation or vocational training",
+    "healthcare_safety": "AI system used in health, medical triage, safety-critical decisions, patient support or clinical assessment",
+    "public_services": "AI system used for public assistance, social benefits, essential private services, credit, insurance or access to services",
+}
+
+
+@lru_cache(maxsize=1)
+def _cached_high_risk_domain_embeddings() -> tuple[tuple[tuple[str, str], ...], tuple[tuple[float, ...], ...]]:
+    from eu_ai_risks.embeddings import embed_batch
+
+    items = tuple(HIGH_RISK_DOMAIN_DESCRIPTIONS.items())
+    embeddings = embed_batch([description for _, description in items])
+    return items, tuple(tuple(vector) for vector in embeddings)
+
+
+def infer_high_risk_context_semantically(requirement_text: str) -> tuple[str, float]:
+    """Infer broad Annex III-style context using embedding similarity.
+
+    This is intentionally conservative and only used for context labels. It does
+    not make a final legal classification.
+    """
+    try:
+        from eu_ai_risks.embeddings import embed_text
+
+        items, embeddings = _cached_high_risk_domain_embeddings()
+        requirement_embedding = embed_text(requirement_text)
+        scored = [
+            (domain, _cosine_similarity(requirement_embedding, list(embedding)))
+            for (domain, _), embedding in zip(items, embeddings)
+        ]
+        scored.sort(key=lambda item: item[1], reverse=True)
+        return scored[0]
+    except Exception:
+        return "", 0.0
+
 
 REQUIREMENT_PROFILE_PROMPT = """\
 You extract structured software-engineering meaning from ONE requirement for an
@@ -375,22 +419,36 @@ def _cosine_similarity(left: list[float], right: list[float]) -> float:
     return sum(a * b for a, b in zip(left, right)) / (left_norm * right_norm)
 
 
+@lru_cache(maxsize=1)
+def _cached_intent_embeddings() -> tuple[tuple[tuple[str, str], ...], tuple[tuple[float, ...], ...]]:
+    """Embed stable intent descriptions once per API process.
+
+    This keeps the semantic-profile step semantic, but removes one repeated
+    batch embedding call for every requirement. It is a reusable taxonomy, not
+    requirement-ID or keyword matching.
+    """
+    from eu_ai_risks.embeddings import embed_batch
+
+    intent_items = tuple(INTENT_SEMANTIC_DESCRIPTIONS.items())
+    embeddings = embed_batch([description for _, description in intent_items])
+    return intent_items, tuple(tuple(vector) for vector in embeddings)
+
+
 def infer_requirement_intent_semantically(requirement_text: str) -> tuple[str, float, float]:
     """Infer requirement intent by embedding similarity to intent descriptions.
 
-    This is a model-based semantic fallback, not a keyword rule. It makes the
-    pipeline more stable when the profile LLM over-generalises an exact
-    requirement. The return value is (best_intent, best_score, margin_to_second).
+    This is semantic profiling without a profile-generation LLM call. It is
+    faster for local Ollama models while still classifying by meaning rather
+    than exact keywords. The return value is (best_intent, best_score, margin).
     """
     try:
-        from eu_ai_risks.embeddings import embed_batch, embed_text
+        from eu_ai_risks.embeddings import embed_text
 
-        intent_items = list(INTENT_SEMANTIC_DESCRIPTIONS.items())
+        intent_items, description_embeddings = _cached_intent_embeddings()
         requirement_embedding = embed_text(requirement_text)
-        description_embeddings = embed_batch([text for _, text in intent_items])
 
         scored = [
-            (intent, _cosine_similarity(requirement_embedding, embedding))
+            (intent, _cosine_similarity(requirement_embedding, list(embedding)))
             for (intent, _), embedding in zip(intent_items, description_embeddings)
         ]
         scored.sort(key=lambda item: item[1], reverse=True)
@@ -551,17 +609,76 @@ def fallback_requirement_profile(
     )
 
 
+def build_embedding_semantic_profile(
+    requirement_id: str,
+    requirement_text: str,
+    categories: list[dict] | None = None,
+) -> RequirementSemanticProfile:
+    """Build a semantic profile using embeddings rather than an LLM call.
+
+    This is the default path for local demo/API use because it reduces the
+    pipeline from two LLM calls per requirement to one. It still uses semantic
+    similarity over stable intent/domain descriptions, then applies the same
+    obligation-category policy used by the full risk assessor.
+    """
+    intent, score, margin = infer_requirement_intent_semantically(requirement_text)
+    domain, domain_score = infer_high_risk_context_semantically(requirement_text)
+
+    confidence = "low"
+    if score >= PROFILE_CONFIDENCE_SCORE and margin >= PROFILE_CONFIDENCE_MARGIN:
+        confidence = "medium"
+    if score >= PROFILE_CONFIDENCE_SCORE + 0.06 and margin >= PROFILE_CONFIDENCE_MARGIN + 0.02:
+        confidence = "high"
+
+    annex_relevance = ""
+    high_risk_context = False
+    if domain and domain_score >= 0.32:
+        high_risk_context = True
+        annex_relevance = domain.replace("_", " ")
+
+    profile = RequirementSemanticProfile(
+        requirement_intent=intent,
+        domain=annex_relevance,
+        intended_purpose=requirement_text,
+        system_functions=[intent.replace("_", " ")] if intent not in {"unknown", "other"} else [],
+        high_risk_context=high_risk_context,
+        annex_iii_relevance=annex_relevance,
+        retrieval_query=requirement_text,
+        confidence=confidence,
+        notes=(
+            f"embedding semantic profile: intent={intent} "
+            f"score={score:.3f}, margin={margin:.3f}, domain_score={domain_score:.3f}"
+        ),
+    )
+    profile = _merge_policy_categories(profile, _category_keys(categories))
+    if not profile.retrieval_query:
+        profile.retrieval_query = build_profile_retrieval_query(profile, requirement_text)
+    else:
+        profile.retrieval_query = build_profile_retrieval_query(profile, requirement_text)
+    return profile
+
+
 def extract_requirement_profile(
     requirement_id: str,
     requirement_text: str,
     categories: list[dict] | None = None,
 ) -> RequirementSemanticProfile:
-    """Use the LLM to extract a semantic profile for one requirement.
+    """Extract a semantic profile for one requirement.
 
-    The profile is used for retrieval and prompt grounding. If the LLM call or
-    validation fails, the function returns a low-confidence fallback profile so
-    the existing pipeline can continue.
+    Default mode is embedding-based semantic profiling to reduce local Ollama
+    latency. Set EU_AI_RISKS_PROFILE_MODE=llm for the older two-call pipeline,
+    or hybrid to use embeddings first and only call the LLM when confidence is
+    low.
     """
+    embedding_profile = build_embedding_semantic_profile(
+        requirement_id, requirement_text, categories,
+    )
+
+    if PROFILE_MODE in {"semantic", "embedding", "embedding_only"}:
+        return embedding_profile
+    if PROFILE_MODE == "hybrid" and embedding_profile.confidence in {"medium", "high"}:
+        return embedding_profile
+
     prompt = f"""\
 ## Requirement
 ID: {requirement_id}
@@ -594,7 +711,10 @@ Extract the semantic profile for this requirement.
             )
         return profile
     except Exception as exc:  # keep assessment robust if profiling fails
-        return fallback_requirement_profile(requirement_text, reason=str(exc))
+        # Fallback remains semantic: it uses embedding intent classification, not
+        # keyword or requirement-ID matching. Preserve the error in notes.
+        embedding_profile.notes = f"{embedding_profile.notes}; LLM profile skipped/failed: {str(exc)[:160]}"
+        return embedding_profile
 
 
 def build_profile_retrieval_query(

@@ -6,6 +6,9 @@ semantic profiling and one final LLM call per requirement to synthesise a risk
 assessment.
 """
 
+import os
+from functools import lru_cache
+
 from eu_ai_risks.analysis.models import RequirementRisk, RiskItem
 from eu_ai_risks.analysis.prompts import RISK_ASSESSMENT_PROMPT
 from eu_ai_risks.analysis.semantic_profiles import (
@@ -22,14 +25,14 @@ from eu_ai_risks.db.graph import (
 from eu_ai_risks.embeddings import embed_text
 from eu_ai_risks.llm import complete_json
 
-TOP_K_PARAGRAPHS = 5
-TOP_K_PARAGRAPH_CANDIDATES = 12
-TOP_K_ARTICLES = 4
-MAX_PARAGRAPHS_PER_ARTICLE = 4
-MAX_CROSS_REFERENCES = 5
-MAX_RELATED_REQUIREMENTS = 3
+TOP_K_PARAGRAPHS = int(os.environ.get("EU_AI_RISKS_TOP_K_PARAGRAPHS", "3"))
+TOP_K_PARAGRAPH_CANDIDATES = int(os.environ.get("EU_AI_RISKS_TOP_K_PARAGRAPH_CANDIDATES", "8"))
+TOP_K_ARTICLES = int(os.environ.get("EU_AI_RISKS_TOP_K_ARTICLES", "3"))
+MAX_PARAGRAPHS_PER_ARTICLE = int(os.environ.get("EU_AI_RISKS_MAX_PARAGRAPHS_PER_ARTICLE", "2"))
+MAX_CROSS_REFERENCES = int(os.environ.get("EU_AI_RISKS_MAX_CROSS_REFERENCES", "2"))
+MAX_RELATED_REQUIREMENTS = int(os.environ.get("EU_AI_RISKS_MAX_RELATED_REQUIREMENTS", "1"))
 MAX_SHARED_ENTITIES = 3
-MAX_TOKENS = 1200
+MAX_TOKENS = int(os.environ.get("EU_AI_RISKS_RISK_MAX_TOKENS", "900"))
 
 # Generic fallbacks by obligation category. These are not requirement-specific
 # patches; they provide a safe article anchor when the LLM returns no retained
@@ -62,21 +65,21 @@ CATEGORY_FALLBACK_RISKS = {
         "paragraph_num": 1,
         "provision": "Article 12(1)",
         "description": "Record-keeping or logging expectations are not fully specified",
-        "action": "Add logging and audit-trail acceptance criteria for this requirement.",
+        "action": "Specify log fields, retention, access controls, and audit-review responsibilities.",
     },
     "transparency": {
         "article_id": "art:13",
         "paragraph_num": 1,
         "provision": "Article 13(1)",
         "description": "Transparency or explanation expectations are not fully specified",
-        "action": "Add explanation, notification, or instruction requirements for deployers or affected users.",
+        "action": "Define explanation detail, user/deployer information, limitations, and instructions for use.",
     },
     "human_oversight": {
         "article_id": "art:14",
         "paragraph_num": 1,
         "provision": "Article 14(1)",
         "description": "Human oversight expectations are not fully specified",
-        "action": "Add human review, override, authority, training, and escalation criteria.",
+        "action": "Define reviewer authority, training, escalation paths, and monitoring expectations.",
     },
     "accuracy_robustness_cybersecurity": {
         "article_id": "art:15",
@@ -104,7 +107,7 @@ CATEGORY_FALLBACK_RISKS = {
         "paragraph_num": 1,
         "provision": "Article 72(1)",
         "description": "Post-market monitoring expectations are not fully specified",
-        "action": "Define deployment monitoring metrics, review cadence, and incident follow-up steps.",
+        "action": "Define monitoring metrics, thresholds, review cadence, escalation, and corrective-action steps.",
     },
 }
 
@@ -114,11 +117,15 @@ CATEGORY_FALLBACK_RISKS = {
 LOW_RISK_CONTROL_INTENTS = {
     "logging_or_audit",
     "prohibited_feature_prevention",
+    "data_validation_or_bias_testing",
+    "protected_attribute_control",
+    "monitoring_or_alerting",
+    "rollback_or_corrective_action",
 }
 
 MEDIUM_MAX_CONTROL_INTENTS = {
-    "data_validation_or_bias_testing",
-    "protected_attribute_control",
+    "human_review_or_override",
+    "access_control_or_security",
 }
 
 # Some categories have a clear Chapter 3 anchor. If the LLM returns the right
@@ -128,6 +135,18 @@ CATEGORY_ANCHORS = {
     key: (value["article_id"], value["paragraph_num"], value["provision"])
     for key, value in CATEGORY_FALLBACK_RISKS.items()
 }
+
+
+@lru_cache(maxsize=128)
+def _cached_article(article_id: str) -> dict:
+    """Cache article reads for the life of the API process."""
+    return get_article(article_id) or {}
+
+
+@lru_cache(maxsize=128)
+def _cached_references(article_id: str) -> dict:
+    """Cache cross-reference reads for the life of the API process."""
+    return get_references(article_id) or {}
 
 
 def _downgrade_risk(risk: RiskItem, severity: str) -> None:
@@ -245,7 +264,7 @@ def _build_prompt(
             f"({paragraph['article_title']})** "
             f"paragraph {paragraph['paragraph_num']} "
             f"[{paragraph['obligation_type']}]: "
-            f"{str(paragraph['paragraph_text'])[:500]} "
+            f"{str(paragraph['paragraph_text'])[:320]} "
             f"(vector score={paragraph.get('score')}, "
             f"adjusted score={paragraph.get('adjusted_score', paragraph.get('score'))})\n"
         )
@@ -275,7 +294,7 @@ def _build_prompt(
             for article_paragraph in binding:
                 parts.append(
                     f"- ({article_paragraph['num']}) "
-                    f"{article_paragraph['text'][:220]}\n"
+                    f"{article_paragraph['text'][:180]}\n"
                 )
 
     if referenced_articles:
@@ -291,35 +310,13 @@ def _build_prompt(
                 f"(shared: {', '.join(related['shared_entities'][:MAX_SHARED_ENTITIES])})\n"
             )
 
-    parts.append("\n## Available requirement categories\n")
-    for category in categories:
-        parts.append(
-            f"- {category['key']} → "
-            f"{', '.join(category['article_ids'])}\n"
-        )
-
     parts.append("\n## Assessment instructions for this requirement\n")
-    parts.append(
-        "- Assess the exact requirement text and semantic profile, not the whole SRS.\n"
-    )
-    parts.append(
-        "- Prioritise the profile's primary and missing/unclear obligation "
-        "categories. Do not force unrelated categories just because the system "
-        "is high-risk.\n"
-    )
-    parts.append(
-        "- If the requirement already describes a safeguard/control, treat it as "
-        "addressed or partially addressed and only flag the specific remaining "
-        "gap.\n"
-    )
-    parts.append(
-        "- If the supplied provisions do not support a risk for this requirement, "
-        "return no risks instead of using a weak article match.\n"
-    )
-    parts.append(
-        "\nIdentify the compliance risks for this requirement based on the "
-        "semantic profile and the graph provisions above."
-    )
+    parts.append("- Assess only the exact requirement, not the whole SRS.\n")
+    parts.append("- Use the semantic profile as the scope: primary category first, then missing/unclear categories.\n")
+    parts.append("- Use at most 2 risks. Prefer the strongest obligation article for each category.\n")
+    parts.append("- If the requirement already describes a safeguard/control, only flag a specific remaining implementation gap.\n")
+    parts.append("- If the provisions do not support a requirement-level gap, return an empty risks list and risk_level low.\n")
+    parts.append("\nReturn the JSON risk assessment now.")
 
     return "\n".join(parts)
 
@@ -336,8 +333,8 @@ def _article_available(article_id: str, articles: dict[str, dict]) -> bool:
 def _fallback_category_order(profile) -> list[str]:
     ordered: list[str] = []
     for category in (
-        profile.missing_or_unclear_categories
-        + [profile.primary_obligation_category]
+        [profile.primary_obligation_category]
+        + profile.missing_or_unclear_categories
         + profile.secondary_obligation_categories
     ):
         key = _normalise_category(category)
@@ -376,6 +373,7 @@ def _apply_profile_gap_fallback(
         )
         return assessment
 
+    fallback_risks: list[RiskItem] = []
     for category in category_order:
         fallback = CATEGORY_FALLBACK_RISKS.get(category)
         if not fallback:
@@ -385,41 +383,74 @@ def _apply_profile_gap_fallback(
         # can fetch the article by ID later.
         article_id = fallback["article_id"]
         if articles and not _article_available(article_id, articles):
-            core = {"art:9", "art:10", "art:11", "art:12", "art:13", "art:14", "art:15"}
+            core = {"art:9", "art:10", "art:11", "art:12", "art:13", "art:14", "art:15", "art:72"}
             if article_id not in core:
                 continue
 
-        assessment.risks = [RiskItem(
+        severity = "low" if profile.is_safeguard_or_control else "medium"
+        fallback_risks.append(RiskItem(
             description=fallback["description"],
-            severity="medium",
+            severity=severity,
             article_id=article_id,
             paragraph_num=fallback["paragraph_num"],
             provision=fallback["provision"],
             obligation_category=category,
             engineering_action=fallback["action"],
-        )]
-        assessment.risk_level = "medium"
-        assessment.summary = (
-            f"The semantic profile indicates a remaining {category} gap for "
-            "this exact requirement. A conservative requirement-level risk has "
-            "been retained for manual review."
-        )
-        assessment.recommendations = [fallback["action"]]
+        ))
+        if len(fallback_risks) >= 2:
+            break
+
+    if fallback_risks:
+        assessment.risks = fallback_risks
+        assessment.risk_level = "low" if all(r.severity == "low" for r in fallback_risks) else "medium"
+        categories_text = ", ".join(r.obligation_category for r in fallback_risks)
+        if profile.is_safeguard_or_control:
+            assessment.summary = (
+                "The requirement already describes a safeguard/control. "
+                f"A remaining {categories_text} clarification gap is retained for manual review."
+            )
+        else:
+            assessment.summary = (
+                f"The semantic profile indicates a remaining {categories_text} gap for "
+                "this exact requirement. A conservative requirement-level risk has been retained for manual review."
+            )
+        assessment.recommendations = [risk.engineering_action for risk in fallback_risks if risk.engineering_action]
         return assessment
 
     assessment.risk_level = "low"
     return assessment
 
 
-def _align_assessment_with_profile(assessment: RequirementRisk, profile) -> RequirementRisk:
-    """Light post-processing guard against category drift.
+def _profile_assessment_scope(profile) -> set[str]:
+    """Return the obligation categories that should drive final assessment.
 
-    The final LLM sometimes overgeneralises high-risk AI obligations. This
-    guard does not invent new risks; it only removes risks that are outside the
-    semantic profile's stated assessment scope when the profile is confident
-    enough to provide that scope.
+    Secondary categories are useful for retrieval, but they should not dominate
+    the final risk output on small local models. Final assessment therefore uses
+    the primary category, missing/unclear categories, and existing controls.
     """
-    supported = {_normalise_category(c) for c in profile.supported_categories()}
+    scope = {
+        _normalise_category(c)
+        for c in (
+            [getattr(profile, "primary_obligation_category", "")]
+            + getattr(profile, "missing_or_unclear_categories", [])
+            + getattr(profile, "existing_control_categories", [])
+        )
+        if c
+    }
+    return {category for category in scope if category}
+
+
+def _align_assessment_with_profile(assessment: RequirementRisk, profile) -> RequirementRisk:
+    """Guard against category drift from the final LLM call.
+
+    Retrieval can include secondary/context articles, but the final report should
+    stay inside the semantic profile's assessment scope. This preserves quality
+    with smaller models such as Qwen 2.5 3B without using requirement-specific
+    patches or keyword matching.
+    """
+    supported = _profile_assessment_scope(profile)
+    if not supported:
+        supported = {_normalise_category(c) for c in profile.supported_categories()}
     if not supported:
         return assessment
 
@@ -487,13 +518,13 @@ def assess_requirement(
 
     articles = {}
     for article_id in hit_article_ids[:TOP_K_ARTICLES]:
-        article = get_article(article_id)
+        article = _cached_article(article_id)
         if article:
             articles[article_id] = article
 
     referenced_articles: set[tuple[str, str]] = set()
     for article_id in hit_article_ids[:TOP_K_ARTICLES]:
-        refs = get_references(article_id)
+        refs = _cached_references(article_id)
         for ref in refs.get("references_to", []):
             referenced_articles.add((ref["id"], ref.get("title", "")))
         for ref in refs.get("referenced_by", []):

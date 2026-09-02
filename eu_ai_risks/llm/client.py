@@ -8,7 +8,10 @@ import re
 from typing import cast
 
 import litellm
+from dotenv import load_dotenv
 from litellm import ModelResponse
+
+load_dotenv()
 
 litellm.suppress_debug_info = True
 
@@ -17,6 +20,8 @@ LLM_MODEL: str = os.environ.get("LLM_MODEL", "")
 LLM_API_BASE: str | None = os.environ.get("LLM_API_BASE")
 LLM_TEMPERATURE: float = float(os.environ.get("LLM_TEMPERATURE", "0.2"))
 LLM_JSON_NO_THINK: bool = os.environ.get("LLM_JSON_NO_THINK", "true").lower() not in {"0", "false", "no"}
+LLM_NUM_RETRIES: int = int(os.environ.get("LLM_NUM_RETRIES", "1"))
+LLM_TIMEOUT: int = int(os.environ.get("LLM_TIMEOUT", "300"))
 
 
 def _with_no_think(prompt: str) -> str:
@@ -129,7 +134,8 @@ class LLMClient:
             max_tokens=max_tokens,
             api_base=LLM_API_BASE,
             temperature=LLM_TEMPERATURE,
-            num_retries=3,
+            num_retries=LLM_NUM_RETRIES,
+            timeout=LLM_TIMEOUT,
         ))
 
         return str(response.choices[0].message.content or "")
@@ -162,7 +168,8 @@ class LLMClient:
             api_base=LLM_API_BASE,
             response_format={"type": "json_object"},
             temperature=LLM_TEMPERATURE,
-            num_retries=3,
+            num_retries=LLM_NUM_RETRIES,
+            timeout=LLM_TIMEOUT,
         ))
 
         content = response.choices[0].message.content
@@ -194,7 +201,8 @@ class LLMClient:
                 max_tokens=max_tokens,
                 api_base=LLM_API_BASE,
                 temperature=LLM_TEMPERATURE,
-                num_retries=3,
+                num_retries=LLM_NUM_RETRIES,
+            timeout=LLM_TIMEOUT,
             ))
 
         return cast(ModelResponse, litellm.completion(
@@ -203,7 +211,8 @@ class LLMClient:
             max_tokens=max_tokens,
             api_base=LLM_API_BASE,
             temperature=LLM_TEMPERATURE,
-            num_retries=3,
+            num_retries=LLM_NUM_RETRIES,
+            timeout=LLM_TIMEOUT,
         ))
 
 

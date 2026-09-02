@@ -1,29 +1,65 @@
-# UI polish + Qwen3 support bundle
+# Contribution summary: semantic profile risk assessment + frontend/API
 
-This bundle updates the frontend/API demo layer with the following changes:
+This branch improves the proof-of-concept risk assessment flow for Chapter 3 high-risk AI obligations.
 
-- Removes the top-level **Upload generated report** button so the main demo flow is now requirements document upload -> run assessment -> review dashboard.
-- Keeps **Load demo** for quick supervisor/demo viewing.
-- Adds a visible **High = 0** summary card instead of hiding high risk when there are no high findings.
-- Replaces the star-style logo with a cleaner compliance/checklist icon using the existing Lucide icon set.
-- Updates frontend README wording so it matches the new requirements-document upload flow.
-- Adds Qwen3/Ollama configuration notes in `README_QWEN3.md`.
-- Improves the LLM JSON parsing path so Qwen-style `<think>...</think>` blocks, markdown fences, or wrapped JSON are less likely to crash the pipeline.
+## Main contribution
 
-## Files changed
+The risk assessment now uses an intent-aware semantic profile before mapping a software requirement to EU AI Act provisions.
+
+The intended flow is:
 
 ```text
-frontend/src/App.jsx
-frontend/src/styles.css
-frontend/README.md
-eu_ai_risks/llm/client.py
-.env.example
-README_QWEN3.md
-README_FRONTEND_API.md
+requirement -> semantic profile -> obligation category -> graph retrieval -> LLM risk assessment -> report
 ```
 
-## Suggested commit message
+This helps the system avoid relying only on raw semantic similarity between a requirement and legal paragraphs.
 
-```bash
-git commit -m "Polish frontend flow and add Qwen3 JSON handling"
-```
+## Mapping improvements
+
+The profile layer separates common requirement intents such as:
+
+- data ingestion
+- scoring or prediction
+- ranking or prioritisation
+- explanation/transparency
+- human review/override
+- logging/audit records
+- dataset validation and bias testing
+- protected-attribute control
+- monitoring/alerts
+- rollback/corrective action
+- prohibited-feature prevention
+
+These intents guide mapping toward Chapter 3 obligation areas such as Article 10 data governance, Article 12 record-keeping, Article 13 transparency, Article 14 human oversight, Article 15 accuracy/robustness/cybersecurity, Article 9 risk management, and Article 72 post-market monitoring.
+
+The branch also distinguishes missing risks from requirements that already describe safeguards or controls.
+
+## Speed/quality optimisation
+
+The latest update keeps the semantic-profile + retrieval + LLM approach, but reduces local Ollama latency by:
+
+- using embedding-based semantic profiling by default instead of an extra LLM profile call for every requirement;
+- caching intent/domain embeddings, category anchors, article reads, and cross-reference reads;
+- limiting retrieved context sent to the final LLM call;
+- aligning the LLM's output back to the semantic profile scope to reduce category drift;
+- keeping invalid-JSON fallback handling so one local model response does not crash the full report.
+
+This is not a keyword-only fast mapper and does not hardcode individual FR/NFR IDs.
+
+## Frontend/API work
+
+The branch also adds a minimal React/Vite frontend and FastAPI endpoint for uploading requirements documents, running the assessment through the existing backend, and viewing results in a dashboard.
+
+The frontend includes:
+
+- requirements document upload;
+- risk summary cards including High/Medium/Low counts;
+- requirement finding list;
+- risk/category filtering;
+- mapped obligation details;
+- recommended engineering actions;
+- demo mode for backup presentations.
+
+## Scope
+
+This contribution is mainly Chapter 3/high-risk AI focused. It does not claim full legal-grade coverage of the entire EU AI Act. Wider Act coverage should be added later by expanding the semantic profile taxonomy and validation set.

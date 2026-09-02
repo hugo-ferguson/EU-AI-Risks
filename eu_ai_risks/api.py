@@ -10,8 +10,10 @@ JSON plus the generated Markdown report.
 from __future__ import annotations
 
 import json
+import os
 import re
 import tempfile
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +28,7 @@ from eu_ai_risks.analysis.risk_report import (
     render_markdown_report,
 )
 from eu_ai_risks.db.graph import list_categories
+from eu_ai_risks.embeddings import embed_text
 
 SUPPORTED_REQUIREMENT_UPLOADS = {
     ".json",
@@ -48,19 +51,6 @@ RE_NUMBERED_ITEM = re.compile(r"^(\d+(?:\.\d+)*|[A-Z]\d+)[.)]\s+(.+)$")
 
 app = FastAPI(title="EU AI Risk Mapper API", version="0.1.0")
 
-from fastapi.middleware.cors import CORSMiddleware
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5174",
-        "http://localhost:5173",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -80,6 +70,30 @@ app.add_middleware(
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@lru_cache(maxsize=1)
+def get_cached_categories() -> tuple[dict, ...]:
+    """Cache requirement-category anchors for the life of the API process."""
+    return tuple(list_categories())
+
+
+@app.on_event("startup")
+def warmup_semantic_components() -> None:
+    """Optionally preload embeddings/categories before the first frontend click.
+
+    This does not call the LLM. It only moves the first embedding-model loading
+    cost to API startup, which makes demos feel less stuck after upload.
+    """
+    if os.environ.get("EU_AI_RISKS_WARMUP", "true").lower() in {"0", "false", "no"}:
+        return
+    try:
+        get_cached_categories()
+        embed_text("EU AI Act high-risk AI transparency human oversight data governance")
+    except Exception:
+        # Keep API startup tolerant; health/docs should still load even if Neo4j
+        # or the local embedding model is not ready yet.
+        pass
 
 
 @app.post("/api/assess-risks")
@@ -248,7 +262,7 @@ def strip_requirement_prefix(line: str) -> str:
 
 
 def run_assessment(requirements: list[dict[str, str]]) -> list[dict[str, Any]]:
-    categories = list_categories()
+    categories = list(get_cached_categories())
     article_cache: dict[str, dict] = {}
     assessment_entries: list[dict[str, Any]] = []
 
