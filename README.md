@@ -1,202 +1,315 @@
-# EU AI Risks
+# Contribution Summary: Semantic Profile Risk Assessment + Frontend/API
 
-Parse the [EU AI Act](https://eur-lex.europa.eu/eli/reg/2024/1689/oj) into a Neo4j graph database, generate semantic embeddings, query the legislation structure, and map software requirements documents to candidate EU AI Act compliance risks.
+This branch improves the proof-of-concept risk assessment flow for mapping software requirements against the EU AI Act, mainly focused on Chapter 3 high-risk AI obligations.
 
-## Overview
+The goal of this contribution is to make the output more useful as an engineering review aid by improving requirement-to-obligation mapping, reducing over-reliance on raw semantic similarity, and adding a minimal frontend/API flow for demo and testing.
 
-The tool parses the EU AI Act PDF into a graph of **chapters**, **sections**, **articles**, **paragraphs**, and **annexes**, with edges for containment (`CONTAINS`, `HAS_PARAGRAPH`) and cross-references (`REFERENCES`). Articles and paragraphs are then tagged with a semantic layer: Article 3 concepts, paragraph obligation types, and five controlled-vocabulary dimensions (responsible party, requirement, risk, system, and data category). Embeddings are generated using [sentence-transformers](https://www.sbert.net/) (`BAAI/bge-base-en-v1.5`) for semantic search over the legislation.
+---
 
-## Graph structure
+## Main Contribution
 
-Node labels: `Chapter`, `Section`, `Article`, `Paragraph`, `Annex`, `Concept`, and the five dimension labels `ResponsibleParty`, `RequirementCategory`, `RiskCategory`, `SystemCategory`, `DataCategory`.
+The risk assessment now uses an intent-aware semantic profile before mapping a software requirement to EU AI Act provisions.
 
-Edges:
+The intended flow is:
 
-- `CONTAINS`: chapter to section, section to article, chapter to article
-- `HAS_PARAGRAPH`: article to paragraph
-- `REFERENCES`: article or annex to the articles and annexes it cites
-- `DEFINES` / `USES`: a paragraph defines an Article 3 concept, an article uses one
-- `ADDRESSES`, `IMPOSES`, `HAS_RISK`, `COVERS`, `CONCERNS`: a provision to its dimension nodes
+```text
+requirement -> semantic profile -> obligation category -> graph retrieval -> LLM risk assessment -> report
+```
 
-Node IDs follow the pattern `ch:III`, `sec:III:2`, `art:6`, `art:6:p2`, `annex:III`.
+This helps the system avoid relying only on raw semantic similarity between a requirement and legal paragraphs.
 
-Each dimension is a closed vocabulary drawn from the Act (Article 3 definitions, the Article 9-15 requirement titles, the chapter and Annex III scheme). Tagging is deterministic.
+Instead of only asking “which EU AI Act paragraph sounds similar to this requirement?”, the system first considers what the requirement is actually doing, then uses that profile to guide the mapping.
 
-The requirements analysis pipeline extracts candidate software requirements from an SRS document, embeds each requirement, retrieves similar EU AI Act paragraphs from Neo4j, classifies likely risk themes, and writes a traceable Markdown/JSON report.
+---
 
-## Setup
+## Mapping Improvements
 
-### Requirements
+The semantic profile layer separates common requirement intents such as:
 
-- Python 3.12+
-- A Neo4j instance (e.g. [Neo4j Aura](https://neo4j.com/cloud/aura-free/))
-- A copy of the EU AI Act PDF
-- (Optional) A [Hugging Face token](https://huggingface.co/settings/tokens) for faster model downloads
+- data ingestion
+- scoring or prediction
+- ranking or prioritisation
+- explanation/transparency
+- human review/override
+- logging/audit records
+- dataset validation and bias testing
+- protected-attribute control
+- monitoring/alerts
+- rollback/corrective action
+- prohibited-feature prevention
 
-### Installation
+These intents guide mapping toward relevant Chapter 3 obligation areas, including:
+
+- Article 9 — risk management
+- Article 10 — data governance
+- Article 11 — technical documentation
+- Article 12 — record-keeping/logging
+- Article 13 — transparency
+- Article 14 — human oversight
+- Article 15 — accuracy, robustness, and cybersecurity
+- Article 72 — post-market monitoring
+
+The branch also distinguishes missing risks from requirements that already describe safeguards or controls.
+
+For example:
+
+```text
+logging/audit requirement -> record-keeping control -> low remaining clarification risk
+human override requirement -> human oversight safeguard -> remaining reviewer competency gap
+biometric prevention requirement -> prohibited-feature safeguard -> no retained requirement-level risk
+monitoring alert requirement -> post-market monitoring / risk management
+```
+
+---
+
+## Speed and Quality Optimisation
+
+The latest update keeps the full assessment approach:
+
+```text
+requirement -> semantic profile -> graph retrieval -> LLM risk assessment -> report
+```
+
+It does **not** replace the main mapping with keyword-only rules or requirement-ID patches.
+
+The optimisation focuses on reducing unnecessary local LLM calls while preserving semantic profiling and Chapter 3 obligation-category mapping.
+
+### What changed
+
+1. **Embedding-based semantic profiling by default**
+
+   The profile step now defaults to:
+
+   ```env
+   EU_AI_RISKS_PROFILE_MODE=semantic
+   ```
+
+   In this mode, the system compares each requirement against stable semantic descriptions of requirement intents. This is faster than asking the local LLM to write a full profile for every requirement, while still being more flexible than simple keyword matching.
+
+2. **One main LLM call per requirement**
+
+   The previous richer path could use one LLM call for profile extraction and another for final risk assessment.
+
+   The default path now uses embeddings for the semantic profile and keeps the LLM for the final risk explanation.
+
+3. **Cached semantic/profile components**
+
+   The system caches intent/domain embeddings, category anchors, article reads, and cross-reference reads where appropriate.
+
+4. **Smaller, cleaner LLM context**
+
+   The risk assessment prompt now sends fewer retrieved paragraphs, fewer article paragraphs, and shorter snippets. This helps smaller local models avoid repetitive or invalid JSON responses while still keeping the strongest graph evidence.
+
+5. **Profile-alignment guard**
+
+   The final LLM output is aligned back to the semantic profile’s assessment scope. This reduces category drift, such as explanation requirements drifting to data governance or monitoring requirements drifting away from post-market monitoring.
+
+6. **Invalid JSON fallback**
+
+   If the local model returns invalid JSON, the assessment does not crash the full report. A conservative fallback is used so the pipeline can continue.
+
+---
+
+## Frontend/API Work
+
+This branch also adds a minimal React/Vite frontend and FastAPI endpoint for uploading requirements documents, running the assessment through the backend, and viewing results in a dashboard.
+
+The frontend includes:
+
+- requirements document upload
+- risk summary cards, including High/Medium/Low counts
+- requirement finding list
+- risk/category filtering
+- mapped obligation details
+- recommended engineering actions
+- demo mode for backup presentations
+
+---
+
+## Running the API
+
+From the repo root:
 
 ```bash
 pip install -e .
+uvicorn eu_ai_risks.api:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### Configuration
+The API exposes:
 
-Copy `.env.example` to `.env` and fill in your values:
-
+```text
+POST /api/assess-risks
+GET  /api/health
 ```
-PDF_PATH=~/path/to/eu_ai_act.pdf
 
-NEO4J_URI=bolt://localhost:7687
-NEO4J_USERNAME=neo4j
-NEO4J_PASSWORD=password
+Open the API docs at:
 
-HF_TOKEN=token
+```text
+http://localhost:8000/docs
+```
 
-LLM_MODEL=ollama/llama3.2
+---
+
+## Running the Frontend
+
+From the repo root:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend runs on:
+
+```text
+http://localhost:5174
+```
+
+The frontend should have this in `frontend/.env`:
+
+```env
+VITE_API_URL=http://localhost:8000
+```
+
+---
+
+## Requirements Upload Flow
+
+The frontend accepts requirements files in:
+
+```text
+.json, .txt, .md, .markdown, .pdf, .docx
+```
+
+Recommended fastest testing format is JSON:
+
+```json
+[
+  {
+    "id": "FR-1",
+    "text": "The system shall explain automated decisions to users in plain language."
+  }
+]
+```
+
+The API extracts requirements, runs the semantic-profile risk assessment, and returns frontend-ready findings.
+
+---
+
+## Qwen3 / Ollama Setup
+
+Use Qwen3 for local testing.
+
+Recommended demo balance:
+
+```env
+LLM_MODEL=ollama/qwen3:4b
 LLM_API_BASE=http://localhost:11434
+LLM_TEMPERATURE=0.1
+LLM_JSON_NO_THINK=true
+LLM_NUM_RETRIES=1
+LLM_TIMEOUT=300
+
+EU_AI_RISKS_PROFILE_MODE=semantic
+EU_AI_RISKS_WARMUP=true
 ```
 
-`LLM_MODEL` and `LLM_API_BASE` are only needed for the LLM enrichment passes (obligation types and concepts). Any [LiteLLM](https://docs.litellm.ai/)-compatible model works.
+Pull and test the model:
 
-## Usage
-
-### Build everything
-
-Run build, embed, and enrich in one step:
-
-```bash
-eu-ai-risks all
+```powershell
+ollama pull qwen3:4b
+ollama run qwen3:4b
 ```
 
-The individual steps are also available:
+Then type:
 
-### Build the graph
-
-Parse the PDF and write chapters, sections, articles, paragraphs, annexes, and their relationships to Neo4j:
-
-```bash
-eu-ai-risks build
+```text
+/bye
 ```
 
-### Generate embeddings
+Speed/quality options:
 
-Generate and store vector embeddings for articles, paragraphs, and annexes:
+```env
+# Fastest smoke test, weaker mapping
+LLM_MODEL=ollama/qwen3:1.7b
 
-```bash
-eu-ai-risks embed
+# Recommended demo balance
+LLM_MODEL=ollama/qwen3:4b
+
+# Better quality, slower
+LLM_MODEL=ollama/qwen3:8b
 ```
 
-### Enrich the graph
+There is not usually an Ollama tag called `qwen3:3b` or `qwen3:3.2`. The closest Qwen3 option for this use case is `qwen3:4b`.
 
-Tag the graph with obligation types, Article 3 concepts, and the five dimensions:
+---
 
-```bash
-eu-ai-risks enrich
+## Recommended Local Settings
+
+For fast local testing with a small Qwen model:
+
+```env
+LLM_MODEL=ollama/qwen3:4b
+LLM_API_BASE=http://localhost:11434
+LLM_TEMPERATURE=0.1
+LLM_NUM_RETRIES=1
+LLM_TIMEOUT=300
+
+EU_AI_RISKS_PROFILE_MODE=semantic
+EU_AI_RISKS_TOP_K_PARAGRAPH_CANDIDATES=8
+EU_AI_RISKS_TOP_K_PARAGRAPHS=3
+EU_AI_RISKS_TOP_K_ARTICLES=3
+EU_AI_RISKS_MAX_PARAGRAPHS_PER_ARTICLE=2
+EU_AI_RISKS_RISK_MAX_TOKENS=900
+EU_AI_RISKS_WARMUP=true
 ```
 
-The individual passes `obligation-types`, `concepts`, and `dimensions` can be run on their own. `dimensions` is deterministic and needs no LLM; `obligation-types` and `concepts` require `LLM_MODEL`.
+For higher quality on difficult examples, use:
 
-### Query the graph
-
-List articles in a chapter:
-
-```bash
-eu-ai-risks chapter ch:III
+```env
+EU_AI_RISKS_PROFILE_MODE=hybrid
 ```
 
-Find articles that reference a given article:
+Hybrid mode uses embedding profiling first and only asks the LLM for a richer semantic profile when the embedding profile has low confidence.
 
-```bash
-eu-ai-risks refs art:6
+---
+
+## Demo Advice
+
+For a live supervisor demo, use a small 3–4 requirement JSON first.
+
+Do not rely on running a full 16-requirement assessment live unless the local model is responding quickly.
+
+Recommended demo plan:
+
+```text
+1. Start the API
+2. Start the frontend
+3. Upload a small requirements JSON
+4. Run assessment
+5. Review the mapped findings in the dashboard
+6. Keep demo mode available as a backup
 ```
 
-Find articles that a given article references:
+---
 
-```bash
-eu-ai-risks refs-from art:5
-```
+## Scope and Limitations
 
-Find the shortest reference path between two articles:
+This contribution is mainly Chapter 3/high-risk AI focused.
 
-```bash
-eu-ai-risks path art:5 art:85
-```
+It improves mappings for obligation areas such as:
 
-### Semantic search
+- data governance
+- transparency
+- human oversight
+- record-keeping
+- accuracy, robustness, and cybersecurity
+- risk management
+- post-market monitoring
 
-Search for articles relevant to a natural language query:
+It does **not** claim complete legal-grade coverage of the entire EU AI Act.
 
-```bash
-eu-ai-risks search "prohibited artificial intelligence practices"
-```
+Wider EU AI Act coverage should be added later by expanding the semantic profile taxonomy, validation set, and obligation mapping beyond Chapter 3/high-risk AI requirements.
 
-Search paragraphs instead:
-
-```bash
-eu-ai-risks search -p "biometric identification" --top-k 10
-```
-
-This can be used to find legislation relevant to a given requirement, e.g.:
-
-```bash
-eu-ai-risks search "The system shall log all automated decisions for human review"
-```
-
-### Requirements analysis
-
-Extract candidate requirements from a software requirements document:
-
-```bash
-eu-ai-risks parse-requirements ./sample-srs.pdf
-```
-
-Save extracted requirements as JSON:
-
-```bash
-eu-ai-risks parse-requirements ./sample-srs.pdf --output extracted-requirements.json
-```
-
-Generate a traceable EU AI Act risk report:
-
-```bash
-eu-ai-risks analyze-requirements ./sample-srs.pdf --output risk-report.md --json-output risk-report.json
-```
-
-The analysis command expects the EU AI Act graph and paragraph embeddings to already exist in Neo4j:
-
-```bash
-eu-ai-risks build
-eu-ai-risks embed
-eu-ai-risks analyze-requirements ./sample-srs.pdf
-```
-
-Supported requirements document formats are `.txt`, `.md`, `.pdf`, and `.docx`.
-
-## Project structure
-
-```
-eu_ai_risks/
-  cli.py                              # CLI entry point (typer)
-  models.py                           # Shared data structures
-  db/
-    session.py                        # Neo4j connection management
-    graph.py                          # Graph query operations
-  embeddings/
-    client.py                         # Sentence-transformers wrapper
-  llm/
-    client.py                         # LiteLLM wrapper for enrichment
-  legislation/
-    eu_ai_act/
-      parser.py                       # PDF parsing into segments
-      graph_builder.py                # Graph construction and Neo4j writes
-      enrichment.py                   # Obligation types, Article 3 concepts
-      dimensions.py                   # Controlled-vocabulary dimension tagging
-  requirements/                       # (planned) Requirement parsing
-  analysis/                           # (planned) Requirement-to-legislation mapping
-  requirements/
-    loader.py                         # Requirement document parsing
-    models.py                         # Requirement data structures
-  analysis/
-    risk_mapper.py                    # Requirement-to-legislation mapping
-    risk_report.py                    # Markdown/JSON report generation
-```
+The output should be treated as an engineering review aid, not legal advice.

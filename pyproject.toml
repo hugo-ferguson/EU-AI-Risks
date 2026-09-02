@@ -4,19 +4,25 @@ version = "0.1.0"
 description = "Parse the EU AI Act into a Neo4j graph database."
 requires-python = ">=3.12"
 dependencies = [
+    "fastapi",
     "litellm",
     "neo4j",
     "pdfplumber",
     "python-docx",
     "python-dotenv",
+    "python-multipart",
     "sentence-transformers",
     "typer",
+    "uvicorn",
 ]
 
 [project.optional-dependencies]
 gpu = [
     "torch>=2.0",
 ]
+
+[tool.setuptools.packages.find]
+include = ["eu_ai_risks*"]
 
 [project.scripts]
 eu-ai-risks = "eu_ai_risks.cli:main"
