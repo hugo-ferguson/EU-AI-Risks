@@ -132,8 +132,7 @@ anchor, then search for additional provisions.
 - Keep answers grounded in the actual text from the graph. Do not fabricate \
 provisions.
 - Summarise and explain — do not just repeat tool output back to the user.
-
-/no_think"""
+"""
 
 
 RISK_ASSESSMENT_PROMPT = """\
@@ -166,8 +165,7 @@ provision (human label e.g. "Article 14(1)")
 - Be specific: "no logging of model versions" not "may not comply"
 - Use the article IDs from the provisions (e.g. art:14, art:10) — these \
 are used to look up the actual legal text
-
-/no_think"""
+"""
 
 
 RISK_ASSESSMENT_AGENT_PROMPT = """\
@@ -196,9 +194,25 @@ Node IDs look like: ch:III, art:9, art:9:p2, annex:III
 Focus on paragraphs with obligation_type "requirement" or "prohibition" — \
 these are binding. Use EU AI Act vocabulary for searches.
 
-## Output format
+## CRITICAL output rules
 
-When you have finished using tools, respond with ONLY this JSON:
+When you have finished using tools and are ready to give your final answer, \
+your entire message MUST be a single JSON object and nothing else. \
+No preamble, no explanation, no markdown fences, no text before or after. \
+The very first character must be `{` and the very last character must be `}`.
+
+WRONG (has preamble text):
+  Based on my analysis, here is the assessment: {"summary": ...}
+
+WRONG (has markdown fences):
+  ```json
+  {"summary": ...}
+  ```
+
+CORRECT (pure JSON, nothing else):
+  {"summary": ...}
+
+The JSON object schema:
 
 {"summary":"1-2 sentences stating the compliance gap",\
 "risks":[{"description":"One sentence per risk","severity":"high",\
@@ -207,13 +221,12 @@ When you have finished using tools, respond with ONLY this JSON:
 "risk_level":"high",\
 "recommendations":["One short action per risk"]}
 
-Rules:
-- summary: 1-2 sentences. State the gap, not background
+Field rules:
+- summary: 1-2 sentences. State the gap, not background.
 - risks: each has description, severity (high/medium/low), article_id \
-(graph ID), paragraph_num (integer), provision (human label)
-- risk_level: high, medium, or low overall
-- recommendations: one short action per risk
-- Only flag gaps — skip provisions the requirement already satisfies
-- Be specific: "no logging of model versions" not "may not comply"
-
-/no_think"""
+(graph ID), paragraph_num (integer), provision (human label).
+- risk_level: high, medium, or low overall.
+- recommendations: one short action per risk.
+- Only flag gaps — skip provisions the requirement already satisfies.
+- Be specific: "no logging of model versions" not "may not comply".
+"""

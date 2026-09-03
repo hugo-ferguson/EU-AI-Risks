@@ -5,14 +5,12 @@ Uses multi-turn tool calling to explore the Neo4j knowledge graph
 before synthesising a risk assessment for each requirement.
 """
 
-import json
-
 from eu_ai_risks.analysis.agent import AgentLoop
-from eu_ai_risks.analysis.models import RequirementRisk, RiskItem
+from eu_ai_risks.analysis.models import RequirementRisk
 from eu_ai_risks.analysis.prompts import RISK_ASSESSMENT_AGENT_PROMPT
 from eu_ai_risks.analysis.tools import TOOL_DEFINITIONS, execute_tool
 
-MAX_AGENT_ITERATIONS = 10
+MAX_AGENT_ITERATIONS = 8
 MAX_AGENT_TOKENS = 4096
 
 
@@ -43,7 +41,13 @@ def assess_requirement(
     )
 
     result = agent.run(user_message)
-    assessment = _convert_agent_result(result)
+
+    try:
+        assessment = RequirementRisk.model_validate_json(result.raw_content)
+    except Exception:
+        assessment = RequirementRisk(
+            summary=result.raw_content or "Model did not produce a valid risk assessment.",
+        )
 
     metadata = {
         "iterations": result.iterations,
@@ -52,46 +56,3 @@ def assess_requirement(
     }
 
     return assessment, {}, metadata
-
-
-def _convert_agent_result(result) -> RequirementRisk:
-    """Convert an AgentResult to RequirementRisk."""
-    try:
-        parsed = json.loads(result.raw_content)
-        if isinstance(parsed, dict):
-            try:
-                return RequirementRisk.model_validate(parsed)
-            except Exception:
-                pass
-            for key in ("answer", "response", "result", "assessment", "data"):
-                nested = parsed.get(key)
-                if isinstance(nested, dict) and "summary" in nested:
-                    try:
-                        return RequirementRisk.model_validate(nested)
-                    except Exception:
-                        pass
-    except (json.JSONDecodeError, ValueError):
-        pass
-
-    answer = result.answer
-    risks = []
-    for citation in answer.citations:
-        risks.append(RiskItem(
-            description=f"See {citation.article_title or citation.article_id}",
-            article_id=citation.article_id,
-            paragraph_num=citation.paragraph_num,
-            provision=_format_provision(citation),
-        ))
-
-    return RequirementRisk(
-        summary=answer.summary or "Model did not produce a valid risk assessment.",
-        risks=risks,
-        risk_level="medium",
-    )
-
-
-def _format_provision(citation) -> str:
-    if citation.paragraph_num and ":" in citation.article_id:
-        num = citation.article_id.split(":")[-1]
-        return f"Article {num}({citation.paragraph_num})"
-    return citation.article_title or citation.article_id
