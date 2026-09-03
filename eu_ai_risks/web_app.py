@@ -207,59 +207,150 @@ def _pretty_category(category: str) -> str:
 
 
 def _demo_entries() -> list[dict[str, Any]]:
+    """Default demo preview shown before a user uploads a requirements file.
+
+    This mirrors the Chapter 3 non-agent demo output so the landing page shows
+    the same scenario used for project demonstrations: two medium review gaps
+    and two low-control/clarification findings.
+    """
     return _normalise_entries([
         {
-            "id": "FR-1",
-            "text": "The system shall ingest candidate resumes, cover letters, and application form responses for recruitment screening.",
+            "id": "CH3-DEMO-1",
+            "text": "The system shall ingest candidate resumes, cover letters, and application form responses for automated recruitment screening.",
             "risk_level": "medium",
-            "analysis": "The requirement concerns data collection for a potential high-risk AI use case. The main review area is whether data origin, quality, handling, and validation expectations are specified.",
-            "risks": [{
-                "description": "Data governance, data quality, or data-management expectations are not fully specified [medium]",
-                "provision": "Article 10(2)",
-                "obligation_category": "data_governance",
-                "engineering_action": "Define data sources, data quality checks, bias checks, validation evidence, and data handling rules.",
-            }],
-            "citations": [],
-            "recommendations": ["Define data origin, quality criteria, storage/retention handling, and validation checks for candidate/application data."],
-        },
-        {
-            "id": "FR-2",
-            "text": "The system shall generate a suitability score for each candidate based on job requirements, experience, education, and skills.",
-            "risk_level": "medium",
-            "analysis": "The requirement creates a model-generated score. The assessment prioritises data quality and transparency because scoring can affect how outputs are interpreted and trusted.",
+            "analysis": "Semantic profile indicates a remaining data_governance, technical_documentation gap. Conservative risk retained for manual review.",
             "risks": [
                 {
-                    "description": "Data governance, data quality, or data-management expectations are not fully specified [medium]",
+                    "description": "Data governance expectations not fully specified [medium]",
                     "provision": "Article 10(2)",
                     "obligation_category": "data_governance",
-                    "engineering_action": "Define data source, quality, bias, and validation checks for this requirement.",
+                    "engineering_action": "Define data source, quality, bias, and validation checks.",
                 },
                 {
-                    "description": "Transparency or explanation expectations are not fully specified [medium]",
-                    "provision": "Article 13(1)",
-                    "obligation_category": "transparency",
-                    "engineering_action": "Define explanation detail, user/deployer information, limitations, and instructions for use.",
+                    "description": "Technical documentation expectations not fully specified [medium]",
+                    "provision": "Article 11(1)",
+                    "obligation_category": "technical_documentation",
+                    "engineering_action": "Document design decisions, evidence, and compliance rationale.",
                 },
             ],
-            "citations": [],
-            "recommendations": ["Document scoring inputs, data quality assumptions, performance limits, and how score outputs should be interpreted."],
+            "citations": [
+                {
+                    "label": "Data and data governance, Article 10(2)",
+                    "text": "Training, validation and testing data sets shall be subject to data governance and management practices appropriate for the intended purpose of the high-risk AI system.",
+                },
+                {
+                    "label": "Technical documentation, Article 11(1)",
+                    "text": "The technical documentation of a high-risk AI system shall be drawn up before that system is placed on the market or put into service and shall be kept up to date.",
+                },
+            ],
+            "recommendations": [
+                "Define data source, quality, bias, and validation checks.",
+                "Document design decisions, evidence, and compliance rationale.",
+            ],
         },
         {
-            "id": "NFR-1",
-            "text": "The system must log every model-generated score, ranking, explanation, recruiter override, and final screening decision.",
+            "id": "CH3-DEMO-2",
+            "text": "The system shall generate and display a candidate suitability score with an explanation of the main factors that influenced the score.",
+            "risk_level": "medium",
+            "analysis": "Semantic profile indicates a remaining data_governance, transparency gap. Conservative risk retained for manual review.",
+            "risks": [
+                {
+                    "description": "Data governance expectations not fully specified [medium]",
+                    "provision": "Article 10(2)",
+                    "obligation_category": "data_governance",
+                    "engineering_action": "Define data source, quality, bias, and validation checks.",
+                },
+                {
+                    "description": "Transparency expectations not fully specified [medium]",
+                    "provision": "Article 13(1)",
+                    "obligation_category": "transparency",
+                    "engineering_action": "Define explanation detail, user information, and instructions for use.",
+                },
+            ],
+            "citations": [
+                {
+                    "label": "Data and data governance, Article 10(2)",
+                    "text": "Training, validation and testing data sets shall be subject to data governance and management practices appropriate for the intended purpose of the high-risk AI system.",
+                },
+                {
+                    "label": "Transparency and provision of information to deployers, Article 13(1)",
+                    "text": "High-risk AI systems shall be designed and developed so their operation is sufficiently transparent to enable deployers to interpret the output and use it appropriately.",
+                },
+            ],
+            "recommendations": [
+                "Define data source, quality, bias, and validation checks.",
+                "Define explanation detail, user information, and instructions for use.",
+            ],
+        },
+        {
+            "id": "CH3-DEMO-3",
+            "text": "The system shall allow a human recruiter to review, override, or reject an automated ranking before a candidate is removed from consideration.",
             "risk_level": "low",
-            "analysis": "The requirement already describes a record-keeping control. A low remaining clarification risk is retained for log scope, retention, access, and audit review.",
-            "risks": [{
-                "description": "Record-keeping or logging expectations need implementation detail [low]",
-                "provision": "Article 12(1)",
-                "obligation_category": "record_keeping",
-                "engineering_action": "Specify log fields, retention period, access controls, and audit-review responsibilities.",
-            }],
-            "citations": [],
-            "recommendations": ["Specify log fields, retention period, access controls, audit review process, and model-version traceability."],
+            "analysis": "Semantic profile indicates a remaining human_oversight, transparency gap. Conservative risk retained for manual review.",
+            "risks": [
+                {
+                    "description": "Human oversight expectations not fully specified [low]",
+                    "provision": "Article 14(1)",
+                    "obligation_category": "human_oversight",
+                    "engineering_action": "Define reviewer authority, training, escalation, and monitoring.",
+                },
+                {
+                    "description": "Transparency expectations not fully specified [low]",
+                    "provision": "Article 13(1)",
+                    "obligation_category": "transparency",
+                    "engineering_action": "Define explanation detail, user information, and instructions for use.",
+                },
+            ],
+            "citations": [
+                {
+                    "label": "Human oversight, Article 14(1)",
+                    "text": "High-risk AI systems shall be designed and developed with appropriate human-machine interface tools so they can be effectively overseen by natural persons.",
+                },
+                {
+                    "label": "Transparency and provision of information to deployers, Article 13(1)",
+                    "text": "High-risk AI systems shall be designed and developed so their operation is sufficiently transparent to enable deployers to interpret the output and use it appropriately.",
+                },
+            ],
+            "recommendations": [
+                "Define reviewer authority, training, escalation, and monitoring.",
+                "Define explanation detail, user information, and instructions for use.",
+            ],
+        },
+        {
+            "id": "CH3-DEMO-4",
+            "text": "The system must log each automated score, ranking, explanation, recruiter override, final decision, and model version for audit review.",
+            "risk_level": "low",
+            "analysis": "The requirement describes a control/safeguard. A low remaining clarification risk is retained for manual review.",
+            "risks": [
+                {
+                    "description": "Record-keeping expectations not fully specified [low]",
+                    "provision": "Article 12(1)",
+                    "obligation_category": "record_keeping",
+                    "engineering_action": "Specify log fields, retention, access controls, and audit review.",
+                },
+                {
+                    "description": "Technical documentation expectations not fully specified [low]",
+                    "provision": "Article 11(1)",
+                    "obligation_category": "technical_documentation",
+                    "engineering_action": "Document design decisions, evidence, and compliance rationale.",
+                },
+            ],
+            "citations": [
+                {
+                    "label": "Record-keeping, Article 12(1)",
+                    "text": "High-risk AI systems shall technically allow for the automatic recording of events over the lifetime of the system.",
+                },
+                {
+                    "label": "Technical documentation, Article 11(1)",
+                    "text": "The technical documentation of a high-risk AI system shall be drawn up before that system is placed on the market or put into service and shall be kept up to date.",
+                },
+            ],
+            "recommendations": [
+                "Specify log fields, retention, access controls, and audit review.",
+                "Document design decisions, evidence, and compliance rationale.",
+            ],
         },
     ])
-
 
 def _render(
     request: Request,
