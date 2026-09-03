@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>EU AI Risk Mapper</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <nav class="top-nav">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 3h6l1 2h3a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h3l1-2Z"/>
+              <path d="M9 5h6"/>
+              <path d="m8.5 13 2.2 2.2 4.8-5"/>
+            </svg>
+          </div>
+          <div>
+            <strong>EU AI Risk Mapper</strong>
+            <span>Proof of concept</span>
+          </div>
+        </div>
+        <div class="nav-status {% if error %}error{% endif %}">
+          <span class="status-dot"></span>
+          {{ status }}
+        </div>
+      </nav>
+
+      <section class="hero">
+        <div>
+          <span class="eyebrow">Traceable requirements review</span>
+          <h1>Map software requirements to EU AI Act risk obligations.</h1>
+          <p>
+            Upload a requirements document, run the KG + LLM risk assessment pipeline, and review mapped
+            obligation categories, remaining gaps, existing safeguards, and practical engineering actions.
+          </p>
+          <div class="hero-actions">
+            <button class="primary-btn" form="assessment-form" type="submit" id="hero-run-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 5-7"/></svg>
+              Run assessment
+            </button>
+            <a class="secondary-btn" href="/demo">Load demo</a>
+            {% if report_token %}
+              <a class="secondary-btn" href="/download/{{ report_token }}">Download report</a>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="pipeline-card">
+          <div class="pipeline-step"><span>01</span><div><strong>Upload</strong><p>Upload JSON, TXT, MD, PDF, or DOCX requirements.</p></div></div>
+          <div class="pipeline-step"><span>02</span><div><strong>Assess</strong><p>Run semantic-profile EU AI Act mapping.</p></div></div>
+          <div class="pipeline-step"><span>03</span><div><strong>Review</strong><p>Surface risks, controls, and engineering actions.</p></div></div>
+        </div>
+      </section>
+
+      <section class="workspace-grid">
+        <aside class="input-panel">
+          <div class="panel-heading">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h6"/></svg>
+            <div>
+              <strong>Requirements document</strong>
+              <span>Upload JSON, TXT, MD, PDF, or DOCX</span>
+            </div>
+          </div>
+
+          <form id="assessment-form" method="post" action="/assess" enctype="multipart/form-data">
+            <label class="upload-dropzone {% if uploaded_filename %}has-file{% endif %}" id="dropzone">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>
+              <strong id="file-label">{{ uploaded_filename or 'Upload requirements document' }}</strong>
+              <span id="file-helper">
+                {% if uploaded_filename %}
+                  Assessment file loaded.
+                {% else %}
+                  Use a requirements JSON or an SRS-style document with shall/should/must statements.
+                {% endif %}
+              </span>
+              <input id="requirements-file" name="requirements_file" type="file" accept=".json,.txt,.md,.markdown,.pdf,.docx" required />
+            </label>
+
+            <div class="mode-card">
+              <label>
+                <input type="radio" name="mode" value="non-agent" checked />
+                <span><strong>Non-agent</strong><small>Faster deterministic pipeline for demos.</small></span>
+              </label>
+              <label>
+                <input type="radio" name="mode" value="agent" />
+                <span><strong>Agent</strong><small>More exploratory, slower, better with stronger models.</small></span>
+              </label>
+            </div>
+
+            <button class="full-width-btn" type="submit" id="run-btn">
+              <svg class="run-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 5-7"/></svg>
+              <span>Run assessment</span>
+            </button>
+          </form>
+
+          <div class="input-note">
+            <strong>Current flow</strong>
+            <p>
+              This UI stays Python-based. It uploads a requirements file, uses the existing backend assessment path,
+              and renders the returned risk findings as a dashboard.
+            </p>
+          </div>
+
+          {% if error %}
+            <div class="error-card"><strong>Run failed</strong><p>{{ error }}</p></div>
+          {% endif %}
+        </aside>
+
+        <section class="results-panel">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m12 2 9 5-9 5-9-5 9-5Z" />
+                  <path d="m3 12 9 5 9-5" />
+                  <path d="m3 17 9 5 9-5" />
+                </svg>
+              </div>
+              <div><p>Total findings</p><strong>{{ entries|length }}</strong><span>requirements reviewed</span></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 7v6" />
+                  <path d="M12 17h.01" />
+                </svg>
+              </div>
+              <div><p>High</p><strong>{{ counts.high }}</strong><span>critical gaps</span></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+                  <path d="M12 9v4" />
+                  <path d="M12 17h.01" />
+                </svg>
+              </div>
+              <div><p>Medium</p><strong>{{ counts.medium }}</strong><span>needs review</span></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+                  <path d="m9 12 2 2 4-4" />
+                </svg>
+              </div>
+              <div><p>Low</p><strong>{{ counts.low }}</strong><span>controls or clarification</span></div>
+            </div>
+          </div>
+
+          <div class="filters">
+            <div class="search-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <input id="search-input" placeholder="Search requirements..." />
+            </div>
+            <div class="filter-group">
+              <select id="level-filter">
+                <option value="all">all</option>
+                <option value="high">high</option>
+                <option value="medium">medium</option>
+                <option value="low">low</option>
+              </select>
+              <select id="category-filter">
+                <option value="all">all categories</option>
+                {% for category in categories %}
+                  <option value="{{ category }}">{{ category.replace('_', ' ').replace('-', ' ') }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="review-layout">
+            <div class="findings-list" id="findings-list">
+              {% for entry in entries %}
+                {% set cats = entry.risks | map(attribute='obligation_category') | select | unique | list %}
+                <button
+                  class="finding-card {% if loop.first %}active{% endif %}"
+                  data-target="detail-{{ loop.index }}"
+                  data-level="{{ entry.risk_level }}"
+                  data-categories="{{ cats | join(' ') }}"
+                  data-search="{{ (entry.id ~ ' ' ~ entry.text ~ ' ' ~ entry.analysis)|lower }}"
+                >
+                  <div class="finding-topline"><strong>{{ entry.id }}</strong><span class="risk-pill {{ entry.risk_level }}">{{ entry.risk_level }}</span></div>
+                  <p>{{ entry.text }}</p>
+                  <div class="category-row">
+                    {% if cats %}
+                      {% for category in cats[:3] %}<span>{{ category.replace('_', ' ').replace('-', ' ') }}</span>{% endfor %}
+                    {% else %}
+                      <span>safeguard/control</span>
+                    {% endif %}
+                  </div>
+                </button>
+              {% endfor %}
+              <p class="no-results" id="no-results" hidden>No findings match the current filters.</p>
+            </div>
+
+            <div class="details-stack">
+              {% for entry in entries %}
+                <article class="detail-panel {% if not loop.first %}hidden{% endif %}" id="detail-{{ loop.index }}">
+                  <div class="detail-header">
+                    <div><span class="eyebrow">Requirement finding</span><h2>{{ entry.id }}</h2></div>
+                    <span class="risk-pill {{ entry.risk_level }}">{{ entry.risk_level }}</span>
+                  </div>
+
+                  <section><h3>Requirement</h3><p class="requirement-text">{{ entry.text }}</p></section>
+                  <section><h3>Risk analysis</h3><p>{{ entry.analysis }}</p></section>
+
+                  <section>
+                    <h3>Mapped obligations</h3>
+                    <div class="risk-list">
+                      {% if entry.risks %}
+                        {% for risk in entry.risks %}
+                          <div class="risk-item">
+                            <div><span>{{ risk.obligation_category_label }}</span><p>{{ risk.description }}{% if risk.provision %} — {{ risk.provision }}{% endif %}</p></div>
+                            {% if risk.engineering_action %}<small>{{ risk.engineering_action }}</small>{% endif %}
+                          </div>
+                        {% endfor %}
+                      {% else %}
+                        <div class="positive-card">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                          <p>No retained requirement-level risk. This requirement appears to act as a safeguard/control.</p>
+                        </div>
+                      {% endif %}
+                    </div>
+                  </section>
+
+                  {% if entry.citations %}
+                    <section><h3>Cited provisions</h3>
+                      <div class="citation-list">
+                      {% for citation in entry.citations %}
+                        <div class="citation-card"><strong>{{ citation.label }}</strong><p>{{ citation.text }}</p></div>
+                      {% endfor %}
+                      </div>
+                    </section>
+                  {% endif %}
+
+                  <section>
+                    <h3>Recommended next steps</h3>
+                    <ul class="recommendations">
+                      {% if entry.recommendations %}
+                        {% for recommendation in entry.recommendations %}<li>{{ recommendation }}</li>{% endfor %}
+                      {% else %}
+                        <li>Confirm the mapping with a human reviewer before using it for compliance decisions.</li>
+                      {% endif %}
+                    </ul>
+                  </section>
+                </article>
+              {% endfor %}
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="{{ url_for('static', path='/app.js') }}"></script>
+  </body>
+</html>

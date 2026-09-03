@@ -1,0 +1,38 @@
+[
+  {
+    "id": "CH3-FR-1",
+    "text": "The system shall ingest candidate resumes, cover letters, and application form responses for recruitment screening."
+  },
+  {
+    "id": "CH3-FR-2",
+    "text": "The system shall generate a suitability score for each candidate based on job requirements, experience, education, and skills."
+  },
+  {
+    "id": "CH3-FR-3",
+    "text": "The system shall rank candidates for recruiter review using the generated suitability score."
+  },
+  {
+    "id": "CH3-FR-4",
+    "text": "The system shall explain the main factors that influenced each candidate suitability score in language understandable to a recruiter."
+  },
+  {
+    "id": "CH3-FR-5",
+    "text": "The system shall allow a human recruiter to review, override, or reject any automated ranking before a candidate is removed from consideration."
+  },
+  {
+    "id": "CH3-NFR-1",
+    "text": "The system must log every model-generated score, ranking, explanation, recruiter override, and final screening decision."
+  },
+  {
+    "id": "CH3-NFR-2",
+    "text": "The system must validate training and evaluation datasets for missing values, duplicate records, inconsistent labels, and demographic performance differences before model training."
+  },
+  {
+    "id": "CH3-NFR-3",
+    "text": "The system must not use protected attributes such as race, religion, disability, political opinion, biometric identification, or emotion recognition as ranking inputs."
+  },
+  {
+    "id": "CH3-NFR-4",
+    "text": "The system must monitor model accuracy, bias metrics, and data quality checks after deployment and alert administrators when configured thresholds are breached."
+  }
+]

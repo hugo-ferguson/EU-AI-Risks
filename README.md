@@ -131,6 +131,27 @@ Each paragraph is tagged with an `obligation_type`: requirement, prohibition, pe
 
 When requirements are loaded, the graph also gets Requirement and Entity nodes with semantic triple edges, so related requirements can be found through shared entities.
 
+
+## Web demo UI
+
+This repository includes a lightweight Python-only web interface built with FastAPI and Jinja templates. It avoids a separate React/npm frontend while still providing a polished upload-and-review dashboard.
+
+Run the UI from the repo root:
+
+```bash
+pip install -e .
+uvicorn eu_ai_risks.web_app:app --reload --host 0.0.0.0 --port 8000
+```
+
+Then open:
+
+```text
+http://localhost:8000
+```
+
+The UI supports `.json`, `.txt`, `.md`, `.markdown`, `.pdf`, and `.docx` requirements files. Use non-agent mode for faster demos and agent mode only when a stronger/slower assessment is acceptable.
+
+
 ## Project structure
 
 ```
@@ -162,3 +183,8 @@ eu_ai_risks/
     risk_assessor_agent.py            # Agent-based assessment pipeline
     risk_report.py                    # Markdown report generation
 ```
+
+
+## Quick demo test file
+
+Use `examples/requirements/chapter3-non-agent-demo-requirements.json` to test the frontend and current non-agent Chapter 3 backend flow with four short recruitment-screening requirements.
