@@ -5,7 +5,6 @@ Embedding model wrapper using sentence-transformers.
 import torch
 from sentence_transformers import SentenceTransformer
 
-# Define the model parameters to use to generate embeddings.
 MODEL_NAME = "BAAI/bge-base-en-v1.5"
 EMBEDDING_DIMENSIONS = 768
 

@@ -1,58 +1,32 @@
 """
-Generate traceable risk reports from requirement-to-legislation analysis.
+Generate traceable risk reports from requirement assessments.
 """
 
 import json
+import re
 from pathlib import Path
-
-from eu_ai_risks.analysis.risk_mapper import RiskMapping
 
 MAX_CITATION_TEXT_LENGTH = 500
 
+# Extracts the value of "summary" from JSON even when the rest is truncated
+_RE_SUMMARY_VALUE = re.compile(r'"summary"\s*:\s*"((?:[^"\\]|\\.)*)"')
 
-def entries_from_mappings(mappings: list[RiskMapping]) -> list[dict]:
-    """Convert RiskMapping objects to the common report entry format."""
-    entries = []
-    for mapping in mappings:
-        requirement = mapping.requirement
 
-        source_parts = [requirement.source]
-        if requirement.page:
-            source_parts.append(f"page {requirement.page}")
-        if requirement.section:
-            source_parts.append(f"section {requirement.section}")
-        if requirement.title:
-            source_parts.append(requirement.title)
-
-        analysis = mapping.explanation
-        if mapping.risk_signals:
-            analysis += f" Risk signals: {', '.join(mapping.risk_signals)}."
-
-        risks = []
-        citations = []
-        for match in mapping.matches:
-            provision = f"Article {match.article_num}({match.paragraph_num})"
-            risks.append({
-                "description": f"Matched {provision} (score {match.score:.3f})",
-                "provision": provision,
-            })
-            citations.append({
-                "label": f"{match.article_title}, {provision}",
-                "text": match.paragraph_text,
-            })
-
-        entries.append({
-            "id": requirement.id,
-            "text": requirement.text,
-            "source": ", ".join(source_parts),
-            "risk_level": mapping.risk_level,
-            "analysis": analysis,
-            "risks": risks,
-            "citations": citations,
-            "recommendations": [],
-        })
-
-    return entries
+def _sanitise_analysis(text: str) -> str:
+    """If the analysis field is raw JSON, extract the summary from it."""
+    stripped = text.strip()
+    if not stripped.startswith("{"):
+        return text
+    try:
+        data = json.loads(stripped)
+        if isinstance(data, dict) and "summary" in data:
+            return data["summary"]
+    except (json.JSONDecodeError, ValueError):
+        # JSON is malformed/truncated; try regex extraction
+        match = _RE_SUMMARY_VALUE.search(stripped)
+        if match:
+            return match.group(1).replace('\\"', '"').replace("\\n", "\n")
+    return text
 
 
 def entries_from_assessments(assessment_entries: list[dict]) -> list[dict]:
@@ -73,9 +47,8 @@ def entries_from_assessments(assessment_entries: list[dict]) -> list[dict]:
         entries.append({
             "id": requirement.get("id", "Unknown"),
             "text": requirement.get("text", ""),
-            "source": "",
             "risk_level": assessment.risk_level,
-            "analysis": assessment.summary,
+            "analysis": _sanitise_analysis(assessment.summary),
             "risks": risks,
             "citations": entry.get("citations", []),
             "recommendations": assessment.recommendations,
@@ -102,7 +75,7 @@ def render_markdown_report(
     for entry in entries:
         level = entry["risk_level"].capitalize()
         level_counts[level] = level_counts.get(level, 0) + 1
-    for level in ("High", "Medium", "Low", "Unmapped"):
+    for level in ("High", "Medium", "Low"):
         count = level_counts.get(level, 0)
         if count:
             lines.append(f"- {level}: {count}")
@@ -117,18 +90,15 @@ def render_markdown_report(
             "",
             f"**Requirement:** {entry['text']}",
             "",
+            f"**Analysis:** {entry['analysis']}",
+            "",
         ])
-
-        if entry.get("source"):
-            lines.extend([f"**Source:** {entry['source']}", ""])
-
-        lines.extend([f"**Analysis:** {entry['analysis']}", ""])
 
         if entry.get("risks"):
             lines.append("**Risks:**")
             lines.append("")
             for risk in entry["risks"]:
-                provision = f" — {risk['provision']}" if risk.get("provision") else ""
+                provision = f" - {risk['provision']}" if risk.get("provision") else ""
                 lines.append(f"- {risk['description']}{provision}")
             lines.append("")
 
@@ -175,7 +145,7 @@ def collect_citations(
     risks: list,
     article_cache: dict[str, dict],
 ) -> list[dict]:
-    """Look up real paragraph text for each risk's article_id + paragraph_num."""
+    """Look up paragraph text for each risk's article and paragraph number."""
     from eu_ai_risks.db.graph import get_article
 
     seen: set[tuple[str, int | None]] = set()
@@ -203,8 +173,8 @@ def collect_citations(
 
         if risk.paragraph_num is not None:
             paragraph = next(
-                (p for p in article.get("paragraphs", [])
-                 if p.get("num") == risk.paragraph_num),
+                (para for para in article.get("paragraphs", [])
+                 if para.get("num") == risk.paragraph_num),
                 None,
             )
             if paragraph:

@@ -14,9 +14,7 @@ RE_CHAPTER = re.compile(r'^CHAPTER ([IVX]+)$')
 RE_SECTION = re.compile(r'^SECTION (\d+)$')
 RE_ARTICLE = re.compile(r'^Article (\d+)$')
 RE_ANNEX = re.compile(r'^ANNEX ([IVX]+)$')
-# EU legislation uses two paragraph numbering styles. 'N.' is standard;
-# '(N)' appears in definition and amendment articles (e.g. Art 3, 108).
-# Articles that have both use 'N.' for paragraphs and '(N)' for footnotes.
+# Two numbering styles: 'N.' is standard, '(N)' appears in definition articles
 RE_PARAGRAPH_DOT = re.compile(r'^(\d+)\.\s')
 RE_PARAGRAPH_PAREN = re.compile(r'^\((\d+)\)\s')
 RE_FOOTER = re.compile(r'^(EN\s*$|OJ L,|ELI:|/144)')
@@ -72,8 +70,7 @@ def find_title_after_heading(
     for i in range(heading_index, len(all_lines)):
         line = all_lines[i]
 
-        # None lines are page breaks, so ignore those.
-        # Footers will never contain titles, so ignore those too.
+        # None lines are page breaks; footers never contain titles
         if line is not None and line.strip() and not is_footer(line):
             return i, line.strip()
 
@@ -93,8 +90,7 @@ def extract_paragraphs(article_segment: Segment) -> list[Segment]:
     :return: a list of paragraph segments (these do not have titles).
     """
 
-    # Prefer 'N.' paragraphs. Fall back to '(N)' only if none exist. Articles
-    # that have both use '(N)' for footnotes, not paragraphs.
+    # Prefer 'N.' style; '(N)' is a fallback for definition articles
     pattern = (
         RE_PARAGRAPH_DOT
         if any(RE_PARAGRAPH_DOT.match(line) for line in article_segment.body)
@@ -142,20 +138,15 @@ def extract_segments(pdf_path: Path) -> list[Segment]:
     current_chapter = None
     current_section = None
 
-    # The Act has three regions in order: the preamble before the first
-    # chapter, the enacting terms (chapters, sections, articles), then the
-    # annexes. Headings only count inside the enacting terms. An "Article 49"
-    # line in an annex is a cross-reference, not a new article, so track the
-    # region to keep recital and annex text out of the articles.
+    # Three regions: preamble, enacting terms, annexes. Track which we're in
+    # so annex cross-references aren't mistaken for new articles.
     in_enacting_terms = False
     in_annexes = False
     i = 0
 
-    # Iterate over lines.
     while i < len(all_lines):
         line = all_lines[i]
 
-        # Skip empty (page break) or footer lines.
         if line is None or is_footer(line):
             i += 1
             continue

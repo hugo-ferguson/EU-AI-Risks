@@ -24,43 +24,25 @@ TOOL_DEFINITIONS = [
         "type": "function",
         "function": {
             "name": "list_categories",
-            "description": (
-                "List all 14 requirement categories from the EU AI Act "
-                "(e.g. risk_management, human_oversight, data_governance) "
-                "with their names and anchor article IDs."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {},
-                "required": [],
-            },
+            "description": "List the 14 requirement categories with their anchor article IDs.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
         },
     },
     {
         "type": "function",
         "function": {
             "name": "get_category_articles",
-            "description": (
-                "Get the anchor article text and binding paragraphs for a "
-                "requirement category. Use after identifying which category "
-                "is relevant."
-            ),
+            "description": "Get anchor article text and binding paragraphs for a category.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "category_key": {
                         "type": "string",
-                        "description": (
-                            "One of the 14 category keys, e.g. "
-                            "'human_oversight', 'risk_management'."
-                        ),
+                        "description": "e.g. 'human_oversight', 'data_governance'.",
                     },
                     "include_all_types": {
                         "type": "boolean",
-                        "description": (
-                            "If true, include all paragraph types, not "
-                            "just binding requirements. Default false."
-                        ),
+                        "description": "Include non-binding paragraphs too. Default false.",
                     },
                 },
                 "required": ["category_key"],
@@ -71,27 +53,17 @@ TOOL_DEFINITIONS = [
         "type": "function",
         "function": {
             "name": "search",
-            "description": (
-                "Semantic search over EU AI Act paragraphs. Returns "
-                "paragraphs ranked by relevance with full text and article "
-                "context. Use EU AI Act vocabulary for best results "
-                "(e.g. 'human oversight measures' not 'a person reviews "
-                "the output')."
-            ),
+            "description": "Semantic search over EU AI Act paragraphs. Use regulatory vocabulary.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": (
-                            "Search query. Use regulatory vocabulary."
-                        ),
+                        "description": "Search query in regulatory language.",
                     },
                     "top_k": {
                         "type": "integer",
-                        "description": (
-                            "Number of results (default 8, max 15)."
-                        ),
+                        "description": "Number of results (default 8, max 15).",
                     },
                 },
                 "required": ["query"],
@@ -102,25 +74,18 @@ TOOL_DEFINITIONS = [
         "type": "function",
         "function": {
             "name": "text_search",
-            "description": (
-                "Search for an exact keyword or phrase in paragraph text. "
-                "More precise than semantic search for known regulatory "
-                "terms (e.g. 'conformity assessment', 'high-risk AI system')."
-            ),
+            "description": "Exact keyword search in paragraph text.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "keyword": {
                         "type": "string",
-                        "description": "The keyword or phrase to find.",
+                        "description": "Keyword or phrase to find.",
                     },
                     "obligation_types": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": (
-                            "Filter by type: requirement, prohibition, "
-                            "permission, definition, scope, informational."
-                        ),
+                        "description": "Filter: requirement, prohibition, permission, definition, scope, informational.",
                     },
                 },
                 "required": ["keyword"],
@@ -131,17 +96,13 @@ TOOL_DEFINITIONS = [
         "type": "function",
         "function": {
             "name": "read_article",
-            "description": (
-                "Read the full text of a specific article with all its "
-                "paragraphs, chapter context, and dimension tags "
-                "(responsible parties, risk category, data categories)."
-            ),
+            "description": "Full article text with paragraphs, chapter context, and dimension tags.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "article_id": {
                         "type": "string",
-                        "description": "The article ID, e.g. 'art:9'.",
+                        "description": "e.g. 'art:9'.",
                     },
                 },
                 "required": ["article_id"],
@@ -152,16 +113,13 @@ TOOL_DEFINITIONS = [
         "type": "function",
         "function": {
             "name": "get_references",
-            "description": (
-                "Get articles that a given article cites and articles that "
-                "cite it. Use to follow the cross-reference network."
-            ),
+            "description": "Outgoing and incoming cross-references for an article.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "article_id": {
                         "type": "string",
-                        "description": "The article ID, e.g. 'art:9'.",
+                        "description": "e.g. 'art:9'.",
                     },
                 },
                 "required": ["article_id"],
@@ -172,35 +130,21 @@ TOOL_DEFINITIONS = [
         "type": "function",
         "function": {
             "name": "list_requirements",
-            "description": (
-                "List all software requirements that have been extracted "
-                "from the input document(s). Returns requirement IDs and "
-                "text."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {},
-                "required": [],
-            },
+            "description": "List all software requirements loaded into the graph.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
         },
     },
     {
         "type": "function",
         "function": {
             "name": "get_requirement",
-            "description": (
-                "Read a specific requirement with its semantic triples "
-                "(subject-predicate-object decomposition). Use to "
-                "understand what a requirement actually specifies."
-            ),
+            "description": "Read a requirement with its semantic triples.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "requirement_id": {
                         "type": "string",
-                        "description": (
-                            "The requirement ID, e.g. 'REQ-001'."
-                        ),
+                        "description": "e.g. 'FR-1'.",
                     },
                 },
                 "required": ["requirement_id"],
@@ -211,20 +155,13 @@ TOOL_DEFINITIONS = [
         "type": "function",
         "function": {
             "name": "get_related_requirements",
-            "description": (
-                "Find other requirements that share entities with a given "
-                "requirement. Use to discover related requirements that "
-                "should be assessed together (e.g. data collection and "
-                "data usage requirements)."
-            ),
+            "description": "Find requirements sharing entities with the given one.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "requirement_id": {
                         "type": "string",
-                        "description": (
-                            "The requirement ID, e.g. 'REQ-001'."
-                        ),
+                        "description": "e.g. 'FR-1'.",
                     },
                 },
                 "required": ["requirement_id"],
@@ -235,12 +172,7 @@ TOOL_DEFINITIONS = [
         "type": "function",
         "function": {
             "name": "search_requirement_entities",
-            "description": (
-                "Semantic search over entities extracted from software "
-                "requirements. Returns matching entities with the "
-                "requirements they belong to. Use to find requirements "
-                "related to a concept."
-            ),
+            "description": "Semantic search over entities from the requirements graph.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -250,9 +182,7 @@ TOOL_DEFINITIONS = [
                     },
                     "top_k": {
                         "type": "integer",
-                        "description": (
-                            "Number of results (default 8, max 15)."
-                        ),
+                        "description": "Number of results (default 8, max 15).",
                     },
                 },
                 "required": ["query"],
@@ -294,13 +224,6 @@ _DISPATCH = {
 
 
 def execute_tool(tool_name: str, arguments: dict) -> str:
-    """
-    Execute a tool call and return the result as a JSON string.
-
-    :param tool_name: the function name from the tool call.
-    :param arguments: the parsed arguments dict.
-    :return: JSON string of the result.
-    """
     handler = _DISPATCH.get(tool_name)
     if not handler:
         return json.dumps({"error": f"Unknown tool: {tool_name}"})
@@ -308,5 +231,5 @@ def execute_tool(tool_name: str, arguments: dict) -> str:
     try:
         result = handler(arguments)
         return json.dumps(result, default=str, ensure_ascii=False)
-    except Exception as e:
-        return json.dumps({"error": str(e)})
+    except Exception as exc:
+        return json.dumps({"error": str(exc)})

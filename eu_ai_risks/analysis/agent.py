@@ -11,6 +11,8 @@ from eu_ai_risks.llm import complete_with_tools, strip_llm_wrapping
 
 log = logging.getLogger(__name__)
 
+MAX_TOOL_RESULT_CHARS = 2000
+
 
 def _parse_answer(raw_content: str) -> AgentAnswer:
     raw_content = strip_llm_wrapping(raw_content)
@@ -21,6 +23,7 @@ def _parse_answer(raw_content: str) -> AgentAnswer:
 
 
 def _extract_text_tool_calls(content: str) -> list[dict] | None:
+    """Parse tool calls embedded as JSON text (for models without native tool support)."""
     try:
         parsed = json.loads(content.strip())
     except (json.JSONDecodeError, ValueError):
@@ -32,42 +35,39 @@ def _extract_text_tool_calls(content: str) -> list[dict] | None:
 
     tool_calls = []
     for item in items:
-        func = item.get("function") if isinstance(item, dict) else None
-        if isinstance(func, dict) and "name" in func:
-            args = func.get("arguments", {})
+        function = item.get("function") if isinstance(item, dict) else None
+        if isinstance(function, dict) and "name" in function:
+            arguments = function.get("arguments", {})
             tool_calls.append({
                 "id": item.get("id", f"call_{uuid.uuid4().hex[:12]}"),
                 "type": "function",
                 "function": {
-                    "name": func["name"],
-                    "arguments": args if isinstance(args, str) else json.dumps(args),
+                    "name": function["name"],
+                    "arguments": arguments if isinstance(arguments, str) else json.dumps(arguments),
                 },
             })
 
     return tool_calls or None
 
 
-def _serialize_tool_call(tc) -> dict:
+def _serialise_tool_call(tool_call) -> dict:
     return {
-        "id": tc.id,
+        "id": tool_call.id,
         "type": "function",
         "function": {
-            "name": tc.function.name,
-            "arguments": tc.function.arguments,
+            "name": tool_call.function.name,
+            "arguments": tool_call.function.arguments,
         },
     }
 
 
-def _execute_tool_call(tc_dict: dict, executor: Callable) -> tuple[str, str]:
-    tool_name = tc_dict["function"]["name"] or ""
+def _execute_tool_call(tool_call_dict: dict, executor: Callable) -> tuple[str, str]:
+    tool_name = tool_call_dict["function"]["name"] or ""
     try:
-        arguments = json.loads(tc_dict["function"]["arguments"] or "{}")
+        arguments = json.loads(tool_call_dict["function"]["arguments"] or "{}")
     except json.JSONDecodeError:
         arguments = {}
     return tool_name, executor(tool_name, arguments)
-
-
-MAX_TOOL_RESULT_CHARS = 2000
 
 
 class AgentLoop:
@@ -95,7 +95,9 @@ class AgentLoop:
         total_tool_calls = 0
 
         for iteration in range(1, self.max_iterations + 1):
-            if iteration == self.max_iterations:
+            is_final_iteration = iteration == self.max_iterations
+
+            if is_final_iteration:
                 messages.append({
                     "role": "user",
                     "content": (
@@ -105,48 +107,40 @@ class AgentLoop:
                 })
 
             log.debug(
-                "SENDING iter %d | %d msgs | roles=%s",
-                iteration,
+                "iter %d/%d | %d messages | roles=%s",
+                iteration, self.max_iterations,
                 len(messages),
-                [m["role"] for m in messages],
+                [msg["role"] for msg in messages],
             )
-            tools_to_send = (
-                self.tools if iteration < self.max_iterations else None
-            )
+
+            tools_for_call = None if is_final_iteration else self.tools
             response = complete_with_tools(
-                messages, tools=tools_to_send, max_tokens=self.max_tokens,
+                messages, tools=tools_for_call, max_tokens=self.max_tokens,
             )
 
             message = response.choices[0].message
             raw_content = message.content or ""
             content = strip_llm_wrapping(raw_content)
-            assistant_msg: dict = {"role": "assistant"}
+            assistant_message: dict = {"role": "assistant"}
             if content:
-                assistant_msg["content"] = content
+                assistant_message["content"] = content
 
             log.debug(
-                "iter %d | raw_content[:200]=%r | "
-                "content[:200]=%r | tool_calls=%s",
+                "iter %d | content[:200]=%r | tool_calls=%s",
                 iteration,
-                raw_content[:200],
                 content[:200],
-                [tc.function.name for tc in message.tool_calls]
+                [tool_call.function.name for tool_call in message.tool_calls]
                 if message.tool_calls else None,
             )
 
             tool_calls = (
-                [_serialize_tool_call(tc) for tc in message.tool_calls]
+                [_serialise_tool_call(tool_call) for tool_call in message.tool_calls]
                 if message.tool_calls
                 else _extract_text_tool_calls(content)
             )
 
-            # If the model returned only thinking tags (no real content
-            # and no tool calls), nudge it to actually act.
             if not tool_calls and not content:
-                messages.append({
-                    "role": "assistant",
-                    "content": "(no output)",
-                })
+                messages.append({"role": "assistant", "content": "(no output)"})
                 messages.append({
                     "role": "user",
                     "content": (
@@ -157,39 +151,38 @@ class AgentLoop:
                 continue
 
             if not tool_calls:
-                messages.append(assistant_msg)
-                raw = content
+                messages.append(assistant_message)
                 return AgentResult(
-                    answer=_parse_answer(raw),
-                    raw_content=raw,
+                    answer=_parse_answer(content),
+                    raw_content=content,
                     messages=messages,
                     tool_calls_made=total_tool_calls,
                     iterations=iteration,
                 )
 
-            assistant_msg["tool_calls"] = tool_calls
-            messages.append(assistant_msg)
+            assistant_message["tool_calls"] = tool_calls
+            messages.append(assistant_message)
 
-            for tc_dict in tool_calls:
-                _, result = _execute_tool_call(tc_dict, self.tool_executor)
+            for tool_call_dict in tool_calls:
+                _, result = _execute_tool_call(tool_call_dict, self.tool_executor)
                 if len(result) > MAX_TOOL_RESULT_CHARS:
                     result = result[:MAX_TOOL_RESULT_CHARS] + "\n...(truncated)"
                 total_tool_calls += 1
                 messages.append({
                     "role": "tool",
-                    "tool_call_id": tc_dict["id"],
+                    "tool_call_id": tool_call_dict["id"],
                     "content": result,
                 })
 
-        raw = next(
-            (m["content"] for m in reversed(messages)
-             if m["role"] == "assistant" and m.get("content")),
+        final_content = next(
+            (msg["content"] for msg in reversed(messages)
+             if msg["role"] == "assistant" and msg.get("content")),
             "",
         )
 
         return AgentResult(
-            answer=_parse_answer(raw),
-            raw_content=raw,
+            answer=_parse_answer(final_content),
+            raw_content=final_content,
             messages=messages,
             tool_calls_made=total_tool_calls,
             iterations=self.max_iterations,

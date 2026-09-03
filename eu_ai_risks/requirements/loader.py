@@ -105,7 +105,7 @@ def _extract_requirements(
     next_id = 1
 
     for block in blocks:
-        text = _normalize_text(block["text"])
+        text = _normalise_text(block["text"])
         if not text:
             continue
 
@@ -138,7 +138,7 @@ def _extract_requirements(
     return _deduplicate_requirements(requirements)
 
 
-def _normalize_text(text: str) -> str:
+def _normalise_text(text: str) -> str:
     return re.sub(r'\s+', ' ', text).strip()
 
 
@@ -197,9 +197,7 @@ Rules:
 - Use concise, normalised terms (e.g. "the system" not "it")
 - Split compound objects into separate triples
 - Each triple must have exactly one subject, predicate, and object
-- Respond with a JSON array of triple objects, nothing else
-
-/no_think"""
+- Respond with a JSON array of triple objects, nothing else"""
 
 
 def _split_requirement(requirement_text: str) -> list[dict]:
@@ -214,29 +212,27 @@ def _split_requirement(requirement_text: str) -> list[dict]:
                 break
     if not isinstance(result, list):
         result = [result] if isinstance(result, dict) else []
-    return [t for t in result if isinstance(t, dict) and "subject" in t]
+    return [triple for triple in result if isinstance(triple, dict) and "subject" in triple]
 
 
 def write_triples(document_path: Path):
     requirements = load_requirements(document_path)
 
-    # Collect all triples from all requirements into a flat list
     all_triples = []
-    for req in requirements:
-        for triple in req.triples:
+    for requirement in requirements:
+        for triple in requirement.triples:
             all_triples.append({
                 "subject":   triple["subject"],
                 "predicate": triple["predicate"],
                 "object":    triple["object"],
-                "req_id":    req.id,
-                "req_text":  req.text,
+                "req_id":    requirement.id,
+                "req_text":  requirement.text,
             })
 
     if not all_triples:
         print("No triples to write.")
         return
 
-    # Write in batches of 500
     batch_size = 500
     for i in range(0, len(all_triples), batch_size):
         batch = all_triples[i:i + batch_size]
@@ -270,18 +266,12 @@ def write_triples(document_path: Path):
 
 
 def generate_and_write_triple_embeddings(session, all_triples: list[dict]) -> None:
-    # Collect unique entities to embed
-    # Use dict to deduplicate by name/id
     entities = {}
-
     for triple in all_triples:
-        # Entity nodes - embed the entity name as text
         for key in ("subject", "object"):
             name = triple[key]
             if name not in entities:
-                entities[name] = name  # text to embed is just the entity name
-
-    # Embed and write Entity nodes
+                entities[name] = name
     if entities:
         entity_ids = list(entities.keys())
         entity_texts = list(entities.values())
@@ -304,7 +294,6 @@ def generate_and_write_triple_embeddings(session, all_triples: list[dict]) -> No
                     )
         print(f"  Wrote embeddings for {len(entity_rows)} Entity nodes.")
 
-    # Create vector indexes
     for label in ("Entity",):
         session.run(f"""
             CREATE VECTOR INDEX {label.lower()}_embedding IF NOT EXISTS

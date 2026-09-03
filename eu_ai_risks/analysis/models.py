@@ -1,72 +1,43 @@
 """
-Data structures for the agent layer.
+Data models for the agent and risk assessment layers.
 """
 
 from pydantic import BaseModel, Field
 
 
 class Citation(BaseModel):
-    """A reference to a specific provision in the EU AI Act."""
-
     article_id: str = Field(description="e.g. 'art:14'")
     article_title: str = ""
     paragraph_num: int | None = Field(
         default=None, description="e.g. 1 for Article 14(1)"
     )
-    text: str = Field(
-        default="", description="The relevant text from the provision"
-    )
+    text: str = ""
 
 
 class AgentAnswer(BaseModel):
-    """Structured response from the graph-reading agent."""
-
-    summary: str = Field(description="Natural language answer to the question")
+    summary: str = Field(description="Natural language answer")
     citations: list[Citation] = Field(default_factory=list)
-    confidence: str = Field(
-        default="medium",
-        description="How confident the answer is: high, medium, low",
-    )
+    confidence: str = Field(default="medium")
 
 
 class AgentResult(BaseModel):
-    """Full result of an agent loop run, including metadata."""
-
     answer: AgentAnswer
-    raw_content: str = Field(
-        default="", description="The raw LLM output before structuring"
-    )
+    raw_content: str = ""
     tool_calls_made: int = 0
     iterations: int = 0
-    messages: list[dict] = Field(
-        default_factory=list, description="Full conversation history"
-    )
+    messages: list[dict] = Field(default_factory=list)
 
 
 class RiskItem(BaseModel):
-    """A single compliance risk identified for a requirement."""
-
     description: str = Field(description="What the risk is")
-    severity: str = Field(
-        default="medium", description="high, medium, or low"
-    )
-    article_id: str = Field(
-        default="", description="Graph node ID, e.g. art:14"
-    )
-    paragraph_num: int | None = Field(
-        default=None, description="e.g. 1 for paragraph (1)"
-    )
-    provision: str = Field(
-        default="", description="Human-readable, e.g. Article 14(1)"
-    )
+    severity: str = Field(default="medium")
+    article_id: str = Field(default="", description="Graph node ID, e.g. art:14")
+    paragraph_num: int | None = Field(default=None)
+    provision: str = Field(default="", description="e.g. Article 14(1)")
 
 
 class RequirementRisk(BaseModel):
-    """Risk assessment result for a single requirement."""
-
     summary: str = Field(description="Overall compliance analysis")
     risks: list[RiskItem] = Field(default_factory=list)
-    risk_level: str = Field(
-        default="medium", description="Overall risk level: high, medium, low"
-    )
+    risk_level: str = Field(default="medium")
     recommendations: list[str] = Field(default_factory=list)

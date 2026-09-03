@@ -248,8 +248,8 @@ def get_category_articles(
         category_name = category_key
         for row in query_result:
             category_name = row["category_name"]
-            paragraphs = [p for p in row["paragraphs"] if p["id"] is not None]
-            paragraphs.sort(key=lambda p: p["num"] or 0)
+            paragraphs = [para for para in row["paragraphs"] if para["id"] is not None]
+            paragraphs.sort(key=lambda para: para["num"] or 0)
             articles.append({
                 "article_id": row["article_id"],
                 "article_num": row["article_num"],
@@ -295,8 +295,8 @@ def get_article(article_id: str) -> dict | None:
         if not record or record["id"] is None:
             return None
 
-        paragraphs = [p for p in record["paragraphs"] if p["id"] is not None]
-        paragraphs.sort(key=lambda p: p["num"] or 0)
+        paragraphs = [para for para in record["paragraphs"] if para["id"] is not None]
+        paragraphs.sort(key=lambda para: para["num"] or 0)
 
         dim_result = session.run(
             """
@@ -525,8 +525,8 @@ def get_requirement(req_id: str) -> dict | None:
             return None
 
         triples = [
-            t for t in record["triples"]
-            if t["subject"] is not None
+            triple for triple in record["triples"]
+            if triple["subject"] is not None
         ]
 
         return {
@@ -600,8 +600,8 @@ def search_entities(
                 "entity_name": row["entity_name"],
                 "score": round(row["score"], 4),
                 "requirements": [
-                    r for r in row["requirements"]
-                    if r["id"] is not None
+                    req for req in row["requirements"]
+                    if req["id"] is not None
                 ],
             }
             for row in query_result

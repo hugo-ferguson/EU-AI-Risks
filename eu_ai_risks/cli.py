@@ -203,104 +203,15 @@ def search(
     if paragraphs:
         results = vector_search_paragraphs(query_embedding, top_k)
         for para_id, num, score in results:
-            print(f"  {para_id} (para {num}) — score: {score:.4f}")
+            print(f"  {para_id} (para {num})  score: {score:.4f}")
     else:
         results = vector_search_articles(query_embedding, top_k)
         for article_id, title, score in results:
-            print(f"  {article_id}: {title} — score: {score:.4f}")
-
-
-@app.command("parse-requirements")
-def parse_requirements(
-        document_path: Path = typer.Argument(
-            help="Path to a .txt, .md, .pdf, or .docx SRS"),
-        output: Path | None = typer.Option(
-            None,
-            "--output", "-o",
-            help="Optional JSON output path",
-        ),
-):
-    """Extract candidate software requirements from a requirements document."""
-    from eu_ai_risks.requirements.loader import load_requirements
-
-    requirements = load_requirements(document_path)
-
-    if output:
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(
-            json.dumps([requirement.to_dict()
-                       for requirement in requirements], indent=2),
-            encoding="utf-8",
-        )
-        print(f"Wrote {len(requirements)} requirements to {output}.")
-        return
-
-    for requirement in requirements:
-        location = []
-        if requirement.page:
-            location.append(f"page {requirement.page}")
-        if requirement.section:
-            location.append(f"section {requirement.section}")
-        location_text = f" ({', '.join(location)})" if location else ""
-        print(f"{requirement.id}{location_text}: {requirement.text}")
-
-
-@app.command("analyze-requirements")
-def analyze_requirements(
-        document_path: Path = typer.Argument(
-            help="Path to a .txt, .md, .pdf, or .docx SRS"),
-        output: Path = typer.Option(
-            Path("risk-report.md"),
-            "--output", "-o",
-            help="Markdown report output path",
-        ),
-        json_output: Path | None = typer.Option(
-            None,
-            "--json-output",
-            help="Optional JSON report output path",
-        ),
-        top_k: int = typer.Option(
-            5, help="Candidate EU AI Act paragraphs per requirement"),
-        min_score: float = typer.Option(
-            0.55,
-            help="Minimum vector similarity score kept in the report",
-        ),
-):
-    """
-    Extract requirements, map them to EU AI Act paragraphs, and write a risk report.
-    """
-    from eu_ai_risks.requirements.loader import load_requirements
-    from eu_ai_risks.analysis.risk_mapper import map_requirements_to_legislation
-    from eu_ai_risks.analysis.risk_report import (
-        entries_from_mappings,
-        write_json_report,
-        write_markdown_report,
-    )
-
-    requirements = load_requirements(document_path)
-    if not requirements:
-        print("No candidate requirements were extracted.")
-        return
-
-    print(f"Extracted {len(requirements)} requirements.")
-    print("Mapping requirements to EU AI Act paragraph vectors in Neo4j ...")
-    mappings = map_requirements_to_legislation(
-        requirements,
-        top_k=top_k,
-        min_score=min_score,
-    )
-
-    entries = entries_from_mappings(mappings)
-    write_markdown_report(entries, output)
-    print(f"Wrote Markdown risk report to {output}.")
-
-    if json_output:
-        write_json_report(entries, json_output)
-        print(f"Wrote JSON risk report to {json_output}.")
+            print(f"  {article_id}: {title}  score: {score:.4f}")
 
 
 @app.command("load-requirements")
-def load_reqs(
+def load_requirements(
         document_path: Path = typer.Argument(
             help="Path to a .txt, .md, .pdf, or .docx SRS"),
 ):
@@ -314,50 +225,66 @@ def load_reqs(
 
 @app.command("assess-risks")
 def assess_risks(
-    input_path: Path = typer.Argument(help="JSON file of requirements"),
+    document_path: Path = typer.Argument(
+        help="Path to a requirements document (.txt, .md, .pdf, .docx)",
+    ),
     output: Path = typer.Option(
         Path("risk-assessment.md"),
         "--output", "-o",
-        help="Markdown output path",
+        help="Markdown report output path",
+    ),
+    agent: bool = typer.Option(
+        False, "--agent",
+        help="Use multi-turn agent loop (slower, more thorough)",
+    ),
+    skip_load: bool = typer.Option(
+        False, "--skip-load",
+        help="Skip loading requirements to graph (use if already loaded)",
     ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v",
         help="Print raw LLM output for each requirement",
     ),
-    agent: bool = typer.Option(
-        False, "--agent",
-        help="Use the multi-turn agent loop instead of the deterministic pipeline",
-    ),
 ):
-    """Assess EU AI Act risks for each requirement."""
+    """Load requirements into the graph and assess EU AI Act compliance risks."""
     if verbose:
         import logging
         logging.basicConfig(level=logging.DEBUG, format="%(name)s: %(message)s")
+
+    from eu_ai_risks.requirements.loader import write_triples
+    from eu_ai_risks.db.graph import list_requirements, list_categories
+    from eu_ai_risks.analysis.risk_report import (
+        collect_citations, entries_from_assessments,
+        write_markdown_report,
+    )
+
+    if not skip_load:
+        print(f"Loading requirements from {document_path} ...")
+        write_triples(document_path)
+
+    requirements = list_requirements()
+    if not requirements:
+        print("No requirements found in the graph.")
+        raise typer.Exit(1)
+
+    print(f"Found {len(requirements)} requirements in graph.")
 
     if agent:
         from eu_ai_risks.analysis.risk_assessor_agent import assess_requirement
     else:
         from eu_ai_risks.analysis.risk_assessor import assess_requirement
-    from eu_ai_risks.analysis.risk_report import (
-        collect_citations, entries_from_assessments,
-        write_markdown_report,
-    )
-    from eu_ai_risks.db.graph import list_categories
-
-    requirements = json.loads(input_path.read_text(encoding="utf-8"))
-    print(f"Loaded {len(requirements)} requirements from {input_path}")
 
     categories = list_categories()
     article_cache: dict[str, dict] = {}
 
     assessment_entries: list[dict] = []
     for i, requirement in enumerate(requirements, 1):
-        requirement_id = requirement.get("id", f"REQ-{i}")
-        requirement_text = requirement.get("text", "")
-        print(f"  [{i}/{len(requirements)}] {requirement_id}...")
+        req_id = requirement["id"]
+        req_text = requirement["text"]
+        print(f"  [{i}/{len(requirements)}] {req_id}...")
 
         assessment, fetched_articles, raw = assess_requirement(
-            requirement_id, requirement_text, categories=categories,
+            req_id, req_text, categories=categories,
         )
         article_cache.update(fetched_articles)
         citations = collect_citations(assessment.risks, article_cache)
@@ -411,15 +338,15 @@ def ask(
 
     if result.answer.citations:
         print("\nCitations:")
-        for c in result.answer.citations:
-            label = c.article_title or c.article_id
-            if c.paragraph_num:
-                label += f"({c.paragraph_num})"
+        for citation in result.answer.citations:
+            label = citation.article_title or citation.article_id
+            if citation.paragraph_num:
+                label += f"({citation.paragraph_num})"
             print(f"  - {label}")
 
     if verbose:
         print(f"\nConfidence: {result.answer.confidence}")
-        print(f"Raw output: {result.raw_content}")
+        print(f"\nRaw output: {result.raw_content}")
 
 
 def main():

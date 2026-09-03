@@ -58,7 +58,7 @@ Paragraph to classify:
         max_tokens=10
     ).strip().lower()
 
-    # Prefer exact match, fall back to substring.
+    # Prefer exact match, fall back to substring
     for obligation_type in OBLIGATION_TYPES:
         if result == obligation_type:
             return obligation_type
@@ -126,7 +126,7 @@ RE_CONCEPT_ID = re.compile(r'[^a-z0-9]+')
 CONCEPT_EXTRACTION_SYSTEM_PROMPT = """You are a legal text extractor specialising in EU legislation.
 
 Extract the formally defined term from this EU AI Act paragraph.
-Article 3 is the definitions article — each paragraph defines exactly one term.
+Article 3 is the definitions article; each paragraph defines exactly one term.
 
 Respond with JSON only, no explanation:
 {"name": "the defined term exactly as written", "description": "one sentence definition"}
@@ -237,7 +237,7 @@ def add_concepts() -> None:
 
     :return: None
     """
-    # Skip extraction if concepts already exist in the graph.
+    # Skip extraction if concepts already exist (re-running only adds USES edges)
     with get_session() as session:
         existing = session.run(
             "MATCH (c:Concept) RETURN c.id AS id, c.name AS name, c.description AS description"

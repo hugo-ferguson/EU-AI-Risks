@@ -5,13 +5,91 @@ Uses multi-turn tool calling to explore the Neo4j knowledge graph
 before synthesising a risk assessment for each requirement.
 """
 
+import json
+import re
+
 from eu_ai_risks.analysis.agent import AgentLoop
 from eu_ai_risks.analysis.models import RequirementRisk
 from eu_ai_risks.analysis.prompts import RISK_ASSESSMENT_AGENT_PROMPT
 from eu_ai_risks.analysis.tools import TOOL_DEFINITIONS, execute_tool
 
+# Extracts known fields from truncated/malformed JSON
+_RE_SUMMARY = re.compile(r'"summary"\s*:\s*"((?:[^"\\]|\\.)*)"')
+_RE_RISK_LEVEL = re.compile(r'"risk_level"\s*:\s*"(high|medium|low)"')
+
 MAX_AGENT_ITERATIONS = 8
 MAX_AGENT_TOKENS = 4096
+
+
+def _extract_first_json_object(text: str) -> str | None:
+    """Walk brace depth to extract the outermost JSON object."""
+    start = text.find("{")
+    if start == -1:
+        return None
+    depth = 0
+    in_string = False
+    escape = False
+    for i in range(start, len(text)):
+        character = text[i]
+        if escape:
+            escape = False
+            continue
+        if character == "\\":
+            escape = True
+            continue
+        if character == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if character == "{":
+            depth += 1
+        elif character == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start:i + 1]
+    return None
+
+
+def _parse_result(raw_content: str) -> RequirementRisk:
+    """Parse agent output with layered fallbacks."""
+    content = raw_content.strip()
+    if not content:
+        return RequirementRisk(
+            summary="Model did not produce a valid risk assessment.",
+        )
+
+    try:
+        return RequirementRisk.model_validate_json(content)
+    except Exception:
+        pass
+
+    extracted = _extract_first_json_object(content)
+    if extracted:
+        try:
+            return RequirementRisk.model_validate_json(extracted)
+        except Exception:
+            pass
+        try:
+            data = json.loads(extracted)
+            if isinstance(data, dict):
+                return RequirementRisk.model_validate(data)
+        except Exception:
+            pass
+
+    # Last resort: regex-extract fields from truncated JSON
+    summary_match = _RE_SUMMARY.search(content)
+    if summary_match:
+        summary = summary_match.group(1).replace('\\"', '"')
+        level_match = _RE_RISK_LEVEL.search(content)
+        return RequirementRisk(
+            summary=summary,
+            risk_level=level_match.group(1) if level_match else "medium",
+        )
+
+    return RequirementRisk(
+        summary=content[:2000] if len(content) > 2000 else content,
+    )
 
 
 def assess_requirement(
@@ -19,11 +97,7 @@ def assess_requirement(
     requirement_text: str,
     categories: list[dict] | None = None,
 ) -> tuple[RequirementRisk, dict[str, dict], dict]:
-    """Assess a single requirement using the agent loop.
-
-    Returns (parsed assessment, article cache, raw metadata).
-    The article cache is empty — collect_citations fetches as needed.
-    """
+    """Assess a single requirement using the agent loop."""
     agent = AgentLoop(
         system_prompt=RISK_ASSESSMENT_AGENT_PROMPT,
         tools=TOOL_DEFINITIONS,
@@ -41,13 +115,7 @@ def assess_requirement(
     )
 
     result = agent.run(user_message)
-
-    try:
-        assessment = RequirementRisk.model_validate_json(result.raw_content)
-    except Exception:
-        assessment = RequirementRisk(
-            summary=result.raw_content or "Model did not produce a valid risk assessment.",
-        )
+    assessment = _parse_result(result.raw_content)
 
     metadata = {
         "iterations": result.iterations,

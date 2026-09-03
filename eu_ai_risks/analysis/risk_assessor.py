@@ -51,8 +51,8 @@ def _build_prompt(
         for article_id, article in articles.items():
             parts.append(f"### {article['title']} ({article_id})\n")
             binding = [
-                ap for ap in article.get("paragraphs", [])
-                if ap.get("obligation_type") in ("requirement", "prohibition")
+                paragraph for paragraph in article.get("paragraphs", [])
+                if paragraph.get("obligation_type") in ("requirement", "prohibition")
             ][:MAX_PARAGRAPHS_PER_ARTICLE]
             for article_paragraph in binding:
                 parts.append(
@@ -62,23 +62,22 @@ def _build_prompt(
 
     if referenced_articles:
         parts.append("\n## Cross-referenced articles\n")
-        for ref_id, ref_title in list(referenced_articles)[:MAX_CROSS_REFERENCES]:
-            parts.append(f"- {ref_id}: {ref_title}\n")
+        for reference_id, reference_title in list(referenced_articles)[:MAX_CROSS_REFERENCES]:
+            parts.append(f"- {reference_id}: {reference_title}\n")
 
     if related_requirements:
         parts.append("\n## Related requirements (shared entities)\n")
         for related in related_requirements:
+            shared = ", ".join(related["shared_entities"][:MAX_SHARED_ENTITIES])
             parts.append(
                 f"- **{related['id']}**: {related['text']} "
-                f"(shared: {', '.join(related['shared_entities'][:MAX_SHARED_ENTITIES])})\n"
+                f"(shared: {shared})\n"
             )
 
     parts.append("\n## Requirement categories\n")
     for category in categories:
-        parts.append(
-            f"- {category['key']} → "
-            f"{', '.join(category['article_ids'])}\n"
-        )
+        anchor_articles = ", ".join(category["article_ids"])
+        parts.append(f"- {category['key']}: {anchor_articles}\n")
 
     parts.append(
         "\nIdentify the compliance risks for this requirement "
@@ -93,10 +92,7 @@ def assess_requirement(
     requirement_text: str,
     categories: list[dict] | None = None,
 ) -> tuple[RequirementRisk, dict[str, dict], dict | list]:
-    """Assess a single requirement against the EU AI Act graph.
-
-    Returns (parsed assessment, fetched articles, raw LLM output).
-    """
+    """Assess a single requirement against the EU AI Act graph."""
     if categories is None:
         categories = list_categories()
 
@@ -147,14 +143,11 @@ def _parse_assessment(raw: dict | list) -> RequirementRisk:
     if not isinstance(raw, dict):
         return RequirementRisk(summary=str(raw))
 
-    # Try direct validation first.
     try:
         return RequirementRisk.model_validate(raw)
     except Exception:
         pass
 
-    # Model may wrap the response in a key like "answer", "response",
-    # "result", or "assessment".
     for key in ("answer", "response", "result", "assessment", "data"):
         nested = raw.get(key)
         if isinstance(nested, dict) and "summary" in nested:
@@ -163,7 +156,6 @@ def _parse_assessment(raw: dict | list) -> RequirementRisk:
             except Exception:
                 pass
 
-    # Extract whatever text we can find.
     summary = raw.get("summary", "")
     if not summary:
         for value in raw.values():
@@ -175,7 +167,7 @@ def _parse_assessment(raw: dict | list) -> RequirementRisk:
     if risk_level not in ("high", "medium", "low"):
         risk_level = "medium"
 
-    if not summary:
-        summary = "Model did not produce a valid risk assessment."
-
-    return RequirementRisk(summary=summary, risk_level=risk_level)
+    return RequirementRisk(
+        summary=summary or "Model did not produce a valid risk assessment.",
+        risk_level=risk_level,
+    )

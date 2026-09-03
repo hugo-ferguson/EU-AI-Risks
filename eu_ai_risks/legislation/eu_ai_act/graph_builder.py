@@ -9,9 +9,7 @@ from typing import cast, LiteralString
 from eu_ai_risks.db import get_session
 from eu_ai_risks.legislation.eu_ai_act.models import Segment
 
-# Article and annex cross-references define 'REFERENCES' edges. Citations
-# appear in singular ('Article 6'), plural ('Articles 5 and 6'), and ranges
-# ('Articles 8 to 15').
+# Citations appear as singular, plural, and ranges (e.g. 'Articles 8 to 15')
 RE_ARTICLE_REF = re.compile(r'\bArticles?\s+(\d+(?:\s*(?:,|and|to)\s+\d+)*)')
 RE_ANNEX_REF = re.compile(
     r'\bAnnex(?:es)?\s+([IVX]+(?:\s*(?:,|and)\s+[IVX]+)*)')
@@ -27,7 +25,7 @@ def expand_article_refs(number_list: str) -> set[int]:
     """
     numbers = set()
 
-    # Split the run into its listed items, then expand any 'N to M' range.
+    # Split into items, then expand any 'N to M' range
     for item in re.split(r'\s*(?:,|and)\s+', number_list):
         range_match = re.match(r'(\d+)\s+to\s+(\d+)', item)
         if range_match:
@@ -56,7 +54,7 @@ def find_references(
         for number in expand_article_refs(match.group(1)):
             target_ids.add(f"art:{number}")
 
-    # Annex numbers are Roman, so list expansion is enough without ranges.
+    # Annex numbers are Roman numerals, so no range expansion needed
     for match in RE_ANNEX_REF.finditer(text):
         for roman in re.split(r'\s*(?:,|and)\s+', match.group(1)):
             if RE_ROMAN.match(roman.strip()):
@@ -69,9 +67,7 @@ def find_references(
     ]
 
 
-# Types of Act segments (from the parser) and functions to construct them.
-# Each props key contains a lambda function that returns the correct properties
-# for the given segment type, based on the segment data provided.
+# Segment type configs drive graph construction, embedding, and cross-referencing
 SEGMENT_TYPES = {
     "chapter": {
         "label": "Chapter",
@@ -165,22 +161,18 @@ def build_in_memory_graph(segments: list[Segment]) -> tuple[dict, list]:
                 "src": source_id, "rel": relationship, "dst": destination_id
             })
 
-    # Add the nodes.
     for segment in segments:
         type_config = SEGMENT_TYPES[segment.type]
         add_node(segment.id, segment.type, **type_config["props"](segment))
 
-    # Add the edges (relationships) between nodes (segments).
     for segment in segments:
         type_config = SEGMENT_TYPES[segment.type]
 
-        # Add the parent relationship.
         if type_config["parent_id"]:
             parent_id = type_config["parent_id"](segment)
             if parent_id and parent_id in nodes:
                 add_edge(parent_id, type_config["parent_rel"], segment.id)
 
-        # Add the 'references' relationship.
         if type_config["cross_refs"]:
             for referenced_id, relationship in type_config["cross_refs"](segment, nodes):
                 add_edge(segment.id, relationship, referenced_id)
@@ -205,12 +197,7 @@ def write_to_neo4j(graph_nodes: dict, graph_edges: list) -> None:
                              f"REQUIRE n.id IS UNIQUE"
                              ))
 
-        # Dictionary of node types. Each key contains the list of all nodes of
-        # that type.
-        # Used to send queries in bulk.
         nodes_by_type = defaultdict(list)
-
-        # Group nodes into the nodes by type dictionary.
         for node_id, node_properties in graph_nodes.items():
             label = SEGMENT_TYPES[node_properties["type"]]["label"]
             node_data = {key: value for key,
@@ -218,7 +205,6 @@ def write_to_neo4j(graph_nodes: dict, graph_edges: list) -> None:
             node_data["id"] = node_id
             nodes_by_type[label].append(node_data)
 
-        # Push the nodes to the database.
         for label, node_batch in nodes_by_type.items():
             session.run(
                 cast(LiteralString, f"""
@@ -231,16 +217,10 @@ def write_to_neo4j(graph_nodes: dict, graph_edges: list) -> None:
 
             print(f"  Wrote {len(node_batch)} {label} nodes.")
 
-        # Dictionary of relationship types. Each key contains the list of all
-        # relationships of that type.
-        # Used to send queries in bulk.
         edges_by_relationship = defaultdict(list)
-
-        # Group edges into the edges by relationship dictionary.
         for edge in graph_edges:
             edges_by_relationship[edge["rel"]].append(edge)
 
-        # Push edges to the database.
         for relationship_type, relationship_edges in edges_by_relationship.items():
             session.run(
                 cast(LiteralString, f"""
@@ -266,18 +246,16 @@ def generate_and_write_embeddings(graph_nodes: dict) -> None:
     from eu_ai_risks.embeddings import embed_batch
     from eu_ai_risks.embeddings.client import EMBEDDING_DIMENSIONS
 
-    # Build (node_id, label, text) tuples for nodes that should be embedded.
     to_embed = []
 
     for node_id, node_props in graph_nodes.items():
         node_type = node_props["type"]
         type_config = SEGMENT_TYPES[node_type]
 
-        # Skip node types that don't have embedding text defined.
         if type_config["embedding_text"] is None:
             continue
 
-        # Look up parent properties for child nodes.
+        # Paragraphs need their parent article's title for context
         parent_props = None
         if type_config["parent_id"]:
             parent_id = ":".join(node_id.split(":")[:2])
@@ -290,14 +268,11 @@ def generate_and_write_embeddings(graph_nodes: dict) -> None:
     if not to_embed:
         return
 
-    # Generate embeddings in a single batch.
     texts = [text for _, _, text in to_embed]
     print(f"  Generating embeddings for {len(texts)} nodes ...")
     embeddings = embed_batch(texts)
 
-    # Write embeddings to Neo4j.
     with get_session() as session:
-        # Group by label for batch writes.
         by_label = defaultdict(list)
         for (node_id, label, _), embedding in zip(to_embed, embeddings):
             by_label[label].append({"id": node_id, "embedding": embedding})
@@ -313,7 +288,6 @@ def generate_and_write_embeddings(graph_nodes: dict) -> None:
             )
             print(f"  Wrote embeddings for {len(rows)} {label} nodes.")
 
-        # Create vector indexes.
         for label in by_label:
             session.run(
                 cast(LiteralString, f"""

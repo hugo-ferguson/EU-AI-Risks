@@ -13,8 +13,7 @@ from typing import cast, LiteralString
 
 from eu_ai_risks.db import get_session
 
-# Each dimension is a set list of words derived from the act.
-# These are used to tag things like risks, systems, actors, etc. in the act.
+# Vocabularies derived from the Act for regex-based tagging
 
 RESPONSIBLE_PARTIES = {
     "provider": (r"\bproviders?\b", "Provider"),
@@ -49,7 +48,7 @@ REQUIREMENT_CATEGORIES = {
     "fundamental_rights_impact_assessment": "Fundamental rights impact assessment",
 }
 
-# Each article talks about a requirement, so map these here.
+# Maps each article to the requirement theme it establishes
 REQUIREMENT_ARTICLE_MAP = {
     "art:4": "ai_literacy",
     "art:9": "risk_management",
@@ -70,7 +69,7 @@ REQUIREMENT_ARTICLE_MAP = {
     "art:73": "serious_incident_reporting",
 }
 
-# The four risk tiers plus the two general-purpose classes.
+# Four risk tiers plus two general-purpose AI classes
 RISK_CATEGORIES = {
     "prohibited": "Prohibited (unacceptable risk)",
     "high_risk": "High-risk",
@@ -79,7 +78,7 @@ RISK_CATEGORIES = {
     "gpai_systemic": "General-purpose AI model with systemic risk",
 }
 
-# The chapter each risk tier is defined in.
+# Risk tier is determined by which chapter an article sits in
 RISK_CHAPTER_MAP = {
     "II": "prohibited",
     "III": "high_risk",
@@ -88,7 +87,7 @@ RISK_CHAPTER_MAP = {
 
 GPAI_SYSTEMIC_ARTICLES = {"art:51", "art:55"}
 
-# The eight high-risk areas in Annex III.
+# Eight high-risk use-case areas from Annex III
 SYSTEM_CATEGORIES = {
     "biometrics": "Biometrics",
     "critical_infrastructure": "Critical infrastructure",
@@ -100,7 +99,7 @@ SYSTEM_CATEGORIES = {
     "justice_democracy": "Administration of justice and democratic processes",
 }
 
-# Data types defined in Article 3.
+# Data types defined in Article 3
 DATA_CATEGORIES = {
     "special_category_personal_data": (r"special categories of personal data", "Special categories of personal data"),
     "biometric_data": (r"\bbiometric data\b", "Biometric data"),
