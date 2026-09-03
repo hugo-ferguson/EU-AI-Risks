@@ -12,6 +12,7 @@ from litellm import ModelResponse
 
 RE_THINK_BLOCK = re.compile(r"<think>.*?</think>\s*", flags=re.DOTALL)
 RE_MD_JSON_FENCE = re.compile(r"^```(?:json)?\s*\n(.*?)```\s*$", flags=re.DOTALL)
+RE_MD_FENCE_OPEN = re.compile(r"^```(?:json)?\s*\n", flags=re.DOTALL)
 
 
 def strip_llm_wrapping(text: str) -> str:
@@ -20,6 +21,9 @@ def strip_llm_wrapping(text: str) -> str:
     match = RE_MD_JSON_FENCE.match(text)
     if match:
         text = match.group(1).strip()
+    else:
+        # Truncated output: opening fence without closing fence
+        text = RE_MD_FENCE_OPEN.sub("", text).strip()
     return text
 
 

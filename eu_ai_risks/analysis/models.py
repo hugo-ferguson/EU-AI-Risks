@@ -34,6 +34,14 @@ class RiskItem(BaseModel):
     article_id: str = Field(default="", description="Graph node ID, e.g. art:14")
     paragraph_num: int | None = Field(default=None)
     provision: str = Field(default="", description="e.g. Article 14(1)")
+    obligation_category: str = Field(
+        default="",
+        description="RequirementCategory key, e.g. data_governance",
+    )
+    engineering_action: str = Field(
+        default="",
+        description="Practical engineering action for this risk",
+    )
 
 
 class RequirementRisk(BaseModel):

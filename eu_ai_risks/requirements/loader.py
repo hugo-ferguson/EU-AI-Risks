@@ -201,10 +201,13 @@ Rules:
 
 
 def _split_requirement(requirement_text: str) -> list[dict]:
-    result = complete_json(
-        prompt=f'Extract triples from: "{requirement_text}"',
-        system=_TRIPLE_EXTRACTION_SYSTEM,
-    )
+    try:
+        result = complete_json(
+            prompt=f'Extract triples from: "{requirement_text}"',
+            system=_TRIPLE_EXTRACTION_SYSTEM,
+        )
+    except ValueError:
+        return []
     if isinstance(result, dict):
         for value in result.values():
             if isinstance(value, list):

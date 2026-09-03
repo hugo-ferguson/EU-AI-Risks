@@ -42,6 +42,8 @@ def entries_from_assessments(assessment_entries: list[dict]) -> list[dict]:
             risks.append({
                 "description": f"{risk.description}{severity}",
                 "provision": risk.provision,
+                "obligation_category": risk.obligation_category,
+                "engineering_action": risk.engineering_action,
             })
 
         entries.append({
@@ -100,6 +102,12 @@ def render_markdown_report(
             for risk in entry["risks"]:
                 provision = f" - {risk['provision']}" if risk.get("provision") else ""
                 lines.append(f"- {risk['description']}{provision}")
+                if risk.get("obligation_category"):
+                    lines.append(f"  - Category: `{risk['obligation_category']}`")
+                if risk.get("engineering_action"):
+                    lines.append(
+                        f"  - Action: {risk['engineering_action']}"
+                    )
             lines.append("")
 
         if entry.get("citations"):
