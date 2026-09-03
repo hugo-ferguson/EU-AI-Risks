@@ -330,6 +330,10 @@ def assess_risks(
     ),
 ):
     """Assess EU AI Act risks for each requirement."""
+    if verbose:
+        import logging
+        logging.basicConfig(level=logging.DEBUG, format="%(name)s: %(message)s")
+
     if agent:
         from eu_ai_risks.analysis.risk_assessor_agent import assess_requirement
     else:
