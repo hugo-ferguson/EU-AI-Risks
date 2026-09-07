@@ -12,6 +12,10 @@ dependencies = [
     "python-dotenv",
     "sentence-transformers",
     "typer",
+    "python-multipart",
+    "jinja2",
+    "uvicorn",
+    "fastapi",
 ]
 
 [project.optional-dependencies]
@@ -24,3 +28,6 @@ include = ["eu_ai_risks*"]
 
 [project.scripts]
 eu-ai-risks = "eu_ai_risks.cli:main"
+
+[tool.setuptools.package-data]
+eu_ai_risks = ["web/templates/*.html", "web/static/*"]

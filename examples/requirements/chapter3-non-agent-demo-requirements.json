@@ -1,0 +1,18 @@
+[
+  {
+    "id": "CH3-DEMO-1",
+    "text": "The system shall ingest candidate resumes, cover letters, and application form responses for automated recruitment screening."
+  },
+  {
+    "id": "CH3-DEMO-2",
+    "text": "The system shall generate and display a candidate suitability score with an explanation of the main factors that influenced the score."
+  },
+  {
+    "id": "CH3-DEMO-3",
+    "text": "The system shall allow a human recruiter to review, override, or reject an automated ranking before a candidate is removed from consideration."
+  },
+  {
+    "id": "CH3-DEMO-4",
+    "text": "The system must log each automated score, ranking, explanation, recruiter override, final decision, and model version for audit review."
+  }
+]
