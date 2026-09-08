@@ -19,15 +19,3 @@ class Requirement:
     page: int | None = None
     metadata: dict[str, str] = field(default_factory=dict)
     triples: list[dict] = field(default_factory=list)
-
-    def to_dict(self) -> dict:
-        return {
-            "id": self.id,
-            "text": self.text,
-            "source": self.source,
-            "section": self.section,
-            "title": self.title,
-            "page": self.page,
-            "metadata": self.metadata,
-            "triples": self.triples,
-        }

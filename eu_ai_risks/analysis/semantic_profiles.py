@@ -1,15 +1,8 @@
 """
-Semantic profiling helpers for requirement-to-EU-AI-Act risk assessment.
+Semantic profiling for requirement-to-EU-AI-Act risk assessment.
 
-This module avoids maintaining large keyword lists. It asks the LLM to convert
-one software requirement into a structured semantic profile, then uses that
-profile to retrieve and rerank relevant EU AI Act provisions.
-
-The intent-aware version is stricter than the initial semantic-profile layer:
-- it profiles the exact requirement rather than the whole SRS;
-- it separates requirement intent, primary obligation category, secondary
-  categories, existing controls, and remaining gaps;
-- it avoids treating every high-risk requirement as a human-oversight issue.
+Converts a software requirement into a structured profile (intent, obligation
+categories, controls, gaps) then uses that to retrieve and rerank provisions.
 """
 
 from __future__ import annotations
@@ -21,10 +14,14 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from eu_ai_risks.llm import complete_json
 
-PROFILE_MAX_TOKENS = int(os.environ.get("EU_AI_RISKS_PROFILE_MAX_TOKENS", "700"))
-PROFILE_MODE = os.environ.get("EU_AI_RISKS_PROFILE_MODE", "semantic").strip().lower()
-PROFILE_CONFIDENCE_SCORE = float(os.environ.get("EU_AI_RISKS_PROFILE_CONFIDENCE_SCORE", "0.38"))
-PROFILE_CONFIDENCE_MARGIN = float(os.environ.get("EU_AI_RISKS_PROFILE_CONFIDENCE_MARGIN", "0.012"))
+PROFILE_MAX_TOKENS = int(os.environ.get(
+    "EU_AI_RISKS_PROFILE_MAX_TOKENS", "700"))
+PROFILE_MODE = os.environ.get(
+    "EU_AI_RISKS_PROFILE_MODE", "semantic").strip().lower()
+PROFILE_CONFIDENCE_SCORE = float(os.environ.get(
+    "EU_AI_RISKS_PROFILE_CONFIDENCE_SCORE", "0.38"))
+PROFILE_CONFIDENCE_MARGIN = float(os.environ.get(
+    "EU_AI_RISKS_PROFILE_CONFIDENCE_MARGIN", "0.012"))
 
 DEFAULT_CATEGORY_KEYS = {
     "ai_literacy",
@@ -398,14 +395,14 @@ def _intent_listing() -> str:
     return "\n".join(f"- {value}" for value in sorted(INTENT_VALUES))
 
 
-def _normalise_category_key(value: str) -> str:
+def normalise_category_key(value: str) -> str:
     return value.strip().lower().replace(" ", "_").replace("-", "_")
 
 
 def _normalise_category_list(values: list[str], valid: set[str]) -> list[str]:
     normalised = []
     for value in values:
-        key = _normalise_category_key(str(value))
+        key = normalise_category_key(str(value))
         if key in valid and key not in normalised:
             normalised.append(key)
     return normalised
@@ -473,7 +470,7 @@ def _merge_policy_categories(profile: RequirementSemanticProfile, valid: set[str
     def merge(existing: list[str], defaults: list[str]) -> list[str]:
         merged: list[str] = []
         for value in existing + defaults:
-            key = _normalise_category_key(str(value))
+            key = normalise_category_key(str(value))
             if key in valid and key not in merged:
                 merged.append(key)
         return merged
@@ -561,7 +558,7 @@ def _normalise_profile_categories(
 ) -> RequirementSemanticProfile:
     valid = _category_keys(categories)
 
-    primary = _normalise_category_key(profile.primary_obligation_category)
+    primary = normalise_category_key(profile.primary_obligation_category)
     profile.primary_obligation_category = primary if primary in valid else ""
 
     profile.secondary_obligation_categories = _normalise_category_list(
@@ -596,19 +593,6 @@ def _unwrap_profile_payload(raw: dict | list) -> dict:
     return {"notes": str(raw)}
 
 
-def fallback_requirement_profile(
-    requirement_text: str,
-    reason: str = "Semantic profile extraction failed.",
-) -> RequirementSemanticProfile:
-    """Return a safe profile that preserves the original requirement text."""
-    return RequirementSemanticProfile(
-        intended_purpose=requirement_text,
-        retrieval_query=requirement_text,
-        confidence="low",
-        notes=reason,
-    )
-
-
 def build_embedding_semantic_profile(
     requirement_id: str,
     requirement_text: str,
@@ -621,8 +605,10 @@ def build_embedding_semantic_profile(
     similarity over stable intent/domain descriptions, then applies the same
     obligation-category policy used by the full risk assessor.
     """
-    intent, score, margin = infer_requirement_intent_semantically(requirement_text)
-    domain, domain_score = infer_high_risk_context_semantically(requirement_text)
+    intent, score, margin = infer_requirement_intent_semantically(
+        requirement_text)
+    domain, domain_score = infer_high_risk_context_semantically(
+        requirement_text)
 
     confidence = "low"
     if score >= PROFILE_CONFIDENCE_SCORE and margin >= PROFILE_CONFIDENCE_MARGIN:
@@ -640,7 +626,8 @@ def build_embedding_semantic_profile(
         requirement_intent=intent,
         domain=annex_relevance,
         intended_purpose=requirement_text,
-        system_functions=[intent.replace("_", " ")] if intent not in {"unknown", "other"} else [],
+        system_functions=[intent.replace("_", " ")] if intent not in {
+            "unknown", "other"} else [],
         high_risk_context=high_risk_context,
         annex_iii_relevance=annex_relevance,
         retrieval_query=requirement_text,
@@ -651,10 +638,8 @@ def build_embedding_semantic_profile(
         ),
     )
     profile = _merge_policy_categories(profile, _category_keys(categories))
-    if not profile.retrieval_query:
-        profile.retrieval_query = build_profile_retrieval_query(profile, requirement_text)
-    else:
-        profile.retrieval_query = build_profile_retrieval_query(profile, requirement_text)
+    profile.retrieval_query = build_profile_retrieval_query(
+        profile, requirement_text)
     return profile
 
 
@@ -750,7 +735,8 @@ def build_profile_retrieval_query(
     parts.extend(profile.existing_control_categories)
 
     if profile.is_safeguard_or_control and profile.safeguards_or_controls:
-        parts.append("existing control or safeguard with remaining compliance gap")
+        parts.append(
+            "existing control or safeguard with remaining compliance gap")
 
     parts.append("EU AI Act high-risk AI system obligations")
     return "; ".join(dict.fromkeys(p.strip() for p in parts if p and p.strip()))
@@ -865,7 +851,8 @@ def format_semantic_profile(profile: RequirementSemanticProfile) -> str:
     lines = ["## Requirement semantic profile"]
     lines.append(f"- Requirement intent: {profile.requirement_intent}")
     lines.append(f"- Domain/use context: {profile.domain or 'not explicit'}")
-    lines.append(f"- Intended purpose: {profile.intended_purpose or 'not explicit'}")
+    lines.append(
+        f"- Intended purpose: {profile.intended_purpose or 'not explicit'}")
     lines.append(
         "- System functions: "
         + (", ".join(profile.system_functions) or "not explicit")
@@ -886,7 +873,8 @@ def format_semantic_profile(profile: RequirementSemanticProfile) -> str:
         f"- Possible high-risk context: {'yes' if profile.high_risk_context else 'no'}"
     )
     lines.append(
-        "- Annex III relevance: " + (profile.annex_iii_relevance or "not explicit")
+        "- Annex III relevance: " +
+        (profile.annex_iii_relevance or "not explicit")
     )
     lines.append(
         "- Primary obligation category: "

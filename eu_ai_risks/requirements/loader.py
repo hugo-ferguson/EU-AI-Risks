@@ -15,7 +15,7 @@ from eu_ai_risks.db import get_session
 from eu_ai_risks.llm import complete_json
 
 RE_REQUIREMENT_ID = re.compile(
-    r'\b((?:FR|NFR|REQ|R|UC|SR|SYS|SRS)[-_ ]?\d+(?:\.\d+)*)\b',
+    r'\b((?:CH3-FR|CH3-NFR|FR|NFR|REQ|R|UC|SR|SYS|SRS)[-_ ]?\d+(?:\.\d+)*)\b',
     re.IGNORECASE,
 )
 RE_NUMBERED_ITEM = re.compile(r'^(\d+(?:\.\d+)*|[A-Z]\d+)[.)]\s+(.+)$')
@@ -25,17 +25,13 @@ RE_REQUIREMENT_VERB = re.compile(
     re.IGNORECASE,
 )
 
-SUPPORTED_EXTENSIONS = {".txt", ".md", ".markdown", ".pdf", ".docx"}
+SUPPORTED_EXTENSIONS = {".json", ".txt", ".md", ".markdown", ".pdf", ".docx"}
 
 
-def load_requirements(document_path: Path) -> list[Requirement]:
-    """
-    Load a requirements document and extract candidate requirements.
-
-    :param document_path: path to a .txt, .md, .pdf, or .docx document.
-    :return: extracted requirements with source traceability.
-    """
-
+def load_requirements(
+    document_path: Path, *, with_triples: bool = True,
+) -> list[Requirement]:
+    """Load a requirements document and extract candidate requirements."""
     document_path = document_path.expanduser()
     if not document_path.exists():
         raise FileNotFoundError(
@@ -48,6 +44,8 @@ def load_requirements(document_path: Path) -> list[Requirement]:
             f"Supported types: {', '.join(sorted(SUPPORTED_EXTENSIONS))}"
         )
 
+    if extension == ".json":
+        return _requirements_from_json(document_path)
     if extension == ".pdf":
         blocks = _read_pdf_blocks(document_path)
     elif extension == ".docx":
@@ -55,7 +53,12 @@ def load_requirements(document_path: Path) -> list[Requirement]:
     else:
         blocks = _read_text_blocks(document_path)
 
-    return _extract_requirements(blocks, document_path)
+    return _extract_requirements(blocks, document_path, with_triples=with_triples)
+
+
+def parse_requirements(document_path: Path) -> list[Requirement]:
+    """Load requirements without LLM triple extraction."""
+    return load_requirements(document_path, with_triples=False)
 
 
 def _read_text_blocks(document_path: Path) -> list[dict]:
@@ -97,7 +100,7 @@ def _read_docx_blocks(document_path: Path) -> list[dict]:
 
 
 def _extract_requirements(
-    blocks: list[dict], document_path: Path
+    blocks: list[dict], document_path: Path, *, with_triples: bool = True,
 ) -> list[Requirement]:
     requirements = []
     current_section = None
@@ -123,7 +126,7 @@ def _extract_requirements(
         next_id += 1
 
         requirement_text = _strip_requirement_prefix(text)
-        triples = _split_requirement(requirement_text)
+        triples = _split_requirement(requirement_text) if with_triples else []
 
         requirements.append(Requirement(
             id=requirement_id,
@@ -135,6 +138,38 @@ def _extract_requirements(
             triples=triples
         ))
 
+    return _deduplicate_requirements(requirements)
+
+
+def _requirements_from_json(document_path: Path) -> list[Requirement]:
+    data = json.loads(document_path.read_text(encoding="utf-8"))
+    if isinstance(data, dict):
+        for key in ("requirements", "items", "data"):
+            if isinstance(data.get(key), list):
+                data = data[key]
+                break
+    if not isinstance(data, list):
+        raise ValueError(
+            "JSON requirements file must contain a list of requirement objects.")
+
+    requirements: list[Requirement] = []
+    for index, item in enumerate(data, start=1):
+        if isinstance(item, str):
+            text = re.sub(r"\s+", " ", item).strip()
+            requirement_id = f"REQ-{index:03d}"
+        elif isinstance(item, dict):
+            text = re.sub(
+                r"\s+", " ",
+                str(item.get("text") or item.get("requirement")
+                    or item.get("description") or ""),
+            ).strip()
+            requirement_id = str(item.get("id") or item.get(
+                "requirement_id") or f"REQ-{index:03d}")
+        else:
+            continue
+        if text:
+            requirements.append(Requirement(
+                id=requirement_id, text=text, source=str(document_path)))
     return _deduplicate_requirements(requirements)
 
 
@@ -225,11 +260,11 @@ def write_triples(document_path: Path):
     for requirement in requirements:
         for triple in requirement.triples:
             all_triples.append({
-                "subject":   triple["subject"],
-                "predicate": triple["predicate"],
-                "object":    triple["object"],
-                "req_id":    requirement.id,
-                "req_text":  requirement.text,
+                "subject":        triple["subject"],
+                "predicate":      triple["predicate"],
+                "object":         triple["object"],
+                "requirement_id":   requirement.id,
+                "requirement_text": requirement.text,
             })
 
     if not all_triples:
@@ -254,8 +289,8 @@ def write_triples(document_path: Path):
                 MERGE (s)-[r:RELATION {type: row.predicate}]->(o)
 
                 // Merge the requirement node
-                MERGE (req:Requirement {id: row.req_id})
-                SET req.text = row.req_text
+                MERGE (req:Requirement {id: row.requirement_id})
+                SET req.text = row.requirement_text
 
                 // Link requirement to its subject entity
                 MERGE (req)-[:EXTRACTED_FROM]->(s)

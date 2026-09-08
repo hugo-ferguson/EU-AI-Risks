@@ -100,10 +100,12 @@ def render_markdown_report(
             lines.append("**Risks:**")
             lines.append("")
             for risk in entry["risks"]:
-                provision = f" - {risk['provision']}" if risk.get("provision") else ""
+                provision = f" - {risk['provision']}" if risk.get(
+                    "provision") else ""
                 lines.append(f"- {risk['description']}{provision}")
                 if risk.get("obligation_category"):
-                    lines.append(f"  - Category: `{risk['obligation_category']}`")
+                    lines.append(
+                        f"  - Category: `{risk['obligation_category']}`")
                 if risk.get("engineering_action"):
                     lines.append(
                         f"  - Action: {risk['engineering_action']}"
@@ -142,13 +144,6 @@ def write_markdown_report(
     )
 
 
-def write_json_report(entries: list[dict], output_path: Path) -> None:
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
-        json.dumps(entries, indent=2), encoding="utf-8",
-    )
-
-
 def collect_citations(
     risks: list,
     article_cache: dict[str, dict],
@@ -181,8 +176,8 @@ def collect_citations(
 
         if risk.paragraph_num is not None:
             paragraph = next(
-                (para for para in article.get("paragraphs", [])
-                 if para.get("num") == risk.paragraph_num),
+                (candidate for candidate in article.get("paragraphs", [])
+                 if candidate.get("num") == risk.paragraph_num),
                 None,
             )
             if paragraph:

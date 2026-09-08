@@ -142,45 +142,6 @@ def vector_search_paragraphs(
         return [(row["id"], row["num"], row["score"]) for row in query_result]
 
 
-def paragraph_details(paragraph_ids: list[str]) -> dict[str, dict]:
-    """
-    Load paragraph text and parent article details for a set of paragraph IDs.
-
-    :param paragraph_ids: paragraph node ids.
-    :return: dictionary keyed by paragraph id.
-    """
-    if not paragraph_ids:
-        return {}
-
-    with get_session() as session:
-        query_result = session.run(
-            """
-			MATCH (a:Article)-[:HAS_PARAGRAPH]->(p:Paragraph)
-			WHERE p.id IN $paragraph_ids
-			RETURN
-				p.id AS paragraph_id,
-				p.num AS paragraph_num,
-				p.text AS paragraph_text,
-				a.id AS article_id,
-				a.num AS article_num,
-				a.title AS article_title
-			""",
-            paragraph_ids=paragraph_ids,
-        )
-
-        return {
-            row["paragraph_id"]: {
-                "paragraph_id": row["paragraph_id"],
-                "paragraph_num": row["paragraph_num"],
-                "paragraph_text": row["paragraph_text"],
-                "article_id": row["article_id"],
-                "article_num": row["article_num"],
-                "article_title": row["article_title"],
-            }
-            for row in query_result
-        }
-
-
 def list_categories() -> list[dict]:
     """
     List all 14 RequirementCategory nodes with their anchor article IDs.
@@ -248,8 +209,9 @@ def get_category_articles(
         category_name = category_key
         for row in query_result:
             category_name = row["category_name"]
-            paragraphs = [para for para in row["paragraphs"] if para["id"] is not None]
-            paragraphs.sort(key=lambda para: para["num"] or 0)
+            paragraphs = [paragraph for paragraph in row["paragraphs"]
+                          if paragraph["id"] is not None]
+            paragraphs.sort(key=lambda paragraph: paragraph["num"] or 0)
             articles.append({
                 "article_id": row["article_id"],
                 "article_num": row["article_num"],
@@ -295,10 +257,11 @@ def get_article(article_id: str) -> dict | None:
         if not record or record["id"] is None:
             return None
 
-        paragraphs = [para for para in record["paragraphs"] if para["id"] is not None]
-        paragraphs.sort(key=lambda para: para["num"] or 0)
+        paragraphs = [paragraph for paragraph in record["paragraphs"]
+                      if paragraph["id"] is not None]
+        paragraphs.sort(key=lambda paragraph: paragraph["num"] or 0)
 
-        dim_result = session.run(
+        dimension_result = session.run(
             """
 			MATCH (a:Article {id: $article_id})
 			OPTIONAL MATCH (a)-[:IMPOSES]->(rc:RequirementCategory)
@@ -313,14 +276,14 @@ def get_article(article_id: str) -> dict | None:
             article_id=article_id,
         )
 
-        dims = dim_result.single()
+        dimension_record = dimension_result.single()
         dimensions = {}
-        if dims:
+        if dimension_record:
             dimensions = {
-                "requirement_categories": dims["requirement_categories"],
-                "responsible_parties": dims["responsible_parties"],
-                "risk_categories": dims["risk_categories"],
-                "data_categories": dims["data_categories"],
+                "requirement_categories": dimension_record["requirement_categories"],
+                "responsible_parties": dimension_record["responsible_parties"],
+                "risk_categories": dimension_record["risk_categories"],
+                "data_categories": dimension_record["data_categories"],
             }
 
         return {
@@ -497,17 +460,17 @@ def list_requirements() -> list[dict]:
         ]
 
 
-def get_requirement(req_id: str) -> dict | None:
+def get_requirement(requirement_id: str) -> dict | None:
     """
     Return a requirement with its entity triples.
 
-    :param req_id: the requirement ID, e.g. "REQ-001".
+    :param requirement_id: the requirement ID, e.g. "REQ-001".
     :return: dict with requirement details and triples, or None.
     """
     with get_session() as session:
         query_result = session.run(
             """
-			MATCH (r:Requirement {id: $req_id})
+			MATCH (r:Requirement {id: $requirement_id})
 			OPTIONAL MATCH (r)-[:EXTRACTED_FROM]->(s:Entity)
 			OPTIONAL MATCH (s)-[rel:RELATION]->(o:Entity)
 			RETURN r.id AS id, r.text AS text,
@@ -517,7 +480,7 @@ def get_requirement(req_id: str) -> dict | None:
 			           object: o.name
 			       }) AS triples
 			""",
-            req_id=req_id,
+            requirement_id=requirement_id,
         )
 
         record = query_result.single()
@@ -536,25 +499,25 @@ def get_requirement(req_id: str) -> dict | None:
         }
 
 
-def get_related_requirements(req_id: str) -> list[dict]:
+def get_related_requirements(requirement_id: str) -> list[dict]:
     """
     Find requirements that share entities with the given requirement.
 
-    :param req_id: the requirement ID, e.g. "REQ-001".
+    :param requirement_id: the requirement ID, e.g. "REQ-001".
     :return: list of related requirements with shared entity names.
     """
     with get_session() as session:
         query_result = session.run(
             """
-			MATCH (r:Requirement {id: $req_id})-[:EXTRACTED_FROM]->(s:Entity)
+			MATCH (r:Requirement {id: $requirement_id})-[:EXTRACTED_FROM]->(s:Entity)
 			OPTIONAL MATCH (s)-[:RELATION*0..1]-(e:Entity)
 			MATCH (other:Requirement)-[:EXTRACTED_FROM]->(e)
-			WHERE other.id <> $req_id
+			WHERE other.id <> $requirement_id
 			RETURN DISTINCT other.id AS id, other.text AS text,
 			       collect(DISTINCT e.name) AS shared_entities
 			ORDER BY size(collect(DISTINCT e.name)) DESC
 			""",
-            req_id=req_id,
+            requirement_id=requirement_id,
         )
 
         return [

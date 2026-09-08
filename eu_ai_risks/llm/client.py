@@ -11,7 +11,8 @@ import litellm
 from litellm import ModelResponse
 
 RE_THINK_BLOCK = re.compile(r"<think>.*?</think>\s*", flags=re.DOTALL)
-RE_MD_JSON_FENCE = re.compile(r"^```(?:json)?\s*\n(.*?)```\s*$", flags=re.DOTALL)
+RE_MD_JSON_FENCE = re.compile(
+    r"^```(?:json)?\s*\n(.*?)```\s*$", flags=re.DOTALL)
 RE_MD_FENCE_OPEN = re.compile(r"^```(?:json)?\s*\n", flags=re.DOTALL)
 
 
@@ -40,7 +41,8 @@ def _is_anthropic() -> bool:
 
 def _base_kwargs(max_tokens: int) -> dict:
     """Provider-aware base kwargs for litellm.completion."""
-    kwargs: dict = {"model": LLM_MODEL, "max_tokens": max_tokens, "num_retries": 3}
+    kwargs: dict = {"model": LLM_MODEL,
+                    "max_tokens": max_tokens, "num_retries": 3}
     if LLM_API_BASE:
         kwargs["api_base"] = LLM_API_BASE
     if LLM_MODEL.startswith("ollama"):
@@ -63,7 +65,8 @@ def _cacheable_system_message(content: str) -> dict:
 
 def _cacheable_tools(tools: list[dict]) -> list[dict]:
     """Mark the last tool for Anthropic prompt caching."""
-    result = tools[:-1] + [{**tools[-1], "cache_control": {"type": "ephemeral"}}]
+    result = tools[:-1] + \
+        [{**tools[-1], "cache_control": {"type": "ephemeral"}}]
     return result
 
 

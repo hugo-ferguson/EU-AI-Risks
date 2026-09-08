@@ -31,7 +31,8 @@ class AgentResult(BaseModel):
 class RiskItem(BaseModel):
     description: str = Field(description="What the risk is")
     severity: str = Field(default="medium")
-    article_id: str = Field(default="", description="Graph node ID, e.g. art:14")
+    article_id: str = Field(
+        default="", description="Graph node ID, e.g. art:14")
     paragraph_num: int | None = Field(default=None)
     provision: str = Field(default="", description="e.g. Article 14(1)")
     obligation_category: str = Field(
