@@ -110,7 +110,7 @@ class AgentLoop:
                 "iter %d/%d | %d messages | roles=%s",
                 iteration, self.max_iterations,
                 len(messages),
-                [msg["role"] for msg in messages],
+                [message["role"] for message in messages],
             )
 
             tools_for_call = None if is_final_iteration else self.tools
@@ -175,8 +175,8 @@ class AgentLoop:
                 })
 
         final_content = next(
-            (msg["content"] for msg in reversed(messages)
-             if msg["role"] == "assistant" and msg.get("content")),
+            (message["content"] for message in reversed(messages)
+             if message["role"] == "assistant" and message.get("content")),
             "",
         )
 

@@ -1,8 +1,6 @@
 """
-Agent-based risk assessment pipeline.
-
-Uses multi-turn tool calling to explore the Neo4j knowledge graph
-before synthesising a risk assessment for each requirement.
+Agent-based risk assessment using multi-turn tool calling against
+the Neo4j knowledge graph.
 """
 
 import json

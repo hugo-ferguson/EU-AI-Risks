@@ -153,8 +153,8 @@ def refs(article_id: str = typer.Argument(help="e.g. art:6")):
     """List articles that reference the given article."""
     from eu_ai_risks.db.graph import referenced_by
 
-    for ref_id, title in referenced_by(article_id):
-        print(f"  {ref_id}: {title}")
+    for reference_id, title in referenced_by(article_id):
+        print(f"  {reference_id}: {title}")
 
 
 @app.command("refs-from")
@@ -162,8 +162,8 @@ def refs_from(article_id: str = typer.Argument(help="e.g. art:5")):
     """List articles that the given article references."""
     from eu_ai_risks.db.graph import references_from
 
-    for ref_id, title in references_from(article_id):
-        print(f"  {ref_id}: {title}")
+    for reference_id, title in references_from(article_id):
+        print(f"  {reference_id}: {title}")
 
 
 @app.command()
@@ -202,8 +202,8 @@ def search(
 
     if paragraphs:
         results = vector_search_paragraphs(query_embedding, top_k)
-        for para_id, num, score in results:
-            print(f"  {para_id} (para {num})  score: {score:.4f}")
+        for paragraph_id, num, score in results:
+            print(f"  {paragraph_id} (paragraph {num})  score: {score:.4f}")
     else:
         results = vector_search_articles(query_embedding, top_k)
         for article_id, title, score in results:
@@ -249,7 +249,8 @@ def assess_risks(
     """Load requirements into the graph and assess EU AI Act compliance risks."""
     if verbose:
         import logging
-        logging.basicConfig(level=logging.DEBUG, format="%(name)s: %(message)s")
+        logging.basicConfig(level=logging.DEBUG,
+                            format="%(name)s: %(message)s")
 
     from eu_ai_risks.requirements.loader import write_triples
     from eu_ai_risks.db.graph import list_requirements, list_categories
@@ -279,12 +280,12 @@ def assess_risks(
 
     assessment_entries: list[dict] = []
     for i, requirement in enumerate(requirements, 1):
-        req_id = requirement["id"]
-        req_text = requirement["text"]
-        print(f"  [{i}/{len(requirements)}] {req_id}...")
+        requirement_id = requirement["id"]
+        requirement_text = requirement["text"]
+        print(f"  [{i}/{len(requirements)}] {requirement_id}...")
 
         assessment, fetched_articles, raw = assess_requirement(
-            req_id, req_text, categories=categories,
+            requirement_id, requirement_text, categories=categories,
         )
         article_cache.update(fetched_articles)
         citations = collect_citations(assessment.risks, article_cache)

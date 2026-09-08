@@ -1,9 +1,6 @@
 """
-Deterministic risk assessment pipeline.
-
-Pre-fetches context from the Neo4j knowledge graph, builds a semantic
-profile for each requirement, then uses a single LLM call per requirement
-to synthesise a risk assessment.
+Deterministic (single-call) risk assessment against the Neo4j
+knowledge graph with semantic profiling.
 """
 
 from functools import lru_cache
@@ -15,6 +12,7 @@ from eu_ai_risks.analysis.semantic_profiles import (
     build_profile_retrieval_query,
     extract_requirement_profile,
     format_semantic_profile,
+    normalise_category_key,
     rerank_paragraphs_by_profile,
     RequirementSemanticProfile,
 )
@@ -139,8 +137,7 @@ def _cached_references(article_id: str) -> dict:
     return get_references(article_id) or {}
 
 
-def _normalise_category(value: str) -> str:
-    return value.strip().lower().replace(" ", "_").replace("-", "_")
+_normalise_category = normalise_category_key
 
 
 def _build_prompt(
@@ -161,7 +158,8 @@ def _build_prompt(
     if semantic_profile_text:
         parts.extend(["\n", semantic_profile_text, "\n"])
 
-    parts.append("\n## Matching provisions (semantic retrieval + vector search)\n")
+    parts.append(
+        "\n## Matching provisions (semantic retrieval + vector search)\n")
     for paragraph in paragraphs:
         adjusted = paragraph.get("adjusted_score", paragraph.get("score"))
         parts.append(
@@ -179,7 +177,8 @@ def _build_prompt(
             parts.append(f"### {article['title']} ({article_id})\n")
 
             dimensions = article.get("dimensions", {}) or {}
-            requirement_categories = dimensions.get("requirement_categories", [])
+            requirement_categories = dimensions.get(
+                "requirement_categories", [])
             if requirement_categories:
                 parts.append(
                     f"- Categories: {', '.join(requirement_categories)}\n"
@@ -203,7 +202,8 @@ def _build_prompt(
     if related_requirements:
         parts.append("\n## Related requirements (shared entities)\n")
         for related in related_requirements:
-            shared = ", ".join(related["shared_entities"][:MAX_SHARED_ENTITIES])
+            shared = ", ".join(
+                related["shared_entities"][:MAX_SHARED_ENTITIES])
             parts.append(
                 f"- **{related['id']}**: {related['text']} "
                 f"(shared: {shared})\n"
@@ -214,8 +214,6 @@ def _build_prompt(
 
     return "\n".join(parts)
 
-
-# -- Post-processing pipeline ------------------------------------------------
 
 def _normalise_risk_provision(risk: RiskItem) -> None:
     """Redirect weak classification articles to the category's anchor."""
@@ -426,8 +424,6 @@ def _remove_duplicate_risks(assessment: RequirementRisk) -> RequirementRisk:
     return assessment
 
 
-# -- Main entry point --------------------------------------------------------
-
 def assess_requirement(
     requirement_id: str,
     requirement_text: str,
@@ -452,7 +448,8 @@ def assess_requirement(
         paragraph_candidates, profile, categories, limit=TOP_K_PARAGRAPHS,
     )
 
-    priority_article_ids = article_ids_for_profile_categories(profile, categories)
+    priority_article_ids = article_ids_for_profile_categories(
+        profile, categories)
     hit_article_ids = list(dict.fromkeys(
         [paragraph["article_id"] for paragraph in paragraphs]
         + priority_article_ids
