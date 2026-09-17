@@ -517,28 +517,29 @@ def stabilise_profile_with_semantic_intent(
     )
 
     current_intent = profile.requirement_intent
-    should_override = False
+
+    non_human_intents = {
+        "data_ingestion",
+        "access_control_or_security",
+        "logging_or_audit",
+        "rollback_or_corrective_action",
+        "prohibited_feature_prevention",
+        "data_validation_or_bias_testing",
+        "protected_attribute_control",
+    }
+
     if current_intent in {"unknown", "other"}:
         should_override = inferred_intent not in {"unknown", "other"}
-    elif inferred_intent not in {"unknown", current_intent}:
-        # Strong semantic evidence can override the LLM profile. Also allow a
-        # narrower non-human intent to override accidental human_oversight drift.
-        should_override = (
-            (score >= 0.46 and margin >= 0.025)
-            or (
-                current_intent == "human_review_or_override"
-                and inferred_intent in {
-                    "data_ingestion",
-                    "access_control_or_security",
-                    "logging_or_audit",
-                    "rollback_or_corrective_action",
-                    "prohibited_feature_prevention",
-                    "data_validation_or_bias_testing",
-                    "protected_attribute_control",
-                }
-                and score >= 0.38
-            )
+    elif inferred_intent in {"unknown", current_intent}:
+        should_override = False
+    else:
+        strong_semantic_match = score >= 0.46 and margin >= 0.025
+        corrects_human_oversight_drift = (
+            current_intent == "human_review_or_override"
+            and inferred_intent in non_human_intents
+            and score >= 0.38
         )
+        should_override = strong_semantic_match or corrects_human_oversight_drift
 
     if should_override:
         previous = profile.requirement_intent
@@ -610,17 +611,18 @@ def build_embedding_semantic_profile(
     domain, domain_score = infer_high_risk_context_semantically(
         requirement_text)
 
-    confidence = "low"
-    if score >= PROFILE_CONFIDENCE_SCORE and margin >= PROFILE_CONFIDENCE_MARGIN:
-        confidence = "medium"
-    if score >= PROFILE_CONFIDENCE_SCORE + 0.06 and margin >= PROFILE_CONFIDENCE_MARGIN + 0.02:
+    high_score = PROFILE_CONFIDENCE_SCORE + 0.06
+    high_margin = PROFILE_CONFIDENCE_MARGIN + 0.02
+    if score >= high_score and margin >= high_margin:
         confidence = "high"
+    elif score >= PROFILE_CONFIDENCE_SCORE and margin >= PROFILE_CONFIDENCE_MARGIN:
+        confidence = "medium"
+    else:
+        confidence = "low"
 
-    annex_relevance = ""
-    high_risk_context = False
-    if domain and domain_score >= 0.32:
-        high_risk_context = True
-        annex_relevance = domain.replace("_", " ")
+    annex_relevance = domain.replace(
+        "_", " ") if domain and domain_score >= 0.32 else ""
+    high_risk_context = bool(annex_relevance)
 
     profile = RequirementSemanticProfile(
         requirement_intent=intent,
@@ -706,37 +708,24 @@ def build_profile_retrieval_query(
     profile: RequirementSemanticProfile,
     requirement_text: str,
 ) -> str:
-    """Build a semantic retrieval query from profile fields.
-
-    The query is based on the structured meaning extracted by the LLM. It avoids
-    maintaining a manual keyword list while keeping retrieval anchored to the
-    specific requirement intent and primary obligation category.
-    """
     parts = [requirement_text]
 
-    for value in (
-        profile.requirement_intent,
-        profile.primary_obligation_category,
-        profile.domain,
-        profile.intended_purpose,
-        profile.decision_impact,
-        profile.annex_iii_relevance,
-        profile.lifecycle_stage,
-    ):
-        if value and value not in {"unknown", "other"}:
-            parts.append(value)
+    # Primary category and domain are the strongest discriminators
+    if profile.primary_obligation_category:
+        parts.append(profile.primary_obligation_category.replace("_", " "))
+    if profile.domain:
+        parts.append(profile.domain)
 
-    parts.extend(profile.system_functions)
-    parts.extend(profile.affected_stakeholders)
-    parts.extend(profile.data_types)
-    parts.extend(profile.actors)
-    parts.extend(profile.missing_or_unclear_categories)
-    parts.extend(profile.secondary_obligation_categories)
-    parts.extend(profile.existing_control_categories)
+    # Missing categories tell the retriever what gap we are looking for
+    for category in profile.missing_or_unclear_categories[:2]:
+        parts.append(category.replace("_", " "))
 
-    if profile.is_safeguard_or_control and profile.safeguards_or_controls:
-        parts.append(
-            "existing control or safeguard with remaining compliance gap")
+    # Annex III context anchors the query to the right part of the Act
+    if profile.annex_iii_relevance:
+        parts.append(profile.annex_iii_relevance)
+
+    if profile.is_safeguard_or_control:
+        parts.append("existing control compliance gap")
 
     parts.append("EU AI Act high-risk AI system obligations")
     return "; ".join(dict.fromkeys(p.strip() for p in parts if p and p.strip()))
@@ -783,13 +772,6 @@ def rerank_paragraphs_by_profile(
     categories: list[dict] | None,
     limit: int,
 ) -> list[dict]:
-    """Rerank vector results using semantic profile + graph metadata.
-
-    This is not keyword matching. It uses:
-    - the LLM-extracted primary/secondary/missing obligation categories;
-    - the graph's RequirementCategory article anchors;
-    - chapter/obligation metadata already stored on graph results.
-    """
     primary_articles = set(_article_ids_for_categories(
         [profile.primary_obligation_category], categories,
     ))
@@ -846,68 +828,51 @@ def rerank_paragraphs_by_profile(
     return ranked[:limit]
 
 
-def format_semantic_profile(profile: RequirementSemanticProfile) -> str:
-    """Format the profile for inclusion in the risk-assessment prompt."""
-    lines = ["## Requirement semantic profile"]
-    lines.append(f"- Requirement intent: {profile.requirement_intent}")
-    lines.append(f"- Domain/use context: {profile.domain or 'not explicit'}")
-    lines.append(
-        f"- Intended purpose: {profile.intended_purpose or 'not explicit'}")
-    lines.append(
-        "- System functions: "
-        + (", ".join(profile.system_functions) or "not explicit")
-    )
-    lines.append(
-        "- Decision impact: " + (profile.decision_impact or "not explicit")
-    )
-    lines.append(
-        "- Affected stakeholders: "
-        + (", ".join(profile.affected_stakeholders) or "not explicit")
-    )
-    lines.append(
-        "- Data types: " + (", ".join(profile.data_types) or "not explicit")
-    )
-    lines.append("- Actors: " + (", ".join(profile.actors) or "not explicit"))
-    lines.append(f"- Lifecycle stage: {profile.lifecycle_stage or 'unknown'}")
-    lines.append(
-        f"- Possible high-risk context: {'yes' if profile.high_risk_context else 'no'}"
-    )
-    lines.append(
-        "- Annex III relevance: " +
-        (profile.annex_iii_relevance or "not explicit")
-    )
-    lines.append(
-        "- Primary obligation category: "
-        + (profile.primary_obligation_category or "none explicit")
-    )
-    lines.append(
-        "- Secondary obligation categories: "
-        + (", ".join(profile.secondary_obligation_categories) or "none explicit")
-    )
-    lines.append(
-        "- Existing control categories: "
-        + (", ".join(profile.existing_control_categories) or "none explicit")
-    )
-    lines.append(
-        "- Missing/unclear categories: "
-        + (", ".join(profile.missing_or_unclear_categories) or "none explicit")
-    )
-    lines.append(
-        "- Safeguard/control already present: "
-        + ("yes" if profile.is_safeguard_or_control else "no")
-    )
-    lines.append(
-        "- Safeguards/controls described: "
-        + (", ".join(profile.safeguards_or_controls) or "none explicit")
-    )
-    lines.append(f"- Profile confidence: {profile.confidence}")
-    if profile.notes:
-        lines.append(f"- Notes: {profile.notes}")
+def _join(values: list[str]) -> str:
+    return ", ".join(values) if values else ""
 
-    lines.append(
-        "Assessment rule: evaluate the exact requirement intent first. Use the "
-        "primary and missing/unclear categories as the main assessment scope. "
-        "Treat existing control categories as controls or partial mitigations, "
-        "not as missing risks unless the remaining gap is specific."
-    )
+
+def format_semantic_profile(profile: RequirementSemanticProfile) -> str:
+    """Format the profile for the risk-assessment prompt. Empty fields are
+    skipped so the LLM only sees what's actually known about this requirement."""
+
+    # (label, value) pairs — empty strings are dropped, everything else is
+    # emitted as a bullet. This replaces the old if/append chain.
+    optional_fields = [
+        ("Domain/use context",         profile.domain),
+        ("Intended purpose",           profile.intended_purpose),
+        ("System functions",           _join(profile.system_functions)),
+        ("Decision impact",            profile.decision_impact),
+        ("Affected stakeholders",      _join(profile.affected_stakeholders)),
+        ("Data types",                 _join(profile.data_types)),
+        ("Actors",                     _join(profile.actors)),
+        ("Lifecycle stage",            profile.lifecycle_stage
+            if profile.lifecycle_stage not in {"unknown", "other", ""} else ""),
+        ("Annex III relevance",        profile.annex_iii_relevance),
+        ("Secondary categories",       _join(
+            profile.secondary_obligation_categories)),
+        ("Existing controls",          _join(profile.existing_control_categories)),
+        ("Missing/unclear categories", _join(profile.missing_or_unclear_categories)),
+        ("Controls described",         _join(profile.safeguards_or_controls)),
+        ("Notes",                      profile.notes),
+    ]
+
+    lines = [
+        "## Requirement semantic profile",
+        f"- Requirement intent: {profile.requirement_intent}",
+    ]
+    for label, value in optional_fields:
+        if value:
+            lines.append(f"- {label}: {value}")
+
+    # These always appear because the LLM needs them to frame the assessment
+    lines.extend([
+        f"- High-risk context: {'yes' if profile.high_risk_context else 'no'}",
+        f"- Primary obligation category: {profile.primary_obligation_category or 'none'}",
+        f"- Safeguard/control present: {'yes' if profile.is_safeguard_or_control else 'no'}",
+        f"- Confidence: {profile.confidence}",
+        "Assessment scope: use the primary and missing/unclear categories. "
+        "Treat existing controls as partial mitigations, not missing risks, "
+        "unless a specific gap remains.",
+    ])
     return "\n".join(lines)

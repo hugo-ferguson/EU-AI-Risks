@@ -24,13 +24,16 @@ from eu_ai_risks.embeddings import embed_text
 from eu_ai_risks.llm import complete_json
 
 TOP_K_PARAGRAPH_CANDIDATES = 8
-TOP_K_PARAGRAPHS = 3
+TOP_K_PARAGRAPHS = 4
 TOP_K_ARTICLES = 3
 MAX_PARAGRAPHS_PER_ARTICLE = 2
 MAX_CROSS_REFERENCES = 2
-MAX_RELATED_REQUIREMENTS = 1
+MAX_RELATED_REQUIREMENTS = 2
 MAX_SHARED_ENTITIES = 3
-MAX_TOKENS = 2048
+MAX_PRIOR_FINDINGS = 5
+MAX_TOKENS = 2500
+PROVISION_TEXT_LENGTH = 450
+ARTICLE_TEXT_LENGTH = 300
 
 # Intents that represent existing safeguards; cap their severity
 LOW_RISK_CONTROL_INTENTS = {
@@ -140,6 +143,52 @@ def _cached_references(article_id: str) -> dict:
 _normalise_category = normalise_category_key
 
 
+def _format_domain_context(profile: RequirementSemanticProfile) -> str:
+    """Produce a prominent domain header when the requirement belongs to a
+    known high-risk context. Without this, the LLM defaults to generic
+    high-risk provisions instead of domain-specific obligations."""
+    if not profile.high_risk_context or not profile.annex_iii_relevance:
+        return ""
+    domain = profile.annex_iii_relevance
+    return (
+        f"## High-risk domain context\n"
+        f"This requirement belongs to an AI system in the {domain} domain "
+        f"(Annex III). Chapter 3 Section 2 obligations apply. Focus on "
+        f"obligations specific to this domain."
+    )
+
+
+def _format_prior_findings(prior_findings: list[dict] | None) -> str:
+    """Summarise risks already flagged on earlier requirements so the LLM
+    avoids producing duplicate findings across related requirements. 
+    """
+    if not prior_findings:
+        return ""
+
+    # Only show findings that actually flagged risks.
+    relevant = [
+        finding for finding in prior_findings if finding.get("risks")
+    ]
+
+    if not relevant:
+        return ""
+
+    recent = relevant[-MAX_PRIOR_FINDINGS:]
+    lines = [
+        "## Prior findings (do not duplicate)",
+        "These risks were already flagged on other requirements. "
+        "Focus on gaps unique to this requirement.",
+    ]
+
+    for finding in recent:
+        risk_parts = ", ".join(
+            f"{risk['category']} [{risk['severity']}]"
+            for risk in finding["risks"]
+        )
+        lines.append(f"- {finding['id']}: {risk_parts}")
+    return "\n".join(lines)
+
+
 def _build_prompt(
     requirement_id: str,
     requirement_text: str,
@@ -149,14 +198,22 @@ def _build_prompt(
     related_requirements: list[dict],
     categories: list[dict],
     semantic_profile_text: str = "",
+    domain_context: str = "",
+    prior_findings_text: str = "",
 ) -> str:
     parts = [
         f"## Requirement {requirement_id}\n",
         f"{requirement_text}\n",
     ]
 
+    if domain_context:
+        parts.extend(["\n", domain_context, "\n"])
+
     if semantic_profile_text:
         parts.extend(["\n", semantic_profile_text, "\n"])
+
+    if prior_findings_text:
+        parts.extend(["\n", prior_findings_text, "\n"])
 
     parts.append(
         "\n## Matching provisions (semantic retrieval + vector search)\n")
@@ -167,7 +224,7 @@ def _build_prompt(
             f"({paragraph['article_title']})** "
             f"paragraph {paragraph['paragraph_num']} "
             f"[{paragraph['obligation_type']}]: "
-            f"{str(paragraph['paragraph_text'])[:320]} "
+            f"{str(paragraph['paragraph_text'])[:PROVISION_TEXT_LENGTH]} "
             f"(score={adjusted})\n"
         )
 
@@ -191,7 +248,7 @@ def _build_prompt(
             for article_paragraph in binding:
                 parts.append(
                     f"- ({article_paragraph['num']}) "
-                    f"{article_paragraph['text'][:180]}\n"
+                    f"{article_paragraph['text'][:ARTICLE_TEXT_LENGTH]}\n"
                 )
 
     if referenced_articles:
@@ -428,8 +485,15 @@ def assess_requirement(
     requirement_id: str,
     requirement_text: str,
     categories: list[dict] | None = None,
+    prior_findings: list[dict] | None = None,
 ) -> tuple[RequirementRisk, dict[str, dict], dict | list]:
-    """Assess a single requirement against the EU AI Act graph."""
+    """Assess a single requirement against the EU AI Act graph.
+
+    prior_findings is an optional list of compact summaries from earlier
+    requirements in the same document. Each entry has an 'id', 'risk_level',
+    and 'risks' list with 'category' and 'severity' per risk. Passing these
+    lets the LLM avoid duplicating findings across related requirements.
+    """
     if categories is None:
         categories = list_categories()
 
@@ -480,6 +544,8 @@ def assess_requirement(
         requirement_id, requirement_text, paragraphs, articles,
         referenced_articles, related_requirements, categories,
         semantic_profile_text=format_semantic_profile(profile),
+        domain_context=_format_domain_context(profile),
+        prior_findings_text=_format_prior_findings(prior_findings),
     )
 
     try:

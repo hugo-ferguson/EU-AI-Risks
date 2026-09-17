@@ -278,6 +278,9 @@ def assess_risks(
     categories = list_categories()
     article_cache: dict[str, dict] = {}
 
+    # Accumulate compact finding summaries so each requirement can see what
+    # was already flagged and avoid producing duplicate risks
+    prior_findings: list[dict] = []
     assessment_entries: list[dict] = []
     for i, requirement in enumerate(requirements, 1):
         requirement_id = requirement["id"]
@@ -285,10 +288,22 @@ def assess_risks(
         print(f"  [{i}/{len(requirements)}] {requirement_id}...")
 
         assessment, fetched_articles, raw = assess_requirement(
-            requirement_id, requirement_text, categories=categories,
+            requirement_id, requirement_text,
+            categories=categories,
+            prior_findings=prior_findings,
         )
         article_cache.update(fetched_articles)
         citations = collect_citations(assessment.risks, article_cache)
+
+        prior_findings.append({
+            "id": requirement_id,
+            "risk_level": assessment.risk_level,
+            "risks": [
+                {"category": risk.obligation_category,
+                 "severity": risk.severity}
+                for risk in assessment.risks
+            ],
+        })
 
         if verbose:
             print(f"    Raw: {json.dumps(raw, indent=2)}")

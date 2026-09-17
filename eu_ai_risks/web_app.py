@@ -291,6 +291,7 @@ def _run_assessment(
 
     categories = list_categories()
     article_cache: dict[str, dict] = {}
+    prior_findings: list[dict[str, Any]] = []
     assessment_entries: list[dict[str, Any]] = []
     total = len(requirements)
 
@@ -300,11 +301,23 @@ def _run_assessment(
             requirement.id,
             requirement.text,
             categories=categories,
+            prior_findings=prior_findings,
         )
         logger.info("[%d/%d] %s → %s", index, total,
                     requirement.id, assessment.risk_level)
         article_cache.update(fetched_articles)
         citations = collect_citations(assessment.risks, article_cache)
+
+        prior_findings.append({
+            "id": requirement.id,
+            "risk_level": assessment.risk_level,
+            "risks": [
+                {"category": risk.obligation_category,
+                 "severity": risk.severity}
+                for risk in assessment.risks
+            ],
+        })
+
         assessment_entries.append(
             {
                 "requirement": {"id": requirement.id, "text": requirement.text},
