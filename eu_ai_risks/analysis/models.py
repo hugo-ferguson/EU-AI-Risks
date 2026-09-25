@@ -2,7 +2,24 @@
 Data models for the agent and risk assessment layers.
 """
 
-from pydantic import BaseModel, Field
+from __future__ import annotations
+
+from enum import Enum
+from typing import Any
+from pydantic import BaseModel, Field, field_validator
+
+
+class AssessmentStatus(str, Enum):
+    COMPLETE = "complete"
+    INCOMPLETE = "incomplete"
+    FAILED = "failed"
+
+
+class RiskLevel(str, Enum):
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+    UNKNOWN = "unknown"
 
 
 class Citation(BaseModel):
@@ -44,9 +61,35 @@ class RiskItem(BaseModel):
         description="Practical engineering action for this risk",
     )
 
+    @field_validator("severity", mode="before")
+    @classmethod
+    def normalise_severity(cls, v: Any) -> str:
+        if isinstance(v, RiskLevel):
+            return v.value
+        s = str(v or "medium").strip().lower()
+        if s in ("high", "medium", "low", "unknown"):
+            return s
+        if s == "critical":
+            return "high"
+        return "medium"
+
 
 class RequirementRisk(BaseModel):
     summary: str = Field(description="Overall compliance analysis")
     risks: list[RiskItem] = Field(default_factory=list)
     risk_level: str = Field(default="medium")
     recommendations: list[str] = Field(default_factory=list)
+    status: AssessmentStatus = Field(default=AssessmentStatus.COMPLETE)
+    validation_issues: list[str] = Field(default_factory=list)
+
+    @field_validator("risk_level", mode="before")
+    @classmethod
+    def normalise_risk_level(cls, v: Any) -> str:
+        if isinstance(v, RiskLevel):
+            return v.value
+        s = str(v or "medium").strip().lower()
+        if s in ("high", "medium", "low", "unknown"):
+            return s
+        if s == "critical":
+            return "high"
+        return "medium"

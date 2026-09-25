@@ -50,6 +50,8 @@ def entries_from_assessments(assessment_entries: list[dict]) -> list[dict]:
             "id": requirement.get("id", "Unknown"),
             "text": requirement.get("text", ""),
             "risk_level": assessment.risk_level,
+            "status": getattr(assessment, "status", "complete"),
+            "validation_issues": getattr(assessment, "validation_issues", []),
             "analysis": _sanitise_analysis(assessment.summary),
             "risks": risks,
             "citations": entry.get("citations", []),
@@ -74,13 +76,26 @@ def render_markdown_report(
     ]
 
     level_counts: dict[str, int] = {}
+    failed_count = 0
+    incomplete_count = 0
     for entry in entries:
-        level = entry["risk_level"].capitalize()
+        level = str(entry.get("risk_level", "medium")).capitalize()
         level_counts[level] = level_counts.get(level, 0) + 1
-    for level in ("High", "Medium", "Low"):
+        status = str(entry.get("status", "complete")).lower()
+        if "fail" in status:
+            failed_count += 1
+        elif "incomplete" in status:
+            incomplete_count += 1
+
+    for level in ("High", "Medium", "Low", "Unknown"):
         count = level_counts.get(level, 0)
         if count:
             lines.append(f"- {level}: {count}")
+
+    if failed_count:
+        lines.append(f"- Failed: {failed_count}")
+    if incomplete_count:
+        lines.append(f"- Incomplete: {incomplete_count}")
 
     lines.extend(["", "## Requirement Findings", ""])
 
