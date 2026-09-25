@@ -22,7 +22,7 @@ def _parse_and_build() -> tuple[dict, list]:
         SEGMENT_TYPES,
     )
 
-    pdf_path = Path(os.environ["PDF_PATH"])
+    pdf_path = Path(os.environ["PDF_PATH"]).expanduser()
     print(f"Parsing {pdf_path} ...")
     segments = extract_segments(pdf_path)
 
@@ -237,6 +237,10 @@ def assess_risks(
         False, "--agent",
         help="Use multi-turn agent loop (slower, more thorough)",
     ),
+    document_id: str | None = typer.Option(
+        None, "--doc-id",
+        help="Document scope identifier (defaults to document filename stem)",
+    ),
     skip_load: bool = typer.Option(
         False, "--skip-load",
         help="Skip loading requirements to graph (use if already loaded)",
@@ -247,6 +251,9 @@ def assess_risks(
     ),
 ):
     """Load requirements into the graph and assess EU AI Act compliance risks."""
+    document_path = document_path.expanduser()
+    doc_id = document_id or document_path.stem
+
     if verbose:
         import logging
         logging.basicConfig(level=logging.DEBUG,
@@ -260,15 +267,15 @@ def assess_risks(
     )
 
     if not skip_load:
-        print(f"Loading requirements from {document_path} ...")
-        write_triples(document_path)
+        print(f"Loading requirements from {document_path} (document ID: {doc_id}) ...")
+        write_triples(document_path, document_id=doc_id)
 
-    requirements = list_requirements()
+    requirements = list_requirements(document_id=doc_id)
     if not requirements:
-        print("No requirements found in the graph.")
+        print(f"No requirements found for document '{doc_id}' in the graph.")
         raise typer.Exit(1)
 
-    print(f"Found {len(requirements)} requirements in graph.")
+    print(f"Found {len(requirements)} requirements in graph for '{doc_id}'.")
 
     if agent:
         from eu_ai_risks.analysis.risk_assessor_agent import assess_requirement
