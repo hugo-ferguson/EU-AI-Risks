@@ -121,6 +121,18 @@ def extract_paragraphs(article_segment: Segment) -> list[Segment]:
             body=paragraph_lines,
         ))
 
+    # If no numbered paragraphs were matched, preserve unnumbered substantive text (e.g. Article 4)
+    if not paragraphs and any(line.strip() for line in article_segment.body):
+        non_empty_lines = [l for l in article_segment.body if l.strip()]
+        if non_empty_lines:
+            paragraphs.append(Segment(
+                type="paragraph",
+                id=f"{article_segment.id}:p0",
+                num=0,
+                parent_id=article_segment.id,
+                body=non_empty_lines,
+            ))
+
     return paragraphs
 
 

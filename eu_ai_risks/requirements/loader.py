@@ -2,20 +2,25 @@
 Load and parse requirement documents (PDF, docx, etc.) into structured data.
 """
 
+from __future__ import annotations
+
+import json
 import re
 from pathlib import Path
 
-import pdfplumber
-import json
-
-from eu_ai_risks.requirements.models import Requirement
+from eu_ai_risks.db import get_session
 from eu_ai_risks.embeddings import embed_batch
 from eu_ai_risks.embeddings.client import EMBEDDING_DIMENSIONS
-from eu_ai_risks.db import get_session
 from eu_ai_risks.llm import complete_json
+from eu_ai_risks.requirements.models import Requirement
 
 RE_REQUIREMENT_ID = re.compile(
     r'\b((?:CH3-FR|CH3-NFR|FR|NFR|REQ|R|UC|SR|SYS|SRS)[-_ ]?\d+(?:\.\d+)*)\b',
+    re.IGNORECASE,
+)
+# Anchored to line/block start for accurate prefix detection without mangling mid-sentence IDs
+RE_PREFIX_REQUIREMENT_ID = re.compile(
+    r'^\s*((?:CH3-FR|CH3-NFR|FR|NFR|REQ|R|UC|SR|SYS|SRS)[-_ ]?\d+(?:\.\d+)*)\b\s*[:\-\.]?\s*',
     re.IGNORECASE,
 )
 RE_NUMBERED_ITEM = re.compile(r'^(\d+(?:\.\d+)*|[A-Z]\d+)[.)]\s+(.+)$')
@@ -29,7 +34,10 @@ SUPPORTED_EXTENSIONS = {".json", ".txt", ".md", ".markdown", ".pdf", ".docx"}
 
 
 def load_requirements(
-    document_path: Path, *, with_triples: bool = True,
+    document_path: Path,
+    *,
+    with_triples: bool = True,
+    document_id: str | None = None,
 ) -> list[Requirement]:
     """Load a requirements document and extract candidate requirements."""
     document_path = document_path.expanduser()
@@ -44,21 +52,25 @@ def load_requirements(
             f"Supported types: {', '.join(sorted(SUPPORTED_EXTENSIONS))}"
         )
 
+    doc_id = document_id or document_path.stem
+
     if extension == ".json":
-        return _requirements_from_json(document_path)
+        return _requirements_from_json(document_path, with_triples=with_triples, document_id=doc_id)
     if extension == ".pdf":
-        blocks = _read_pdf_blocks(document_path)
+        raw_lines = _read_pdf_blocks(document_path)
     elif extension == ".docx":
-        blocks = _read_docx_blocks(document_path)
+        raw_lines = _read_docx_blocks(document_path)
     else:
-        blocks = _read_text_blocks(document_path)
+        raw_lines = _read_text_blocks(document_path)
 
-    return _extract_requirements(blocks, document_path, with_triples=with_triples)
+    # Assemble logical multi-line blocks before requirement detection
+    blocks = _assemble_logical_blocks(raw_lines)
+    return _extract_requirements(blocks, document_path, with_triples=with_triples, document_id=doc_id)
 
 
-def parse_requirements(document_path: Path) -> list[Requirement]:
+def parse_requirements(document_path: Path, document_id: str | None = None) -> list[Requirement]:
     """Load requirements without LLM triple extraction."""
-    return load_requirements(document_path, with_triples=False)
+    return load_requirements(document_path, with_triples=False, document_id=document_id)
 
 
 def _read_text_blocks(document_path: Path) -> list[dict]:
@@ -71,6 +83,11 @@ def _read_text_blocks(document_path: Path) -> list[dict]:
 
 
 def _read_pdf_blocks(document_path: Path) -> list[dict]:
+    try:
+        import pdfplumber
+    except ImportError as exc:
+        raise ImportError("Reading .pdf requires pdfplumber.") from exc
+
     blocks = []
     with pdfplumber.open(document_path) as pdf:
         for page_number, page in enumerate(pdf.pages, start=1):
@@ -92,20 +109,75 @@ def _read_docx_blocks(document_path: Path) -> list[dict]:
 
     document = Document(str(document_path))
 
-    return [
+    blocks = [
         {"text": paragraph.text.strip(), "page": None}
         for paragraph in document.paragraphs
         if paragraph.text.strip()
     ]
 
+    # Include table cells if present
+    for table in document.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                text = cell.text.strip()
+                if text:
+                    blocks.append({"text": text, "page": None})
+
+    return blocks
+
+
+def _assemble_logical_blocks(raw_lines: list[dict]) -> list[dict]:
+    """
+    Assemble physical lines into coherent logical requirement/heading blocks.
+    Preserves continuation lines in wrapped text while respecting new headings or IDs.
+    """
+    blocks: list[dict] = []
+    current_block: dict | None = None
+
+    for item in raw_lines:
+        text = item["text"].strip()
+        page = item.get("page")
+        if not text:
+            continue
+
+        is_heading = bool(RE_HEADING.match(text) and not _looks_like_requirement(text))
+        is_new_item = bool(
+            RE_PREFIX_REQUIREMENT_ID.match(text)
+            or RE_NUMBERED_ITEM.match(text)
+            or is_heading
+        )
+
+        if current_block is None:
+            current_block = {"text": text, "page": page}
+        elif is_new_item:
+            blocks.append(current_block)
+            current_block = {"text": text, "page": page}
+        else:
+            # Continuation line
+            current_text = current_block["text"]
+            if current_text.endswith("-"):
+                current_block["text"] = current_text[:-1] + text
+            else:
+                current_block["text"] = current_text + " " + text
+
+    if current_block:
+        blocks.append(current_block)
+
+    return blocks
+
 
 def _extract_requirements(
-    blocks: list[dict], document_path: Path, *, with_triples: bool = True,
+    blocks: list[dict],
+    document_path: Path,
+    *,
+    with_triples: bool = True,
+    document_id: str | None = None,
 ) -> list[Requirement]:
     requirements = []
     current_section = None
     current_title = None
     next_id = 1
+    doc_id = document_id or document_path.stem
 
     for block in blocks:
         text = _normalise_text(block["text"])
@@ -135,23 +207,31 @@ def _extract_requirements(
             section=current_section,
             title=current_title,
             page=block.get("page"),
+            document_id=doc_id,
             triples=triples
         ))
 
     return _deduplicate_requirements(requirements)
 
 
-def _requirements_from_json(document_path: Path) -> list[Requirement]:
+def _requirements_from_json(
+    document_path: Path,
+    *,
+    with_triples: bool = True,
+    document_id: str | None = None,
+) -> list[Requirement]:
     data = json.loads(document_path.read_text(encoding="utf-8"))
     if isinstance(data, dict):
         for key in ("requirements", "items", "data"):
             if isinstance(data.get(key), list):
                 data = data[key]
                 break
+
     if not isinstance(data, list):
         raise ValueError(
             "JSON requirements file must contain a list of requirement objects.")
 
+    doc_id = document_id or document_path.stem
     requirements: list[Requirement] = []
     for index, item in enumerate(data, start=1):
         if isinstance(item, str):
@@ -168,8 +248,14 @@ def _requirements_from_json(document_path: Path) -> list[Requirement]:
         else:
             continue
         if text:
+            triples = _split_requirement(text) if with_triples else []
             requirements.append(Requirement(
-                id=requirement_id, text=text, source=str(document_path)))
+                id=requirement_id,
+                text=text,
+                source=str(document_path),
+                document_id=doc_id,
+                triples=triples,
+            ))
     return _deduplicate_requirements(requirements)
 
 
@@ -178,6 +264,8 @@ def _normalise_text(text: str) -> str:
 
 
 def _looks_like_requirement(text: str) -> bool:
+    if RE_PREFIX_REQUIREMENT_ID.match(text) and len(text.split()) >= 4:
+        return True
     if RE_REQUIREMENT_ID.search(text) and len(text.split()) >= 4:
         return True
     if RE_REQUIREMENT_VERB.search(text) and len(text.split()) >= 5:
@@ -187,14 +275,18 @@ def _looks_like_requirement(text: str) -> bool:
 
 
 def _extract_requirement_id(text: str) -> str | None:
-    match = RE_REQUIREMENT_ID.search(text)
+    match = RE_PREFIX_REQUIREMENT_ID.match(text)
     if not match:
-        return None
+        match = RE_REQUIREMENT_ID.search(text)
+        if not match or match.start() > 10:
+            return None
     return re.sub(r'\s+', '-', match.group(1).upper())
 
 
 def _strip_requirement_prefix(text: str) -> str:
-    text = RE_REQUIREMENT_ID.sub('', text, count=1).strip(" :-\t")
+    match = RE_PREFIX_REQUIREMENT_ID.match(text)
+    if match:
+        text = text[match.end():].strip(" :-\t")
     numbered_match = RE_NUMBERED_ITEM.match(text)
     if numbered_match:
         return numbered_match.group(2).strip()
@@ -241,7 +333,7 @@ def _split_requirement(requirement_text: str) -> list[dict]:
             prompt=f'Extract triples from: "{requirement_text}"',
             system=_TRIPLE_EXTRACTION_SYSTEM,
         )
-    except ValueError:
+    except Exception:
         return []
     if isinstance(result, dict):
         for value in result.values():
@@ -250,55 +342,109 @@ def _split_requirement(requirement_text: str) -> list[dict]:
                 break
     if not isinstance(result, list):
         result = [result] if isinstance(result, dict) else []
-    return [triple for triple in result if isinstance(triple, dict) and "subject" in triple]
+
+    # Strictly validate that all three components (subject, predicate, object) are non-empty strings
+    valid_triples = []
+    for item in result:
+        if not isinstance(item, dict):
+            continue
+        subj = str(item.get("subject", "")).strip()
+        pred = str(item.get("predicate", "")).strip()
+        obj = str(item.get("object", "")).strip()
+        if subj and pred and obj:
+            valid_triples.append({
+                "subject": subj,
+                "predicate": pred,
+                "object": obj,
+            })
+    return valid_triples
 
 
-def write_triples(document_path: Path):
-    requirements = load_requirements(document_path)
+def write_triples(document_path: Path, document_id: str | None = None) -> None:
+    """
+    Persist Requirement nodes and scoped Assertion triples to Neo4j.
+    Ensures requirements are persisted even when zero triples exist.
+    """
+    document_path = Path(document_path).expanduser()
+    doc_id = document_id or document_path.stem
+    requirements = load_requirements(document_path, with_triples=True, document_id=doc_id)
 
-    all_triples = []
-    for requirement in requirements:
-        for triple in requirement.triples:
-            all_triples.append({
-                "subject":        triple["subject"],
-                "predicate":      triple["predicate"],
-                "object":         triple["object"],
-                "requirement_id":   requirement.id,
-                "requirement_text": requirement.text,
+    if not requirements:
+        print(f"No requirements found in {document_path}.")
+        return
+
+    # 1. Persist all Requirement nodes linked to Document node
+    req_rows = [
+        {
+            "id": f"{doc_id}:{r.id}" if not r.id.startswith(f"{doc_id}:") else r.id,
+            "raw_id": r.id,
+            "text": r.text,
+            "document_id": doc_id,
+            "source": str(document_path),
+            "section": r.section or "",
+            "title": r.title or "",
+            "page": r.page or 0,
+        }
+        for r in requirements
+    ]
+
+    with get_session() as session:
+        session.run("""
+            UNWIND $rows AS row
+            MERGE (d:Document {id: row.document_id})
+            MERGE (req:Requirement {id: row.id})
+            SET req.raw_id = row.raw_id,
+                req.text = row.text,
+                req.document_id = row.document_id,
+                req.source = row.source,
+                req.section = row.section,
+                req.title = row.title,
+                req.page = row.page
+            MERGE (d)-[:CONTAINS_REQUIREMENT]->(req)
+        """, rows=req_rows)
+
+    print(f"  Wrote {len(req_rows)} Requirement nodes for document '{doc_id}'.")
+
+    # 2. Persist requirement-scoped assertions
+    assertion_rows = []
+    for r in requirements:
+        scoped_req_id = f"{doc_id}:{r.id}" if not r.id.startswith(f"{doc_id}:") else r.id
+        for idx, triple in enumerate(r.triples):
+            assertion_rows.append({
+                "assertion_id": f"{scoped_req_id}:a{idx}",
+                "requirement_id": scoped_req_id,
+                "subject": triple["subject"],
+                "predicate": triple["predicate"],
+                "object": triple["object"],
             })
 
-    if not all_triples:
-        print("No triples to write.")
+    if not assertion_rows:
+        print(f"  No triples extracted to persist for document '{doc_id}'.")
         return
 
     batch_size = 500
-    for i in range(0, len(all_triples), batch_size):
-        batch = all_triples[i:i + batch_size]
-
+    for i in range(0, len(assertion_rows), batch_size):
+        batch = assertion_rows[i:i + batch_size]
         with get_session() as session:
             session.run("""
                 UNWIND $rows AS row
+                MATCH (req:Requirement {id: row.requirement_id})
 
-                // Merge subject node
                 MERGE (s:Entity {name: row.subject})
-
-                // Merge object node
                 MERGE (o:Entity {name: row.object})
 
-                // Merge the relationship between them
-                MERGE (s)-[r:RELATION {type: row.predicate}]->(o)
+                // Requirement-scoped Assertion node
+                MERGE (a:Assertion {id: row.assertion_id})
+                SET a.predicate = row.predicate
+                MERGE (req)-[:ASSERTS]->(a)
+                MERGE (a)-[:HAS_SUBJECT]->(s)
+                MERGE (a)-[:HAS_OBJECT]->(o)
 
-                // Merge the requirement node
-                MERGE (req:Requirement {id: row.requirement_id})
-                SET req.text = row.requirement_text
-
-                // Link requirement to its subject entity
+                // Shared graph discovery relationship
+                MERGE (s)-[:RELATION {type: row.predicate}]->(o)
                 MERGE (req)-[:EXTRACTED_FROM]->(s)
-                """,
-                        rows=batch
-                        )
-
-            print(f"  Wrote {i + len(batch)}/{len(all_triples)} triples")
+            """, rows=batch)
+            print(f"  Wrote {i + len(batch)}/{len(assertion_rows)} assertion triples")
 
             generate_and_write_triple_embeddings(session, batch)
 
@@ -314,8 +460,7 @@ def generate_and_write_triple_embeddings(session, all_triples: list[dict]) -> No
         entity_ids = list(entities.keys())
         entity_texts = list(entities.values())
 
-        print(
-            f"  Generating embeddings for {len(entity_texts)} Entity nodes...")
+        print(f"  Generating embeddings for {len(entity_texts)} Entity nodes...")
         entity_embeddings = embed_batch(entity_texts)
 
         entity_rows = [
@@ -328,8 +473,8 @@ def generate_and_write_triple_embeddings(session, all_triples: list[dict]) -> No
             MATCH (n:Entity {name: row.name})
             SET n.embedding = row.embedding
             """,
-                    rows=entity_rows
-                    )
+            rows=entity_rows
+        )
         print(f"  Wrote embeddings for {len(entity_rows)} Entity nodes.")
 
     for label in ("Entity",):
@@ -340,12 +485,10 @@ def generate_and_write_triple_embeddings(session, all_triples: list[dict]) -> No
                 `vector.dimensions`: {EMBEDDING_DIMENSIONS},
                 `vector.similarity_function`: 'cosine'
             }}}}
-            """
-                    )
+        """)
         print(f"  Created vector index for {label}.")
 
 
 if __name__ == "__main__":
     doc = Path("./examples/sample-srs.md")
-
     write_triples(doc)

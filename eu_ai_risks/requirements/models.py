@@ -17,5 +17,6 @@ class Requirement:
     section: str | None = None
     title: str | None = None
     page: int | None = None
+    document_id: str | None = None
     metadata: dict[str, str] = field(default_factory=dict)
     triples: list[dict] = field(default_factory=list)

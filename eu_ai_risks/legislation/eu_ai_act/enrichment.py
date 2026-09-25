@@ -237,69 +237,83 @@ def add_concepts() -> None:
 
     :return: None
     """
-    # Skip extraction if concepts already exist (re-running only adds USES edges)
     with get_session() as session:
         existing = session.run(
             "MATCH (c:Concept) RETURN c.id AS id, c.name AS name, c.description AS description"
         ).data()
-
-    if existing:
-        print(f"  {len(existing)} concepts already exist, skipping extraction.")
-        concept_nodes = existing
-    else:
-        with get_session() as session:
-            article_three_paragraphs = session.run(
-                """
-				MATCH (a:Article {id: 'art:3'})-[:HAS_PARAGRAPH]->(p:Paragraph)
-				RETURN p.id AS id, p.text AS text
-				ORDER BY p.num
-				"""
+        defined_paragraph_ids = set(
+            row["pid"] for row in session.run(
+                "MATCH (p:Paragraph)-[:DEFINES]->(c:Concept) RETURN p.id AS pid"
             ).data()
+        )
+        article_three_paragraphs = session.run(
+            """
+            MATCH (a:Article {id: 'art:3'})-[:HAS_PARAGRAPH]->(p:Paragraph)
+            RETURN p.id AS id, p.text AS text
+            ORDER BY p.num
+            """
+        ).data()
 
-        print(f"  Extracting concepts from {len(article_three_paragraphs)} "
-              f"Article 3 paragraphs ...")
+    missing_paragraphs = [
+        row for row in article_three_paragraphs
+        if row["id"] not in defined_paragraph_ids
+    ]
 
-        concept_nodes = []
+    concept_nodes = list(existing)
+    if not missing_paragraphs and existing:
+        print(f"  All {len(article_three_paragraphs)} Article 3 paragraphs already have concepts defined.")
+    else:
+        print(f"  Extracting concepts from {len(missing_paragraphs)} remaining Article 3 paragraphs ...")
+
+        new_concept_nodes = []
         defines_edges = []
 
-        for i, row in enumerate(article_three_paragraphs, 1):
+        for i, row in enumerate(missing_paragraphs, 1):
             try:
                 concept = extract_concept_from_paragraph(row["text"])
             except Exception as e:
-                print(f"  [{i}/{len(article_three_paragraphs)}] {row['id']} "
+                print(f"  [{i}/{len(missing_paragraphs)}] {row['id']} "
                       f"FAILED: {e}")
                 continue
 
             if not concept:
-                print(f"  [{i}/{len(article_three_paragraphs)}] {row['id']} "
+                print(f"  [{i}/{len(missing_paragraphs)}] {row['id']} "
                       f"(no concept found)")
                 continue
 
             node_id = concept_id(concept["name"])
-            concept_nodes.append({
+            node_data = {
                 "id": node_id,
                 "name": concept["name"],
                 "description": concept["description"],
-            })
+            }
+            new_concept_nodes.append(node_data)
+            concept_nodes.append(node_data)
             defines_edges.append({"src": row["id"], "dst": node_id})
-            print(f"  [{i}/{len(article_three_paragraphs)}] {row['id']} "
+            print(f"  [{i}/{len(missing_paragraphs)}] {row['id']} "
                   f"defines concept '{concept['name']}'")
 
-        if not concept_nodes:
-            print("  No concepts extracted.")
-            return
-
-        with get_session() as session:
-            session.run(
-                "CREATE CONSTRAINT concept_id IF NOT EXISTS FOR (n:Concept) REQUIRE n.id IS UNIQUE")
-            session.run(
-                """
-				UNWIND $rows AS row
-				MERGE (c:Concept {id: row.id})
-				SET c.name = row.name, c.description = row.description
-				""",
-                rows=concept_nodes,
-            )
+        if new_concept_nodes:
+            with get_session() as session:
+                session.run(
+                    "CREATE CONSTRAINT concept_id IF NOT EXISTS FOR (n:Concept) REQUIRE n.id IS UNIQUE")
+                session.run(
+                    """
+                    UNWIND $rows AS row
+                    MERGE (c:Concept {id: row.id})
+                    SET c.name = row.name, c.description = row.description
+                    """,
+                    rows=new_concept_nodes,
+                )
+                session.run(
+                    """
+                    UNWIND $rows AS row
+                    MATCH (p:Paragraph {id: row.src})
+                    MATCH (c:Concept {id: row.dst})
+                    MERGE (p)-[:DEFINES]->(c)
+                    """,
+                    rows=defines_edges,
+                )
             session.run(
                 """
 				UNWIND $rows AS row

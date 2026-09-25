@@ -5,7 +5,7 @@ knowledge graph with semantic profiling.
 
 from functools import lru_cache
 
-from eu_ai_risks.analysis.models import RequirementRisk, RiskItem
+from eu_ai_risks.analysis.models import AssessmentStatus, RequirementRisk, RiskItem
 from eu_ai_risks.analysis.prompts import RISK_ASSESSMENT_PROMPT
 from eu_ai_risks.analysis.semantic_profiles import (
     article_ids_for_profile_categories,
@@ -448,6 +448,11 @@ def assess_requirement(
         paragraph_candidates, profile, categories, limit=TOP_K_PARAGRAPHS,
     )
 
+    from eu_ai_risks.analysis.jev_reranker import rerank_candidates_with_jev
+    paragraphs, jev_decision = rerank_candidates_with_jev(
+        requirement_text, paragraphs
+    )
+
     priority_article_ids = article_ids_for_profile_categories(
         profile, categories)
     hit_article_ids = list(dict.fromkeys(
@@ -489,36 +494,49 @@ def assess_requirement(
             max_tokens=MAX_TOKENS,
         )
         assessment = _parse_assessment(raw)
-    except ValueError:
-        raw = {"fallback_used": True}
+    except Exception as exc:
+        raw = {"fallback_used": True, "error": str(exc)}
         assessment = RequirementRisk(
-            summary="Model returned invalid JSON; semantic-profile fallback used.",
+            summary=f"Model execution failed: {exc}",
             risks=[],
-            risk_level="low",
+            risk_level="unknown",
             recommendations=[],
+            status=AssessmentStatus.FAILED,
+            validation_issues=[str(exc)],
         )
 
-    assessment = _align_assessment_with_profile(assessment, profile)
-    assessment = _apply_profile_gap_fallback(assessment, profile, articles)
-    assessment = _apply_control_severity_policy(assessment, profile)
-    assessment = _remove_duplicate_risks(assessment)
+    if jev_decision and isinstance(raw, dict):
+        raw["jev_decision"] = jev_decision.model_dump()
+
+    if assessment.status != AssessmentStatus.FAILED:
+        assessment = _align_assessment_with_profile(assessment, profile)
+        assessment = _apply_profile_gap_fallback(assessment, profile, articles)
+        assessment = _apply_control_severity_policy(assessment, profile)
+        assessment = _remove_duplicate_risks(assessment)
     return assessment, articles, raw
 
 
 def _parse_assessment(raw: dict | list) -> RequirementRisk:
     if not isinstance(raw, dict):
-        return RequirementRisk(summary=str(raw))
+        return RequirementRisk(
+            summary=f"Model returned invalid non-dict output: {str(raw)[:200]}",
+            status=AssessmentStatus.FAILED,
+            risk_level="unknown",
+            validation_issues=["Response was not a JSON object"],
+        )
 
     try:
         return RequirementRisk.model_validate(raw)
-    except Exception:
-        pass
+    except Exception as exc:
+        validation_issue = str(exc)
 
     for key in ("answer", "response", "result", "assessment", "data"):
         nested = raw.get(key)
         if isinstance(nested, dict) and "summary" in nested:
             try:
-                return RequirementRisk.model_validate(nested)
+                res = RequirementRisk.model_validate(nested)
+                res.status = AssessmentStatus.INCOMPLETE
+                return res
             except Exception:
                 pass
 
@@ -529,11 +547,10 @@ def _parse_assessment(raw: dict | list) -> RequirementRisk:
                 summary = value
                 break
 
-    risk_level = raw.get("risk_level", "medium")
-    if risk_level not in ("high", "medium", "low"):
-        risk_level = "medium"
-
+    risk_level = raw.get("risk_level", "unknown")
     return RequirementRisk(
         summary=summary or "Model did not produce a valid risk assessment.",
         risk_level=risk_level,
+        status=AssessmentStatus.INCOMPLETE,
+        validation_issues=[validation_issue],
     )

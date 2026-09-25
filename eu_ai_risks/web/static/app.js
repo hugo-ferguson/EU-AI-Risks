@@ -112,8 +112,11 @@ function escapeHtml(text) {
 if (phase === 'assessed') {
   saveCache();
 } else if (phase === 'empty') {
-  const restored = restoreCache();
-  if (restored) initResultsInteractivity();
+  const urlParams = new URLSearchParams(window.location.search);
+  if (!urlParams.has('error')) {
+    const restored = restoreCache();
+    if (restored) initResultsInteractivity();
+  }
 }
 
 // ── Findings interactivity (runs on server-rendered or cache-restored) ──
@@ -126,8 +129,15 @@ function initResultsInteractivity() {
   const noRes = document.querySelector('#no-results');
 
   function showDetail(targetId) {
-    cards.forEach((c) => c.classList.toggle('active', c.dataset.target === targetId));
-    panels.forEach((p) => p.classList.toggle('hidden', p.id !== targetId));
+    cards.forEach((c) => {
+      const isActive = Boolean(targetId && c.dataset.target === targetId);
+      c.classList.toggle('active', isActive);
+      c.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+    panels.forEach((p) => {
+      const isVisible = Boolean(targetId && p.id === targetId);
+      p.classList.toggle('hidden', !isVisible);
+    });
   }
 
   cards.forEach((c) => c.addEventListener('click', () => showDetail(c.dataset.target)));
@@ -149,7 +159,9 @@ function initResultsInteractivity() {
     });
 
     if (noRes) noRes.hidden = visible.length !== 0;
-    if (!visible.some((c) => c.classList.contains('active')) && visible[0]) {
+    if (visible.length === 0) {
+      showDetail(null);
+    } else if (!visible.some((c) => c.classList.contains('active')) && visible[0]) {
       showDetail(visible[0].dataset.target);
     }
   }

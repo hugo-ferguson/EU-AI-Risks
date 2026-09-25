@@ -2,36 +2,53 @@
 Embedding model wrapper using sentence-transformers.
 """
 
-import torch
-from sentence_transformers import SentenceTransformer
+from __future__ import annotations
+
+import threading
 
 MODEL_NAME = "BAAI/bge-base-en-v1.5"
 EMBEDDING_DIMENSIONS = 768
 
 
 def resolve_device() -> str:
-    if torch.cuda.is_available():
-        return "cuda"
-    if torch.backends.mps.is_available():
-        return "mps"
+    try:
+        import torch
+        if torch.cuda.is_available():
+            return "cuda"
+        if torch.backends.mps.is_available():
+            return "mps"
+    except ImportError:
+        pass
     return "cpu"
 
 
 class EmbeddingClient:
-    """Singleton wrapper around the sentence-transformers model."""
+    """Thread-safe singleton wrapper around the sentence-transformers model."""
 
     _instance = None
-    _model: SentenceTransformer | None = None
+    _model = None
+    _lock = threading.Lock()
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
         return cls._instance
 
-    def _get_model(self) -> SentenceTransformer:
+    def _get_model(self):
         if self._model is None:
-            device = resolve_device()
-            self._model = SentenceTransformer(MODEL_NAME, device=device)
+            with self._lock:
+                if self._model is None:
+                    try:
+                        from sentence_transformers import SentenceTransformer
+                    except ImportError as exc:
+                        raise ImportError(
+                            "Generating embeddings requires sentence-transformers and PyTorch. "
+                            "Install them via 'pip install sentence-transformers torch'."
+                        ) from exc
+                    device = resolve_device()
+                    self._model = SentenceTransformer(MODEL_NAME, device=device)
         return self._model
 
     def embed_text(self, text: str) -> list[float]:

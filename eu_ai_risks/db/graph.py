@@ -439,30 +439,50 @@ def get_references(article_id: str) -> dict:
         }
 
 
-def list_requirements() -> list[dict]:
+def list_requirements(document_id: str | None = None) -> list[dict]:
     """
-    List all Requirement nodes in the graph.
+    List Requirement nodes in the graph, optionally scoped to a document.
 
-    :return: list of dicts with keys: id, text.
+    :param document_id: optional document ID or prefix to filter by.
+    :return: list of dicts with keys: id, raw_id, text, document_id.
     """
     with get_session() as session:
-        query_result = session.run(
-            """
-			MATCH (r:Requirement)
-			RETURN r.id AS id, r.text AS text
-			ORDER BY r.id
-			"""
-        )
+        if document_id:
+            query_result = session.run(
+                """
+                MATCH (r:Requirement)
+                WHERE r.document_id = $document_id OR r.id STARTS WITH $prefix
+                RETURN r.id AS id, coalesce(r.raw_id, r.id) AS raw_id, r.text AS text, r.document_id AS document_id
+                ORDER BY r.id
+                """,
+                document_id=document_id,
+                prefix=f"{document_id}:",
+            )
+        else:
+            query_result = session.run(
+                """
+                MATCH (r:Requirement)
+                RETURN r.id AS id, coalesce(r.raw_id, r.id) AS raw_id, r.text AS text, r.document_id AS document_id
+                ORDER BY r.id
+                """
+            )
 
         return [
-            {"id": row["id"], "text": row["text"]}
+            {
+                "id": row["id"],
+                "raw_id": row["raw_id"],
+                "text": row["text"],
+                "document_id": row["document_id"],
+            }
             for row in query_result
         ]
 
 
 def get_requirement(requirement_id: str) -> dict | None:
     """
-    Return a requirement with its entity triples.
+    Return a requirement with its entity triples. Prioritizes requirement-scoped
+    assertions to prevent cross-requirement assertion leakage, with fallback
+    to legacy graph schema.
 
     :param requirement_id: the requirement ID, e.g. "REQ-001".
     :return: dict with requirement details and triples, or None.
@@ -470,16 +490,17 @@ def get_requirement(requirement_id: str) -> dict | None:
     with get_session() as session:
         query_result = session.run(
             """
-			MATCH (r:Requirement {id: $requirement_id})
-			OPTIONAL MATCH (r)-[:EXTRACTED_FROM]->(s:Entity)
-			OPTIONAL MATCH (s)-[rel:RELATION]->(o:Entity)
-			RETURN r.id AS id, r.text AS text,
-			       collect({
-			           subject: s.name,
-			           predicate: rel.type,
-			           object: o.name
-			       }) AS triples
-			""",
+            MATCH (r:Requirement {id: $requirement_id})
+            OPTIONAL MATCH (r)-[:ASSERTS]->(a:Assertion)
+            OPTIONAL MATCH (a)-[:HAS_SUBJECT]->(s:Entity)
+            OPTIONAL MATCH (a)-[:HAS_OBJECT]->(o:Entity)
+            RETURN r.id AS id, coalesce(r.raw_id, r.id) AS raw_id, r.text AS text,
+                   collect({
+                       subject: s.name,
+                       predicate: a.predicate,
+                       object: o.name
+                   }) AS assertion_triples
+            """,
             requirement_id=requirement_id,
         )
 
@@ -488,12 +509,33 @@ def get_requirement(requirement_id: str) -> dict | None:
             return None
 
         triples = [
-            triple for triple in record["triples"]
-            if triple["subject"] is not None
+            triple for triple in record["assertion_triples"]
+            if triple["subject"] is not None and triple["object"] is not None
         ]
+
+        if not triples:
+            legacy_result = session.run(
+                """
+                MATCH (r:Requirement {id: $requirement_id})-[:EXTRACTED_FROM]->(s:Entity)
+                OPTIONAL MATCH (s)-[rel:RELATION]->(o:Entity)
+                RETURN collect({
+                    subject: s.name,
+                    predicate: rel.type,
+                    object: o.name
+                }) AS legacy_triples
+                """,
+                requirement_id=requirement_id,
+            )
+            legacy_record = legacy_result.single()
+            if legacy_record:
+                triples = [
+                    t for t in legacy_record["legacy_triples"]
+                    if t["subject"] is not None and t["object"] is not None
+                ]
 
         return {
             "id": record["id"],
+            "raw_id": record["raw_id"],
             "text": record["text"],
             "triples": triples,
         }
