@@ -266,16 +266,16 @@
               <circle cx="11" cy="11" r="8" />
               <path d="m21 21-4.3-4.3" />
             </svg>
-            <input id="search-input" placeholder="Search requirements..." />
+            <input id="search-input" placeholder="Search requirements..." aria-label="Search requirements" />
           </div>
           <div class="filter-group">
-            <select id="level-filter">
+            <select id="level-filter" aria-label="Filter by risk level">
               <option value="all">all</option>
               <option value="high">high</option>
               <option value="medium">medium</option>
               <option value="low">low</option>
             </select>
-            <select id="category-filter">
+            <select id="category-filter" aria-label="Filter by obligation category">
               <option value="all">all categories</option>
               {% for category in categories %}
               <option value="{{ category }}">{{ category.replace('_', ' ').replace('-', ' ') }}</option>
@@ -285,10 +285,11 @@
         </div>
 
         <div class="review-layout">
-          <div class="findings-list" id="findings-list">
+          <div class="findings-list" id="findings-list" role="tablist" aria-label="Requirement findings">
             {% for entry in entries %}
             {% set cats = entry.risks | map(attribute='obligation_category') | select | unique | list %}
             <button class="finding-card {% if loop.first %}active{% endif %}" data-target="detail-{{ loop.index }}"
+              role="tab" aria-selected="{% if loop.first %}true{% else %}false{% endif %}" aria-controls="detail-{{ loop.index }}"
               data-level="{{ entry.risk_level }}" data-categories="{{ cats | join(' ') }}"
               data-search="{{ (entry.id ~ ' ' ~ entry.text ~ ' ' ~ entry.analysis)|lower }}">
               <div class="finding-topline"><strong>{{ entry.id }}</strong><span
