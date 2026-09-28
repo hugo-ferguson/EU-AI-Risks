@@ -115,6 +115,12 @@ Then run the assessment later with `--skip-load`:
 eu-ai-risks assess-risks ./my-srs.md --skip-load
 ```
 
+Loading requirements and saving to json file
+
+```bash
+eu-ai-risks load-requrirements ./my-srs.md --save
+```
+
 ## Graph structure
 
 The knowledge graph contains:

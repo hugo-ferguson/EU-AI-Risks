@@ -1,0 +1,518 @@
+[
+    {
+        "id": "FR-1",
+        "text": "The system shall ingest candidate resumes, cover letters, and application form responses submitted through the recruitment portal.",
+        "source": "examples\\requirements\\sample-srs.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            {
+                "subject": "the system",
+                "predicate": "ingest",
+                "object": "candidate resumes"
+            },
+            {
+                "subject": "the system",
+                "predicate": "ingest",
+                "object": "cover letters"
+            },
+            {
+                "subject": "the system",
+                "predicate": "ingest",
+                "object": "application form responses"
+            },
+            {
+                "subject": "candidate resumes",
+                "predicate": "submitted through",
+                "object": "the recruitment portal"
+            },
+            {
+                "subject": "cover letters",
+                "predicate": "submitted through",
+                "object": "the recruitment portal"
+            },
+            {
+                "subject": "application form responses",
+                "predicate": "submitted through",
+                "object": "the recruitment portal"
+            }
+        ]
+    },
+    {
+        "id": "FR-2",
+        "text": "The system shall generate a suitability score for each candidate based on job requirements, experience, education, and skills extracted from the application.",
+        "source": "examples\\requirements\\sample-srs.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            {
+                "subject": "the system",
+                "predicate": "shall generate",
+                "object": "a suitability score"
+            },
+            {
+                "subject": "suitability score",
+                "predicate": "generated for",
+                "object": "each candidate"
+            },
+            {
+                "subject": "suitability score",
+                "predicate": "based on",
+                "object": "job requirements"
+            },
+            {
+                "subject": "suitability score",
+                "predicate": "based on",
+                "object": "experience"
+            },
+            {
+                "subject": "suitability score",
+                "predicate": "based on",
+                "object": "education"
+            },
+            {
+                "subject": "suitability score",
+                "predicate": "based on",
+                "object": "skills"
+            },
+            {
+                "subject": "experience",
+                "predicate": "extracted from",
+                "object": "the application"
+            },
+            {
+                "subject": "education",
+                "predicate": "extracted from",
+                "object": "the application"
+            },
+            {
+                "subject": "skills",
+                "predicate": "extracted from",
+                "object": "the application"
+            }
+        ]
+    },
+    {
+        "id": "FR-3",
+        "text": "The system shall rank candidates for recruiter review using the generated suitability score.",
+        "source": "examples\\requirements\\sample-srs.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            {
+                "subject": "the system",
+                "predicate": "shall rank",
+                "object": "candidates"
+            },
+            {
+                "subject": "the system",
+                "predicate": "shall rank candidates for",
+                "object": "recruiter review"
+            },
+            {
+                "subject": "the system",
+                "predicate": "shall rank candidates using",
+                "object": "the generated suitability score"
+            }
+        ]
+    },
+    {
+        "id": "FR-4",
+        "text": "The system shall explain the main factors that influenced each candidate suitability score in language understandable to a recruiter.",
+        "source": "examples\\requirements\\sample-srs.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            {
+                "subject": "the system",
+                "predicate": "shall explain",
+                "object": "the main factors"
+            },
+            {
+                "subject": "the main factors",
+                "predicate": "influenced",
+                "object": "each candidate suitability score"
+            },
+            {
+                "subject": "the system",
+                "predicate": "shall explain in",
+                "object": "language understandable to a recruiter"
+            }
+        ]
+    },
+    {
+        "id": "FR-5",
+        "text": "The system shall notify recruiters when a candidate ranking was generated by an automated decision-support model.",
+        "source": "examples\\requirements\\sample-srs.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            {
+                "subject": "the system",
+                "predicate": "shall notify",
+                "object": "recruiters"
+            },
+            {
+                "subject": "the system",
+                "predicate": "shall notify recruiters when",
+                "object": "candidate ranking is generated"
+            },
+            {
+                "subject": "automated decision-support model",
+                "predicate": "generated",
+                "object": "candidate ranking"
+            }
+        ]
+    },
+    {
+        "id": "FR-6",
+        "text": "The system shall allow a human recruiter to review, override, or reject any automated ranking before a candidate is removed from consideration.",
+        "source": "examples\\requirements\\sample-srs.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            {
+                "subject": "the system",
+                "predicate": "shall allow",
+                "object": "a human recruiter to review any automated ranking"
+            },
+            {
+                "subject": "the system",
+                "predicate": "shall allow",
+                "object": "a human recruiter to override any automated ranking"
+            },
+            {
+                "subject": "the system",
+                "predicate": "shall allow",
+                "object": "a human recruiter to reject any automated ranking"
+            },
+            {
+                "subject": "human recruiter's review, override, or rejection",
+                "predicate": "must occur before",
+                "object": "a candidate is removed from consideration"
+            }
+        ]
+    },
+    {
+        "id": "FR-7",
+        "text": "The system shall log every model-generated score, ranking, explanation, recruiter override, and final screening decision.",
+        "source": "examples\\requirements\\sample-srs.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            {
+                "subject": "the system",
+                "predicate": "shall log",
+                "object": "model-generated score"
+            },
+            {
+                "subject": "the system",
+                "predicate": "shall log",
+                "object": "ranking"
+            },
+            {
+                "subject": "the system",
+                "predicate": "shall log",
+                "object": "explanation"
+            },
+            {
+                "subject": "the system",
+                "predicate": "shall log",
+                "object": "recruiter override"
+            },
+            {
+                "subject": "the system",
+                "predicate": "shall log",
+                "object": "final screening decision"
+            }
+        ]
+    },
+    {
+        "id": "FR-8",
+        "text": "The system shall retain audit records for each screening decision so that reviewers can trace the input data, model version, and human actions involved.",
+        "source": "examples\\requirements\\sample-srs.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            {
+                "subject": "the system",
+                "predicate": "shall retain",
+                "object": "audit records"
+            },
+            {
+                "subject": "audit records",
+                "predicate": "are retained for",
+                "object": "each screening decision"
+            },
+            {
+                "subject": "reviewers",
+                "predicate": "can trace",
+                "object": "input data"
+            },
+            {
+                "subject": "reviewers",
+                "predicate": "can trace",
+                "object": "model version"
+            },
+            {
+                "subject": "reviewers",
+                "predicate": "can trace",
+                "object": "human actions involved"
+            }
+        ]
+    },
+    {
+        "id": "FR-9",
+        "text": "The system shall prevent the use of facial recognition, biometric identification, or emotion recognition during candidate screening.",
+        "source": "examples\\requirements\\sample-srs.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            {
+                "subject": "the system",
+                "predicate": "shall prevent the use of",
+                "object": "facial recognition during candidate screening"
+            },
+            {
+                "subject": "the system",
+                "predicate": "shall prevent the use of",
+                "object": "biometric identification during candidate screening"
+            },
+            {
+                "subject": "the system",
+                "predicate": "shall prevent the use of",
+                "object": "emotion recognition during candidate screening"
+            }
+        ]
+    },
+    {
+        "id": "FR-10",
+        "text": "The system shall provide candidates with a channel to request review of a decision that was influenced by automated ranking.",
+        "source": "examples\\requirements\\sample-srs.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            {
+                "subject": "the system",
+                "predicate": "shall provide",
+                "object": "candidates with a channel to request review of a decision"
+            },
+            {
+                "subject": "the channel",
+                "predicate": "is used to request",
+                "object": "review of a decision"
+            },
+            {
+                "subject": "the decision",
+                "predicate": "was influenced by",
+                "object": "automated ranking"
+            }
+        ]
+    },
+    {
+        "id": "NFR-1",
+        "text": "The system must validate training and evaluation datasets for missing values, duplicate records, and inconsistent labels before model training.",
+        "source": "examples\\requirements\\sample-srs.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            {
+                "subject": "the system",
+                "predicate": "must validate",
+                "object": "training datasets"
+            },
+            {
+                "subject": "the system",
+                "predicate": "must validate",
+                "object": "evaluation datasets"
+            },
+            {
+                "subject": "the system",
+                "predicate": "checks datasets for",
+                "object": "missing values"
+            },
+            {
+                "subject": "the system",
+                "predicate": "checks datasets for",
+                "object": "duplicate records"
+            },
+            {
+                "subject": "the system",
+                "predicate": "checks datasets for",
+                "object": "inconsistent labels"
+            },
+            {
+                "subject": "the system",
+                "predicate": "performs validation before",
+                "object": "model training"
+            }
+        ]
+    },
+    {
+        "id": "NFR-2",
+        "text": "The system must measure model performance separately across demographic groups where lawful demographic evaluation data is available.",
+        "source": "examples\\requirements\\sample-srs.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            {
+                "subject": "the system",
+                "predicate": "must measure",
+                "object": "model performance"
+            },
+            {
+                "subject": "the system",
+                "predicate": "must measure model performance",
+                "object": "separately across demographic groups"
+            },
+            {
+                "subject": "measurement across demographic groups",
+                "predicate": "requires",
+                "object": "lawful demographic evaluation data"
+            },
+            {
+                "subject": "lawful demographic evaluation data",
+                "predicate": "must be",
+                "object": "available"
+            }
+        ]
+    },
+    {
+        "id": "NFR-3",
+        "text": "The system must not use protected attributes such as race, religion, disability, or political opinion as ranking inputs.",
+        "source": "examples\\requirements\\sample-srs.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            {
+                "subject": "the system",
+                "predicate": "must not use as ranking input",
+                "object": "race"
+            },
+            {
+                "subject": "the system",
+                "predicate": "must not use as ranking input",
+                "object": "religion"
+            },
+            {
+                "subject": "the system",
+                "predicate": "must not use as ranking input",
+                "object": "disability"
+            },
+            {
+                "subject": "the system",
+                "predicate": "must not use as ranking input",
+                "object": "political opinion"
+            }
+        ]
+    },
+    {
+        "id": "NFR-4",
+        "text": "The system must maintain access controls so that only authorised recruitment staff can view candidate data and model explanations.",
+        "source": "examples\\requirements\\sample-srs.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            {
+                "subject": "the system",
+                "predicate": "must maintain",
+                "object": "access controls"
+            },
+            {
+                "subject": "authorised recruitment staff",
+                "predicate": "can view",
+                "object": "candidate data"
+            },
+            {
+                "subject": "authorised recruitment staff",
+                "predicate": "can view",
+                "object": "model explanations"
+            }
+        ]
+    },
+    {
+        "id": "NFR-5",
+        "text": "The system must produce monitoring alerts when model accuracy, bias metrics, or data quality checks fall outside configured thresholds.",
+        "source": "examples\\requirements\\sample-srs.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            {
+                "subject": "the system",
+                "predicate": "produces monitoring alerts when",
+                "object": "model accuracy falls outside configured thresholds"
+            },
+            {
+                "subject": "the system",
+                "predicate": "produces monitoring alerts when",
+                "object": "bias metrics fall outside configured thresholds"
+            },
+            {
+                "subject": "the system",
+                "predicate": "produces monitoring alerts when",
+                "object": "data quality checks fall outside configured thresholds"
+            }
+        ]
+    },
+    {
+        "id": "NFR-6",
+        "text": "The system should support rollback to a previously approved model version if a deployed model fails safety, robustness, or fairness checks.",
+        "source": "examples\\requirements\\sample-srs.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            {
+                "subject": "the system",
+                "predicate": "should support rollback to",
+                "object": "previously approved model version"
+            },
+            {
+                "subject": "deployed model",
+                "predicate": "may fail",
+                "object": "safety checks"
+            },
+            {
+                "subject": "deployed model",
+                "predicate": "may fail",
+                "object": "robustness checks"
+            },
+            {
+                "subject": "deployed model",
+                "predicate": "may fail",
+                "object": "fairness checks"
+            }
+        ]
+    }
+]

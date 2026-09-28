@@ -213,13 +213,18 @@ def search(
 @app.command("load-requirements")
 def load_requirements(
         document_path: Path = typer.Argument(
-            help="Path to a .txt, .md, .pdf, or .docx SRS"),
+            help="Path to a .txt, .md, .pdf, or .docx SRS",
+        ),
+        save_to_json: bool = typer.Option(
+            False, "--save",
+            help="Save loaded requirements for testing purposes"
+        ),
 ):
     """Extract requirements, split into triples, and write to Neo4j."""
     from eu_ai_risks.requirements.loader import write_triples
 
     print(f"Loading requirements from {document_path} ...")
-    write_triples(document_path)
+    write_triples(document_path, save_to_json)
     print("Done.")
 
 

@@ -217,22 +217,23 @@ def _deduplicate_requirements(
     return unique_requirements
 
 
-_TRIPLE_EXTRACTION_SYSTEM = """\
-You are a requirements analysis assistant. Extract semantic triples from \
-a software requirement.
+_TRIPLE_EXTRACTION_SYSTEM = """
+    You are a requirements analysis assistant. Extract semantic triples from
+    a software requirement.
 
-A triple consists of:
-- Subject: the entity or system performing or being described
-- Predicate: the relationship, action, or constraint
-- Object: what the action is performed on or the constraint applies to
+    A triple consists of:
+    - Subject: the entity or system performing or being described
+    - Predicate: the relationship, action, or constraint
+    - Object: what the action is performed on or the constraint applies to
 
-Rules:
-- Extract only what is explicitly stated
-- A single requirement may contain multiple triples
-- Use concise, normalised terms (e.g. "the system" not "it")
-- Split compound objects into separate triples
-- Each triple must have exactly one subject, predicate, and object
-- Respond with a JSON array of triple objects, nothing else"""
+    Rules:
+    - Extract only what is explicitly stated
+    - A single requirement may contain multiple triples
+    - Use concise, normalised terms (e.g. "the system" not "it")
+    - Split compound objects into separate triples
+    - Each triple must have exactly one subject, predicate, and object
+    - Respond with a JSON array of triple objects, nothing else
+"""
 
 
 def _split_requirement(requirement_text: str) -> list[dict]:
@@ -253,7 +254,7 @@ def _split_requirement(requirement_text: str) -> list[dict]:
     return [triple for triple in result if isinstance(triple, dict) and "subject" in triple]
 
 
-def write_triples(document_path: Path):
+def write_triples(document_path: Path, save_json: bool = False):
     requirements = load_requirements(document_path)
 
     all_triples = []
@@ -300,10 +301,14 @@ def write_triples(document_path: Path):
 
             print(f"  Wrote {i + len(batch)}/{len(all_triples)} triples")
 
-            generate_and_write_triple_embeddings(session, batch)
+            _generate_and_write_triple_embeddings(session, batch)
+
+    if save_json:
+        _save_to_json(document_path, requirements)
+    
 
 
-def generate_and_write_triple_embeddings(session, all_triples: list[dict]) -> None:
+def _generate_and_write_triple_embeddings(session, all_triples: list[dict]) -> None:
     entities = {}
     for triple in all_triples:
         for key in ("subject", "object"):
@@ -343,6 +348,12 @@ def generate_and_write_triple_embeddings(session, all_triples: list[dict]) -> No
             """
                     )
         print(f"  Created vector index for {label}.")
+
+
+def _save_to_json(doc_path: Path, requirements: list[Requirement]):
+    out_path = doc_path.with_name(f"{doc_path.stem}_req.json")
+    out_path.write_text(json.dumps([req.__dict__ for req in requirements], indent=4))
+    print(f"  Wrote {len(requirements)} to {out_path}")
 
 
 if __name__ == "__main__":
