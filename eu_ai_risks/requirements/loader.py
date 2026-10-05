@@ -126,7 +126,8 @@ def _extract_requirements(
         next_id += 1
 
         requirement_text = _strip_requirement_prefix(text)
-        triples = _open_information_extraction_triple(requirement_text) if with_triples else []
+        raw_triples = _open_information_extraction_triple(requirement_text) if with_triples else []
+        triples = [t for t in raw_triples if isinstance(t, list) and len(t) == 3 and all(isinstance(x, str) for x in t)]
 
         requirements.append(Requirement(
             id=requirement_id,
@@ -236,8 +237,8 @@ _TRIPLE_EXTRACTION_SYSTEM = """
 """
 
 _OPEN_INFORMATION_EXTRACTION_SYSTEM = """
-    Given a piece of text, extract relational triplets in
-    the form of [Subject, Relation, Object] from it. Respond with a JSON array of triple objects, nothing else.
+    Given a piece of text, extract relational triplets in the form of [Subject, Relation, Object] from it. 
+    Respond with a JSON array of 3-element arrays: [subject, relation, object], nothing else.
     
     Here are some examples:
     Text: The 17068.8 millimeter long ALCO RS-3 has a diesel-electric transmission.
@@ -245,9 +246,9 @@ _OPEN_INFORMATION_EXTRACTION_SYSTEM = """
 """
 
 _SCHEMA_DEFINITON_SYSTEM = """
-    Given a piece of text and a list of relational triplets
-    extracted from it, write a definition for each relation present. Respond with a JSON dictionary with key 
-    as the relationship and value as the definition, nothing else.
+    Given a piece of text and a list of relational triplets extracted from it, write a definition for each
+    relation present. Respond with a JSON dictionary with key as the relationship and value as the definition, 
+    nothing else.
     Example 1:
     Text: The 17068.8 millimeter long ALCO RS-3 has a diesel-electric transmission.
     Triplets: [['ALCO RS-3', 'powerType', 'Dieselelectric transmission'], ['ALCO RS-3', 'length', '17068.8 (millimetres)']]
@@ -257,10 +258,14 @@ _SCHEMA_DEFINITON_SYSTEM = """
 
 _CANONICALISATION_SYSTEM = """
     Given a piece of text, a relational triplet extracted from it, and the definition of the relation in it,
-    choose the most appropriate relation to replace it in this context if there is any. Respond with a JSON 
-    dictionary with the key as the relationship and value as the definition. If none of the relations are 
-    suitable or if the choices are empty, return the original relation and definition. 
+    choose the most appropriate relation to replace it in this context if there is any. If none of the relations 
+    are suitable or if the choices are empty, return the original relation and definition. The dictionary should 
+    contain at least and at most 1 key and value pair. Respond with a JSON  dictionary with the key as the 
+    relationship and value as the definition only, nothing else.
 """
+
+_COSINE_SIMILARITY = 0.90
+
 
 def _split_requirement(requirement_text: str) -> list[dict]:
     try:
@@ -286,7 +291,6 @@ def _open_information_extraction_triple(requirement_text: str) -> list[list[str]
             prompt = f"Now please extract triplets from the following text: {requirement_text}",
             system = _OPEN_INFORMATION_EXTRACTION_SYSTEM
         )
-        print(result)
     except ValueError:
         return []
     if isinstance(result, dict):
@@ -305,7 +309,6 @@ def _schema_definition(requirement_text: str, triples: list[list[str]]):
             prompt = f"Now write a definition for each relation present in the triplets extracted from the following text: Text: {requirement_text} Triplets: {triples}",
             system = _SCHEMA_DEFINITON_SYSTEM
         )
-        print(result)
     except ValueError:  
         return {}
     if isinstance(result, list):
@@ -323,18 +326,16 @@ def _canonicalisation(requirement_text: str, triple: list[str], relation_def: st
     for key in relations:
         embed = relations[key][1]
 
-        if cosine_similarity(relation_embed, embed) > 0.95:
-            relation_choices.append({key: relations[key]})
-
-    print(relation_choices)
+        if cosine_similarity(relation_embed, embed) > _COSINE_SIMILARITY:
+            relation_choices.append({key: relations[key][0]})
 
     try:
         result = complete_json(
             prompt = f"Text: {requirement_text} Triplet: {triple} Definition of {triple[1]}: {relation_def} Choices: {relation_choices}",
             system = _CANONICALISATION_SYSTEM
         )
-        print(result)
     except ValueError:
+        print("  Error canonicalising triple.")
         return {}
     if isinstance(result, list):
         for value in result:
@@ -456,6 +457,7 @@ def _generate_and_write_triple_embeddings(session, all_triples: list[dict]) -> N
 
 
 def reset_requirements(session, batch_size: int = 5000) -> None:
+    print(f"Reseting requirements ..")
     # delete Requirement nodes and EXTRACTED_FROM relationships
     deleted_requirements = 0
     while True:
@@ -493,9 +495,6 @@ def reset_requirements(session, batch_size: int = 5000) -> None:
         
     print(f"  Deleted {deleted_entities} Entity nodes.")
 
-    print("Requirements, entities, and relations cleared.")
-
-
 def _save_to_json(doc_path: Path, requirements: list[Requirement]):
     out_path = doc_path.with_name(f"{doc_path.stem}_req.json")
     out_path.write_text(json.dumps([req.__dict__ for req in requirements], indent=4))
@@ -503,8 +502,12 @@ def _save_to_json(doc_path: Path, requirements: list[Requirement]):
 
 
 if __name__ == "__main__":
-    # doc = Path("./examples/sample-srs.md")
+    doc = Path("./examples/requirements/sample-srs.md")
 
-    # write_triples(doc)
-    
-    pass
+    write_triples(doc, True)
+
+    # req = "The system shall provide educational content on healthy ageing, fall prevention, nutrition, exercise, chronic disease management, medication safety, and mental wellbeing. "
+    # oic = _open_information_extraction_triple(req)
+    # sd = _schema_definition(req, oic)
+    # can = _canonicalisation(req, oic[0], sd[oic[0][1]],{})
+
