@@ -413,7 +413,6 @@ def write_triples(document_path: Path, save_json: bool = False):
     if save_json:
         _save_to_json(document_path, requirements)
 
-
 def _generate_and_write_triple_embeddings(session, all_triples: list[dict]) -> None:
     entities = {}
     for triple in all_triples:
@@ -454,6 +453,47 @@ def _generate_and_write_triple_embeddings(session, all_triples: list[dict]) -> N
             """
                     )
         print(f"  Created vector index for {label}.")
+
+
+def reset_requirements(session, batch_size: int = 5000) -> None:
+    # delete Requirement nodes and EXTRACTED_FROM relationships
+    deleted_requirements = 0
+    while True:
+        result = session.run(
+            """
+            MATCH (r:Requirement)
+            WITH r LIMIT $batch_size
+            DETACH DELETE r
+            RETURN count(r) AS deleted
+            """,
+            batch_size=batch_size,
+        )
+        deleted = result.single()["deleted"]
+        deleted_requirements += deleted
+        if deleted < batch_size:
+            break
+    print(f"  Deleted {deleted_requirements} Requirement nodes.")
+
+    # delete Entity nodes and RELATION relationships
+    deleted_entities = 0
+    while True:
+        result = session.run(
+            """
+            MATCH (e:Entity)
+            WITH e LIMIT $batch_size
+            DETACH DELETE e
+            RETURN count(e) AS deleted
+            """,
+            batch_size=batch_size,
+        )
+        deleted = result.single()["deleted"]
+        deleted_entities += deleted
+        if deleted < batch_size:
+            break
+        
+    print(f"  Deleted {deleted_entities} Entity nodes.")
+
+    print("Requirements, entities, and relations cleared.")
 
 
 def _save_to_json(doc_path: Path, requirements: list[Requirement]):

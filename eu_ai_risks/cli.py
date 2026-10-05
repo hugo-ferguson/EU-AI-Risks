@@ -210,6 +210,24 @@ def search(
             print(f"  {article_id}: {title}  score: {score:.4f}")
 
 
+@app.command("reset-requirements")
+def reset_requirements(confirm: bool = typer.Option(
+        False,
+        "--confirm",
+        help="Required to prevent accidental deletion."
+)):
+    """Delete all nodes and relationships from the Neo4j database."""
+    if not confirm:
+        typer.echo("Pass --confirm to drop all requirements.")
+        raise typer.Exit(1)
+    from eu_ai_risks.requirements.loader import reset_requirements
+    from eu_ai_risks.db import get_session
+    
+    with get_session() as session:
+        reset_requirements(session)
+    print("Requirements cleared.")
+
+
 @app.command("load-requirements")
 def load_requirements(
         document_path: Path = typer.Argument(
