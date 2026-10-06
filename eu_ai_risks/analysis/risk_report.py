@@ -52,6 +52,116 @@ def _sanitise_analysis(text: str) -> str:
     return text
 
 
+def _pretty_category(category: str) -> str:
+    return category.replace("_", " ").replace("-", " ").strip() or "mapped provision"
+
+
+def _highest_risk_level(entries: list[dict]) -> str:
+    levels = [str(entry.get("risk_level", "")).lower() for entry in entries]
+    if "high" in levels:
+        return "high"
+    if "medium" in levels:
+        return "medium"
+    return "low"
+
+
+def build_overall_analysis(entries: list[dict]) -> dict:
+    """Build an overall reviewer summary from individual requirement findings.
+
+    This is intentionally deterministic: it summarises the returned
+    requirement-level analyses rather than making another LLM call.
+    """
+    total = len(entries)
+    counts = {"high": 0, "medium": 0, "low": 0}
+    category_counts: dict[str, int] = {}
+    recommendations: list[str] = []
+    control_like = 0
+
+    for entry in entries:
+        level = str(entry.get("risk_level", "medium")).lower()
+        if level in counts:
+            counts[level] += 1
+        if level == "low":
+            analysis = str(entry.get("analysis", "")).lower()
+            if "control" in analysis or "safeguard" in analysis:
+                control_like += 1
+
+        for risk in entry.get("risks", []) or []:
+            category = risk.get("obligation_category")
+            if category:
+                category_counts[category] = category_counts.get(category, 0) + 1
+            action = risk.get("engineering_action")
+            if action and action not in recommendations:
+                recommendations.append(action)
+
+    priority_categories = [
+        {
+            "name": category,
+            "label": _pretty_category(category),
+            "count": count,
+        }
+        for category, count in sorted(
+            category_counts.items(),
+            key=lambda item: (-item[1], _pretty_category(item[0])),
+        )
+    ]
+
+    if total == 0:
+        text = "No requirement findings are available yet."
+    else:
+        count_bits = []
+        for level in ("high", "medium", "low"):
+            if counts[level]:
+                label = "finding" if counts[level] == 1 else "findings"
+                count_bits.append(f"{counts[level]} {level}-risk {label}")
+        risk_sentence = ", ".join(count_bits) if count_bits else "no retained risk findings"
+        if priority_categories:
+            category_sentence = ", ".join(item["label"] for item in priority_categories[:5])
+        else:
+            category_sentence = "no specific EU AI Act provision area"
+
+        text = (
+            f"Overall, the assessment reviewed {total} requirements and identified {risk_sentence}. "
+            f"The main review focus areas are {category_sentence}. "
+            "Use the individual requirement findings below to confirm owners, evidence, and follow-up actions before using this as supporting compliance evidence."
+        )
+
+    key_points = [
+        f"{total} requirements reviewed in total.",
+        f"Risk distribution: {counts['high']} high, {counts['medium']} medium, {counts['low']} low.",
+    ]
+    if priority_categories:
+        key_points.append(
+            "Most frequent mapped EU AI Act provision areas: "
+            + ", ".join(f"{item['label']} ({item['count']})" for item in priority_categories[:5])
+            + "."
+        )
+    if control_like:
+        label = "requirement appears" if control_like == 1 else "requirements appear"
+        key_points.append(
+            f"{control_like} low-risk {label} to describe a control or safeguard, but still needs clarification/evidence review."
+        )
+
+    follow_up_actions = []
+    if counts["high"]:
+        follow_up_actions.append("Review and assign owners for high-risk findings before the next project checkpoint.")
+    if counts["medium"]:
+        follow_up_actions.append("Review medium-risk gaps and confirm which engineering actions need to be implemented or documented.")
+    if priority_categories:
+        follow_up_actions.append("Check that the most frequent provision areas have clear evidence, owners, and documentation links.")
+    follow_up_actions.append("Use the individual requirement findings as the traceable evidence trail for detailed review.")
+
+    return {
+        "risk_level": _highest_risk_level(entries),
+        "text": text,
+        "counts": counts,
+        "priority_categories": priority_categories,
+        "key_points": key_points,
+        "recommended_actions": follow_up_actions,
+        "top_recommendations": recommendations[:5],
+    }
+
+
 def entries_from_assessments(assessment_entries: list[dict]) -> list[dict]:
     """Convert LLM assessment entries to the common report entry format."""
     entries = []
@@ -86,6 +196,7 @@ def entries_from_assessments(assessment_entries: list[dict]) -> list[dict]:
 def render_markdown_report(
     entries: list[dict],
     title: str = "EU AI Act Risk Assessment",
+    overall_analysis: dict | None = None,
 ) -> str:
     lines = [
         f"# {title}",
@@ -105,6 +216,30 @@ def render_markdown_report(
         count = level_counts.get(level, 0)
         if count:
             lines.append(f"- {level}: {count}")
+
+    overall_analysis = overall_analysis or build_overall_analysis(entries)
+
+    lines.extend([
+        "",
+        "### Overall analysis",
+        "",
+        overall_analysis["text"],
+        "",
+    ])
+
+    if overall_analysis.get("key_points"):
+        lines.append("**Review points:**")
+        lines.append("")
+        for point in overall_analysis["key_points"]:
+            lines.append(f"- {point}")
+        lines.append("")
+
+    if overall_analysis.get("recommended_actions"):
+        lines.append("**Recommended follow-up actions:**")
+        lines.append("")
+        for action in overall_analysis["recommended_actions"]:
+            lines.append(f"- {action}")
+        lines.append("")
 
     lines.extend(["", "## Requirement Findings", ""])
 

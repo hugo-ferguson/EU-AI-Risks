@@ -571,6 +571,18 @@ select {
   color: #1f7a4f;
 }
 
+.summary-label {
+  border: 1px solid rgba(120, 129, 145, 0.25);
+  color: #667085;
+  background: #f8fafc;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
 .category-row {
   display: flex;
   gap: 6px;
@@ -815,15 +827,4 @@ select {
   .results-panel {
     border-radius: 22px;
   }
-}
-.summary-label {
-  border: 1px solid rgba(120, 129, 145, 0.25);
-  color: #667085;
-  background: #f8fafc;
-  border-radius: 999px;
-  padding: 3px 9px;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .04em;
 }

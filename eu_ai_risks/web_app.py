@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from eu_ai_risks.analysis.risk_report import (
+    build_overall_analysis,
     collect_citations,
     entries_from_assessments,
     render_markdown_report,
@@ -86,6 +87,7 @@ def _render(
     phase: str = "empty",
     requirements: list[dict[str, str]] | None = None,
     entries: list[dict[str, Any]] | None = None,
+    overall_analysis: dict[str, Any] | None = None,
     status: str = "Upload a requirements document to begin",
     error: str | None = None,
     report_path: Path | None = None,
@@ -94,6 +96,8 @@ def _render(
 ) -> HTMLResponse:
     if entries:
         entries = _normalise_entries(entries)
+    if overall_analysis is None and entries:
+        overall_analysis = build_overall_analysis(entries)
     return templates.TemplateResponse(
         request=request,
         name="index.html",
@@ -101,6 +105,7 @@ def _render(
             "phase": phase,
             "requirements": requirements or [],
             "entries": entries or [],
+            "overall_analysis": overall_analysis,
             "counts": _entry_counts(entries or []),
             "categories": _categories_from_entries(entries or []),
             "status": status,
@@ -151,6 +156,7 @@ def home(request: Request) -> HTMLResponse:
                 request,
                 phase="assessed",
                 entries=entries,
+                overall_analysis=state.get("overall_analysis"),
                 status=f"Assessment complete — {len(entries)} requirements reviewed",
                 report_path=report_path,
                 uploaded_filename=state.get("filename"),
@@ -266,10 +272,11 @@ def _assess_sync(
         if not requirements:
             raise ValueError("No requirements found.")
 
-        entries, report_path = _run_assessment(
+        entries, overall_analysis, report_path = _run_assessment(
             requirements, use_agent=(mode == "agent"))
         state_token = _save_state("results", {
             "entries": entries,
+            "overall_analysis": overall_analysis,
             "report_token": report_path.name,
             "filename": uploaded_filename,
         })
@@ -281,7 +288,7 @@ def _assess_sync(
 def _run_assessment(
     requirements: list[Requirement],
     use_agent: bool = False,
-) -> tuple[list[dict[str, Any]], Path]:
+) -> tuple[list[dict[str, Any]], dict[str, Any], Path]:
     import logging
     logger = logging.getLogger("eu_ai_risks.web")
 
@@ -315,7 +322,8 @@ def _run_assessment(
         )
 
     entries = _normalise_entries(entries_from_assessments(assessment_entries))
-    markdown = render_markdown_report(entries)
+    overall_analysis = build_overall_analysis(entries)
+    markdown = render_markdown_report(entries, overall_analysis=overall_analysis)
     report_path = OUTPUT_DIR / f"risk-assessment-{uuid.uuid4().hex}.md"
     report_path.write_text(markdown, encoding="utf-8")
-    return entries, report_path
+    return entries, overall_analysis, report_path
