@@ -1,0 +1,30 @@
+[
+  {
+    "id": "EUAI-DEMO-1",
+    "text": "The system shall ingest candidate resumes, cover letters, and application form responses to produce an automated recruitment suitability score."
+  },
+  {
+    "id": "EUAI-DEMO-2",
+    "text": "The system shall disclose to applicants and recruiters that AI is being used to support screening decisions and provide an explanation of the main factors affecting the score."
+  },
+  {
+    "id": "EUAI-DEMO-3",
+    "text": "The system shall generate AI-written interview feedback emails and label the content as AI-generated before it is sent to applicants."
+  },
+  {
+    "id": "EUAI-DEMO-4",
+    "text": "The system shall use emotion recognition during employee video interviews to infer confidence, stress, and cultural fit."
+  },
+  {
+    "id": "EUAI-DEMO-5",
+    "text": "The system shall maintain technical documentation describing the intended purpose, model design, training data sources, validation results, risk controls, and monitoring plan."
+  },
+  {
+    "id": "EUAI-DEMO-6",
+    "text": "The system shall monitor deployed model performance, bias metrics, data drift, and override rates after release and trigger corrective action when thresholds are exceeded."
+  },
+  {
+    "id": "EUAI-DEMO-7",
+    "text": "The system shall record and escalate serious incidents that may affect health, safety, or fundamental rights and support reporting to the relevant authority."
+  }
+]

@@ -16,15 +16,17 @@ answer questions accurately.
 - Paragraph obligation_type: requirement, prohibition, permission, \
 definition, scope, informational
 
-## The 14 requirement categories
+## Requirement/provision categories
 
-Each links to anchor articles via IMPOSES edges:
-- ai_literacy (art:4), risk_management (art:9), data_governance (art:10)
-- technical_documentation (art:11, art:18), record_keeping (art:12, art:19)
-- transparency (art:13, art:50), human_oversight (art:14)
-- accuracy_robustness_cybersecurity (art:15), quality_management (art:17)
-- fundamental_rights_impact_assessment (art:27)
-- conformity_assessment (art:43), registration (art:49)
+Each links to anchor articles or annexes via IMPOSES edges:
+- ai_literacy (art:4), prohibited_practice (art:5)
+- high_risk_classification (art:6), annex_iii_high_risk_domain (annex:III)
+- risk_management (art:9), data_governance (art:10)
+- technical_documentation (art:11, art:18), annex_iv_technical_documentation (annex:IV, art:11)
+- record_keeping (art:12, art:19), transparency (art:13, art:50)
+- Article 50 categories: general_transparency, ai_interaction_disclosure, synthetic_content_labelling, deepfake_disclosure, biometric_emotion_disclosure
+- human_oversight (art:14), accuracy_robustness_cybersecurity (art:15), quality_management (art:17)
+- fundamental_rights_impact_assessment (art:27), conformity_assessment (art:43), registration (art:49)
 - post_market_monitoring (art:72), serious_incident_reporting (art:73)
 
 ## Requirements graph
@@ -143,7 +145,7 @@ Rules:
 - summary: 1-2 sentences naming the gap and consequence.
 - Maximum 5 risks. Prioritise the most severe.
 - Each risk: one sentence explaining the compliance gap.
-- severity: high = binding unmet, medium = partial, low = best practice.
+- severity: high = potential prohibited practice or binding obligation clearly unmet, medium = partial/unclear obligation gap, low = clarification or existing control needs evidence.
 - Only flag gaps. Skip satisfied provisions. Be specific. No essays.
 
 /no_think"""

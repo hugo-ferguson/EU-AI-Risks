@@ -24,10 +24,21 @@ PROFILE_CONFIDENCE_MARGIN = float(os.environ.get(
     "EU_AI_RISKS_PROFILE_CONFIDENCE_MARGIN", "0.012"))
 
 DEFAULT_CATEGORY_KEYS = {
+    # Chapter I / Article 4
     "ai_literacy",
+
+    # Chapter II / Article 5
+    "prohibited_practice",
+
+    # Article 6 + Annex III classification
+    "high_risk_classification",
+    "annex_iii_high_risk_domain",
+
+    # Chapter III high-risk AI system requirements
     "risk_management",
     "data_governance",
     "technical_documentation",
+    "annex_iv_technical_documentation",
     "record_keeping",
     "transparency",
     "human_oversight",
@@ -36,6 +47,15 @@ DEFAULT_CATEGORY_KEYS = {
     "fundamental_rights_impact_assessment",
     "conformity_assessment",
     "registration",
+
+    # Chapter IV / Article 50 transparency obligations
+    "general_transparency",
+    "ai_interaction_disclosure",
+    "synthetic_content_labelling",
+    "deepfake_disclosure",
+    "biometric_emotion_disclosure",
+
+    # Chapter IX lifecycle obligations
     "post_market_monitoring",
     "serious_incident_reporting",
 }
@@ -52,13 +72,102 @@ INTENT_VALUES = {
     "monitoring_or_alerting",
     "rollback_or_corrective_action",
     "prohibited_feature_prevention",
+    "prohibited_practice_use",
+    "high_risk_domain_classification",
+    "ai_interaction_disclosure",
+    "synthetic_content_generation",
+    "deepfake_generation",
+    "biometric_emotion_disclosure",
+    "post_market_monitoring",
+    "serious_incident_reporting",
+    "annex_iv_documentation",
     "data_validation_or_bias_testing",
     "protected_attribute_control",
     "technical_documentation",
     "risk_management_process",
+    "ai_literacy_training",
+    "conformity_or_registration",
     "other",
     "unknown",
 }
+
+
+# Additional provision anchors required for a stronger software-system checker.
+# These keep the same category -> graph anchor design used by the Chapter III
+# implementation, but broaden it to prohibited-practice screening, Article 50
+# transparency duties, Annex III high-risk classification, Annex IV technical
+# documentation detail, and Chapter IX lifecycle monitoring/incident reporting.
+EXTENDED_REQUIREMENT_CATEGORIES = {
+    "prohibited_practice": {
+        "name": "Prohibited AI practice review",
+        "article_ids": ["art:5"],
+    },
+    "high_risk_classification": {
+        "name": "High-risk classification",
+        "article_ids": ["art:6"],
+    },
+    "annex_iii_high_risk_domain": {
+        "name": "Annex III high-risk domain",
+        "article_ids": ["annex:III", "art:6"],
+    },
+    "annex_iv_technical_documentation": {
+        "name": "Annex IV technical documentation detail",
+        "article_ids": ["annex:IV", "art:11"],
+    },
+    "general_transparency": {
+        "name": "General transparency obligations",
+        "article_ids": ["art:50"],
+    },
+    "ai_interaction_disclosure": {
+        "name": "AI interaction disclosure",
+        "article_ids": ["art:50"],
+    },
+    "synthetic_content_labelling": {
+        "name": "Synthetic content labelling",
+        "article_ids": ["art:50"],
+    },
+    "deepfake_disclosure": {
+        "name": "Deepfake disclosure",
+        "article_ids": ["art:50"],
+    },
+    "biometric_emotion_disclosure": {
+        "name": "Biometric/emotion-recognition disclosure",
+        "article_ids": ["art:50"],
+    },
+}
+
+
+def extend_requirement_categories(categories: list[dict] | None) -> list[dict]:
+    """Return graph categories plus built-in extended mapping categories.
+
+    The Neo4j graph may have been built before these broader EU AI Act
+    categories were added. Merging them here makes the non-agent assessor
+    immediately usable while still allowing a rebuilt graph to expose the same
+    categories natively.
+    """
+    merged: dict[str, dict] = {}
+    for category in categories or []:
+        key = str(category.get("key", "")).strip()
+        if key:
+            merged[key] = {
+                "key": key,
+                "name": category.get("name", key),
+                "article_ids": list(category.get("article_ids", [])),
+            }
+
+    for key, meta in EXTENDED_REQUIREMENT_CATEGORIES.items():
+        existing = merged.get(key)
+        if existing:
+            article_ids = list(dict.fromkeys(
+                list(existing.get("article_ids", []))
+                + list(meta.get("article_ids", []))
+            ))
+            existing["article_ids"] = article_ids
+            existing["name"] = existing.get("name") or meta["name"]
+        else:
+            merged[key] = {"key": key, **meta}
+
+    return list(merged.values())
 
 # Intent labels are stable software-engineering concepts. They are not
 # requirement-specific keyword rules. The LLM extracts the intent, and this
@@ -187,6 +296,76 @@ INTENT_CATEGORY_POLICY = {
         "existing": ["risk_management"],
         "safeguard": True,
     },
+    "prohibited_practice_use": {
+        "primary": "prohibited_practice",
+        "secondary": [],
+        "missing": ["prohibited_practice"],
+        "existing": [],
+    },
+    "high_risk_domain_classification": {
+        "primary": "high_risk_classification",
+        "secondary": ["annex_iii_high_risk_domain"],
+        "missing": ["high_risk_classification", "annex_iii_high_risk_domain"],
+        "existing": [],
+    },
+    "ai_interaction_disclosure": {
+        "primary": "ai_interaction_disclosure",
+        "secondary": ["general_transparency"],
+        "missing": ["ai_interaction_disclosure"],
+        "existing": [],
+    },
+    "synthetic_content_generation": {
+        "primary": "synthetic_content_labelling",
+        "secondary": ["general_transparency"],
+        "missing": ["synthetic_content_labelling"],
+        "existing": [],
+    },
+    "deepfake_generation": {
+        "primary": "deepfake_disclosure",
+        "secondary": ["synthetic_content_labelling", "general_transparency"],
+        "missing": ["deepfake_disclosure"],
+        "existing": [],
+    },
+    "biometric_emotion_disclosure": {
+        "primary": "biometric_emotion_disclosure",
+        "secondary": ["general_transparency"],
+        "missing": ["biometric_emotion_disclosure"],
+        "existing": [],
+    },
+    "post_market_monitoring": {
+        "primary": "post_market_monitoring",
+        "secondary": ["risk_management", "technical_documentation"],
+        "missing": ["post_market_monitoring"],
+        "existing": ["post_market_monitoring"],
+        "safeguard": True,
+    },
+    "serious_incident_reporting": {
+        "primary": "serious_incident_reporting",
+        "secondary": ["post_market_monitoring", "risk_management"],
+        "missing": ["serious_incident_reporting"],
+        "existing": ["serious_incident_reporting"],
+        "safeguard": True,
+    },
+    "annex_iv_documentation": {
+        "primary": "annex_iv_technical_documentation",
+        "secondary": ["technical_documentation"],
+        "missing": ["annex_iv_technical_documentation", "technical_documentation"],
+        "existing": ["annex_iv_technical_documentation"],
+        "safeguard": True,
+    },
+    "ai_literacy_training": {
+        "primary": "ai_literacy",
+        "secondary": [],
+        "missing": ["ai_literacy"],
+        "existing": ["ai_literacy"],
+        "safeguard": True,
+    },
+    "conformity_or_registration": {
+        "primary": "conformity_assessment",
+        "secondary": ["registration", "technical_documentation"],
+        "missing": ["conformity_assessment", "registration"],
+        "existing": [],
+    },
 }
 
 INTENT_SEMANTIC_DESCRIPTIONS = {
@@ -205,13 +384,28 @@ INTENT_SEMANTIC_DESCRIPTIONS = {
     "protected_attribute_control": "preventing protected attributes such as race, religion, disability, political opinion, gender or age from being used as model inputs or ranking factors",
     "technical_documentation": "creating or maintaining technical documentation, system design records or compliance evidence",
     "risk_management_process": "risk assessment, risk management, risk review, mitigation planning or documenting harms",
+    "prohibited_practice_use": "using or proposing manipulative AI, exploitative systems, social scoring, prohibited biometric categorisation, workplace or education emotion recognition, untargeted facial scraping, prohibited predictive policing or real-time remote biometric identification",
+    "high_risk_domain_classification": "software requirement describing a use case in an Annex III high-risk domain, such as recruitment, education, essential services, law enforcement, migration, critical infrastructure, biometrics or justice",
+    "ai_interaction_disclosure": "informing people that they are interacting with an AI system, chatbot, virtual assistant or conversational AI",
+    "synthetic_content_generation": "generating synthetic text, audio, image or video content and labelling or marking it as AI-generated",
+    "deepfake_generation": "generating or manipulating image, audio or video content that could appear to be a real person, event, place or object, including deepfakes",
+    "biometric_emotion_disclosure": "notices or information for people exposed to biometric categorisation or emotion recognition systems",
+    "post_market_monitoring": "monitoring deployed AI system performance, drift, accuracy, bias, risk, incidents or compliance after release",
+    "serious_incident_reporting": "detecting, escalating, documenting or reporting serious incidents or fundamental-rights impacts to authorities or responsible teams",
+    "annex_iv_documentation": "maintaining technical documentation contents such as intended purpose, design specifications, model architecture, training data, validation results, risk controls and monitoring plans",
+    "ai_literacy_training": "training staff, deployers, users or operators so they understand AI system capabilities, limitations, risks and appropriate use",
+    "conformity_or_registration": "conformity assessment, declaration of conformity, CE marking, registration or market-placement compliance workflow",
 }
 
 HIGH_RISK_DOMAIN_DESCRIPTIONS = {
-    "employment_recruitment": "AI system used for recruitment, candidate screening, employment decisions, worker management, hiring, selection or promotion",
-    "education_training": "AI system used for access to education, assessment, grading, admissions, learning evaluation or vocational training",
-    "healthcare_safety": "AI system used in health, medical triage, safety-critical decisions, patient support or clinical assessment",
-    "public_services": "AI system used for public assistance, social benefits, essential private services, credit, insurance or access to services",
+    "biometrics": "remote biometric identification, biometric verification or biometric categorisation of natural persons",
+    "critical_infrastructure": "AI system used as a safety component or management tool for critical digital infrastructure, road traffic, water, gas, heating or electricity",
+    "education_vocational_training": "AI system used for education or vocational training access, admissions, grading, assessment, learning outcomes or monitoring prohibited behaviour during tests",
+    "employment_recruitment": "AI system used for recruitment, candidate screening, employment decisions, worker management, hiring, selection, promotion, task allocation, performance monitoring or termination",
+    "essential_private_public_services": "AI system used for access to public assistance, essential private services, credit scoring, health insurance or life insurance, emergency dispatch or priority services",
+    "law_enforcement": "AI system used by or for law enforcement, criminal risk assessment, evidence evaluation, profiling, polygraphs, crime analytics or criminal investigation support",
+    "migration_asylum_border": "AI system used for migration, asylum, visa, border control, security-risk assessment, document checking or border decision support",
+    "justice_democratic_processes": "AI system used for judicial decision support, legal fact or law interpretation, dispute resolution, elections, voting behaviour or democratic-process influence",
 }
 
 
@@ -372,18 +566,20 @@ class RequirementSemanticProfile(BaseModel):
 
 
 def _category_keys(categories: list[dict] | None) -> set[str]:
-    if not categories:
+    merged = extend_requirement_categories(categories)
+    if not merged:
         return set(DEFAULT_CATEGORY_KEYS)
-    keys = {str(category.get("key", "")).strip() for category in categories}
+    keys = {str(category.get("key", "")).strip() for category in merged}
     return {key for key in keys if key}
 
 
 def _category_listing(categories: list[dict] | None) -> str:
-    if not categories:
+    merged = extend_requirement_categories(categories)
+    if not merged:
         return "\n".join(f"- {key}" for key in sorted(DEFAULT_CATEGORY_KEYS))
 
     lines = []
-    for category in categories:
+    for category in sorted(merged, key=lambda item: str(item.get("key", ""))):
         key = category.get("key", "")
         name = category.get("name", key)
         article_ids = ", ".join(category.get("article_ids", []))
@@ -496,6 +692,299 @@ def _merge_policy_categories(profile: RequirementSemanticProfile, valid: set[str
     # review exists but reviewer training/authority is unclear).
     profile.relevant_obligation_categories = profile.supported_categories()
     return profile
+
+
+
+
+def _contains_any(text: str, patterns: tuple[str, ...]) -> bool:
+    import re
+
+    return any(re.search(pattern, text, re.I) for pattern in patterns)
+
+
+def _looks_like_prevention_or_exclusion(text: str) -> bool:
+    """Detect requirements that prohibit/prevent a sensitive practice.
+
+    These should be treated as safeguards, not as active prohibited-practice
+    use. Keep this deliberately conservative: it only fires where the sentence
+    clearly says the system must not use, must prevent, block, reject, disable or
+    exclude the practice/data.
+    """
+    return _contains_any(text, (
+        r"\bshall not\b",
+        r"\bmust not\b",
+        r"\bwill not\b",
+        r"\bprevent(s|ed|ing)?\b",
+        r"\bblock(s|ed|ing)?\b",
+        r"\breject(s|ed|ing)?\b",
+        r"\bdisable(s|d)?\b",
+        r"\bexclude(s|d)?\b",
+        r"\bprohibit(s|ed|ing)?\b",
+    ))
+
+
+def _append_unique(values: list[str], *items: str) -> list[str]:
+    result = list(values)
+    for item in items:
+        key = normalise_category_key(item)
+        if key and key not in result:
+            result.append(key)
+    return result
+
+
+def _route_profile_to_categories(
+    profile: RequirementSemanticProfile,
+    *,
+    intent: str | None = None,
+    primary: str | None = None,
+    secondary: tuple[str, ...] = (),
+    missing: tuple[str, ...] = (),
+    existing: tuple[str, ...] = (),
+    safeguard: bool | None = None,
+    note: str = "",
+) -> None:
+    """Apply a high-confidence regulatory route to a profile in-place."""
+    if intent:
+        profile.requirement_intent = intent
+    if primary:
+        profile.primary_obligation_category = normalise_category_key(primary)
+    if secondary:
+        profile.secondary_obligation_categories = _append_unique(
+            profile.secondary_obligation_categories, *secondary,
+        )
+    if missing:
+        profile.missing_or_unclear_categories = _append_unique(
+            profile.missing_or_unclear_categories, *missing,
+        )
+    if existing:
+        profile.existing_control_categories = _append_unique(
+            profile.existing_control_categories, *existing,
+        )
+    if safeguard is not None:
+        profile.is_safeguard_or_control = safeguard
+    if note:
+        profile.notes = f"{profile.notes}; {note}".strip("; ")
+
+
+def apply_regulatory_scope_guardrails(
+    requirement_text: str,
+    profile: RequirementSemanticProfile,
+    categories: list[dict] | None,
+) -> RequirementSemanticProfile:
+    """Improve routing for non-Chapter-III modules using conservative signals.
+
+    Embedding similarity is good for ordinary software intents, but some EU AI
+    Act areas need high-precision legal routing. This pass adds deterministic
+    guardrails for the Act areas we explicitly support beyond the existing
+    Chapter III implementation: Article 5, Article 50, Annex III, Annex IV, and
+    Articles 72-73. The guardrails affect retrieval/reranking only; the final
+    output remains an engineering review finding, not a legal conclusion.
+    """
+    text = requirement_text.lower()
+    valid = _category_keys(categories)
+    prevention = _looks_like_prevention_or_exclusion(text)
+
+    prohibited_active_patterns = (
+        r"\bsocial scoring\b|\bsocial score\b|\bscore citizens\b",
+        r"\bmanipulat\w*\b|\bsubliminal\b|\bdeceptive technique",
+        r"\bexploit\w*\b.*\b(vulnerab|age|disab|social|economic)",
+        r"\bbiometric categorisation\b.*\b(race|ethnic|political|religio|belief|sex life|sexual orientation|trade union)",
+        r"\bemotion recognition\b.*\b(workplace|worker|employee|school|student|education|classroom)",
+        r"\buntargeted\b.*\b(facial|face)\b.*\b(scrap|database|recognition)",
+        r"\b(facial|face)\b.*\b(scrap|database)\b.*\b(recognition|identification)",
+        r"\bpredictive policing\b|\bpredict\b.*\b(crime|criminal offence|offense)\b.*\b(person|individual)",
+        r"\breal[- ]time remote biometric identification\b",
+    )
+    if _contains_any(text, prohibited_active_patterns):
+        if prevention:
+            _route_profile_to_categories(
+                profile,
+                intent="prohibited_feature_prevention",
+                primary="prohibited_practice",
+                existing=("prohibited_practice",),
+                safeguard=True,
+                note="regulatory guardrail: requirement appears to prevent a prohibited/sensitive practice",
+            )
+            if "prevention or exclusion of prohibited/sensitive AI practice" not in profile.safeguards_or_controls:
+                profile.safeguards_or_controls.append(
+                    "prevention or exclusion of prohibited/sensitive AI practice"
+                )
+        else:
+            _route_profile_to_categories(
+                profile,
+                intent="prohibited_practice_use",
+                primary="prohibited_practice",
+                missing=("prohibited_practice",),
+                safeguard=False,
+                note="regulatory guardrail: potential Article 5 prohibited-practice review",
+            )
+
+    # Article 50 transparency obligations.
+    if _contains_any(text, (
+        r"\b(chatbot|virtual assistant|conversational ai|ai assistant)\b",
+        r"\binteracting with (an )?ai\b|\busing ai\b.*\binform\b|\bdisclose\b.*\bai system\b",
+    )):
+        _route_profile_to_categories(
+            profile,
+            intent="ai_interaction_disclosure",
+            primary="ai_interaction_disclosure",
+            secondary=("general_transparency",),
+            missing=("ai_interaction_disclosure",),
+            note="regulatory guardrail: AI interaction disclosure route",
+        )
+
+    if _contains_any(text, (
+        r"\bsynthetic\b.*\b(text|content|audio|image|video)\b",
+        r"\b(ai[- ]generated|machine[- ]generated|generated by ai)\b",
+        r"\bwatermark\b|\blabel\b.*\b(ai[- ]generated|synthetic)\b|\bmark\b.*\bsynthetic\b",
+    )):
+        _route_profile_to_categories(
+            profile,
+            intent="synthetic_content_generation",
+            primary="synthetic_content_labelling",
+            secondary=("general_transparency",),
+            missing=("synthetic_content_labelling",),
+            note="regulatory guardrail: synthetic-content labelling route",
+        )
+
+    if _contains_any(text, (r"\bdeepfake\b", r"\bmanipulat\w*\b.*\b(image|audio|video)\b.*\b(person|event|real)")):
+        _route_profile_to_categories(
+            profile,
+            intent="deepfake_generation",
+            primary="deepfake_disclosure",
+            secondary=("synthetic_content_labelling", "general_transparency"),
+            missing=("deepfake_disclosure",),
+            note="regulatory guardrail: deepfake-disclosure route",
+        )
+
+    if _contains_any(text, (
+        r"\bemotion recognition\b",
+        r"\bbiometric categorisation\b",
+    )) and not prevention:
+        _route_profile_to_categories(
+            profile,
+            intent="biometric_emotion_disclosure",
+            primary=(profile.primary_obligation_category or "biometric_emotion_disclosure"),
+            secondary=("biometric_emotion_disclosure", "general_transparency"),
+            missing=("biometric_emotion_disclosure",),
+            note="regulatory guardrail: biometric/emotion-recognition notice route",
+        )
+
+    # Annex III + Article 6 high-risk classification signals.
+    annex_domain_patterns = (
+        r"\b(recruit|candidate|resume|cv|hiring|employment|worker|employee|promotion|termination|task allocation|performance monitoring)\b",
+        r"\b(education|student|exam|admission|grading|vocational training|learning outcome)\b",
+        r"\b(credit score|creditworthiness|loan|insurance premium|public benefit|social benefit|essential service|emergency dispatch)\b",
+        r"\b(law enforcement|police|criminal|crime|evidence|offender|victim|witness|polygraph)\b",
+        r"\b(migration|asylum|border|visa|residence permit)\b",
+        r"\b(critical infrastructure|electricity|water supply|gas|heating|road traffic|digital infrastructure)\b",
+        r"\b(judicial|court|judge|legal decision|election|voting|democratic process)\b",
+        r"\b(remote biometric identification|biometric identification)\b",
+    )
+    if _contains_any(text, annex_domain_patterns):
+        # Do not overwrite a more specific Article 5/50 route, but keep Annex
+        # III classification as a secondary mapped area.
+        if not profile.primary_obligation_category:
+            profile.primary_obligation_category = "high_risk_classification"
+        profile.secondary_obligation_categories = _append_unique(
+            profile.secondary_obligation_categories,
+            "high_risk_classification",
+            "annex_iii_high_risk_domain",
+        )
+        profile.missing_or_unclear_categories = _append_unique(
+            profile.missing_or_unclear_categories,
+            "high_risk_classification",
+        )
+        profile.high_risk_context = True
+        if not profile.annex_iii_relevance:
+            profile.annex_iii_relevance = "possible Annex III high-risk domain"
+        profile.notes = (
+            f"{profile.notes}; regulatory guardrail: possible Article 6/Annex III high-risk classification context"
+        ).strip("; ")
+
+    # Annex IV technical documentation detail.
+    if _contains_any(text, (
+        r"\btechnical documentation\b|\bcompliance documentation\b|\bdesign documentation\b",
+        r"\bintended purpose\b.*\bdocument",
+        r"\b(model architecture|training data|validation data|testing data|performance metric|risk control)\b.*\bdocument",
+    )):
+        _route_profile_to_categories(
+            profile,
+            intent="annex_iv_documentation",
+            primary="annex_iv_technical_documentation",
+            secondary=("technical_documentation",),
+            missing=("annex_iv_technical_documentation", "technical_documentation"),
+            existing=("annex_iv_technical_documentation",),
+            safeguard=True,
+            note="regulatory guardrail: Annex IV technical-documentation route",
+        )
+
+    # Chapter IX lifecycle obligations.
+    if _contains_any(text, (
+        r"\bpost[- ]market\b",
+        r"\bmonitor\w*\b.*\b(deployed|production|live|lifetime|after release|post deployment)\b",
+        r"\b(drift|performance degradation|ongoing performance|continuous compliance)\b",
+    )):
+        _route_profile_to_categories(
+            profile,
+            intent="post_market_monitoring",
+            primary="post_market_monitoring",
+            secondary=("risk_management", "technical_documentation"),
+            missing=("post_market_monitoring",),
+            existing=("post_market_monitoring",),
+            safeguard=True,
+            note="regulatory guardrail: Article 72 post-market-monitoring route",
+        )
+
+    if _contains_any(text, (
+        r"\bserious incident\b|\bincident reporting\b|\breport\w*\b.*\b(authorit|regulator|market surveillance)\b",
+        r"\b(fundamental rights|death|serious harm|health and safety)\b.*\bincident\b",
+    )):
+        _route_profile_to_categories(
+            profile,
+            intent="serious_incident_reporting",
+            primary="serious_incident_reporting",
+            secondary=("post_market_monitoring", "risk_management"),
+            missing=("serious_incident_reporting",),
+            existing=("serious_incident_reporting",),
+            safeguard=True,
+            note="regulatory guardrail: Article 73 serious-incident-reporting route",
+        )
+
+    if _contains_any(text, (
+        r"\b(ai literacy|training|trained users|trained operators|staff competence|operator competence)\b",
+        r"\bunderstand\b.*\b(capabilities|limitations|risks)\b",
+    )):
+        _route_profile_to_categories(
+            profile,
+            intent="ai_literacy_training",
+            primary=(profile.primary_obligation_category or "ai_literacy"),
+            secondary=("ai_literacy",),
+            missing=("ai_literacy",),
+            existing=("ai_literacy",),
+            safeguard=True,
+            note="regulatory guardrail: Article 4 AI-literacy route",
+        )
+
+    # Remove categories that are not valid in this runtime. This keeps the
+    # profile compatible with older graphs while extend_requirement_categories
+    # supplies the new anchors at runtime.
+    profile.primary_obligation_category = (
+        profile.primary_obligation_category
+        if normalise_category_key(profile.primary_obligation_category) in valid
+        else ""
+    )
+    profile.secondary_obligation_categories = _normalise_category_list(
+        profile.secondary_obligation_categories, valid,
+    )
+    profile.existing_control_categories = _normalise_category_list(
+        profile.existing_control_categories, valid,
+    )
+    profile.missing_or_unclear_categories = _normalise_category_list(
+        profile.missing_or_unclear_categories, valid,
+    )
+    profile.relevant_obligation_categories = profile.supported_categories()
+    return _merge_policy_categories(profile, valid)
 
 
 def stabilise_profile_with_semantic_intent(
@@ -638,6 +1127,9 @@ def build_embedding_semantic_profile(
         ),
     )
     profile = _merge_policy_categories(profile, _category_keys(categories))
+    profile = apply_regulatory_scope_guardrails(
+        requirement_text, profile, categories,
+    )
     profile.retrieval_query = build_profile_retrieval_query(
         profile, requirement_text)
     return profile
@@ -690,6 +1182,9 @@ Extract the semantic profile for this requirement.
         profile = stabilise_profile_with_semantic_intent(
             requirement_text, profile, categories,
         )
+        profile = apply_regulatory_scope_guardrails(
+            requirement_text, profile, categories,
+        )
         if not profile.retrieval_query:
             profile.retrieval_query = build_profile_retrieval_query(
                 profile, requirement_text,
@@ -738,7 +1233,24 @@ def build_profile_retrieval_query(
         parts.append(
             "existing control or safeguard with remaining compliance gap")
 
-    parts.append("EU AI Act high-risk AI system obligations")
+    supported = set(profile.supported_categories())
+    if "prohibited_practice" in supported:
+        parts.append("EU AI Act Article 5 prohibited AI practices")
+    if {"high_risk_classification", "annex_iii_high_risk_domain"} & supported:
+        parts.append("EU AI Act Article 6 and Annex III high-risk AI system classification")
+    if {
+        "general_transparency",
+        "ai_interaction_disclosure",
+        "synthetic_content_labelling",
+        "deepfake_disclosure",
+        "biometric_emotion_disclosure",
+    } & supported:
+        parts.append("EU AI Act Article 50 transparency obligations")
+    if "annex_iv_technical_documentation" in supported:
+        parts.append("EU AI Act Annex IV technical documentation contents")
+    if {"post_market_monitoring", "serious_incident_reporting"} & supported:
+        parts.append("EU AI Act Articles 72 and 73 post-market monitoring and serious incident reporting")
+    parts.append("EU AI Act software system compliance obligations")
     return "; ".join(dict.fromkeys(p.strip() for p in parts if p and p.strip()))
 
 
@@ -746,12 +1258,13 @@ def _article_ids_for_categories(
     category_keys: list[str],
     categories: list[dict] | None,
 ) -> list[str]:
-    if not categories:
+    merged = extend_requirement_categories(categories)
+    if not merged:
         return []
 
     by_key = {
         str(category.get("key", "")): category.get("article_ids", [])
-        for category in categories
+        for category in merged
     }
 
     article_ids: list[str] = []

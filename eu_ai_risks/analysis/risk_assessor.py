@@ -11,21 +11,22 @@ from eu_ai_risks.analysis.semantic_profiles import (
     article_ids_for_profile_categories,
     build_profile_retrieval_query,
     extract_requirement_profile,
+    extend_requirement_categories,
     format_semantic_profile,
     normalise_category_key,
     rerank_paragraphs_by_profile,
     RequirementSemanticProfile,
 )
 from eu_ai_risks.db.graph import (
-    find_paragraphs, list_categories, get_article,
+    find_paragraphs, list_categories, get_article, get_annex,
     get_references, get_related_requirements,
 )
 from eu_ai_risks.embeddings import embed_text
 from eu_ai_risks.llm import complete_json
 
-TOP_K_PARAGRAPH_CANDIDATES = 8
-TOP_K_PARAGRAPHS = 3
-TOP_K_ARTICLES = 3
+TOP_K_PARAGRAPH_CANDIDATES = 10
+TOP_K_PARAGRAPHS = 4
+TOP_K_ARTICLES = 5
 MAX_PARAGRAPHS_PER_ARTICLE = 2
 MAX_CROSS_REFERENCES = 2
 MAX_RELATED_REQUIREMENTS = 1
@@ -40,6 +41,10 @@ LOW_RISK_CONTROL_INTENTS = {
     "protected_attribute_control",
     "monitoring_or_alerting",
     "rollback_or_corrective_action",
+    "post_market_monitoring",
+    "serious_incident_reporting",
+    "annex_iv_documentation",
+    "ai_literacy_training",
 }
 
 MEDIUM_MAX_CONTROL_INTENTS = {
@@ -50,6 +55,28 @@ MEDIUM_MAX_CONTROL_INTENTS = {
 # Fallback article anchors per category when the LLM returns no risks
 # but the profile says an obligation gap remains
 CATEGORY_FALLBACK_RISKS = {
+    "prohibited_practice": {
+        "article_id": "art:5",
+        "paragraph_num": 1,
+        "provision": "Article 5(1)",
+        "description": "Potential prohibited-practice concern requires review",
+        "action": "Stop the feature or obtain specialist legal review before implementation.",
+        "default_severity": "high",
+    },
+    "high_risk_classification": {
+        "article_id": "art:6",
+        "paragraph_num": 2,
+        "provision": "Article 6(2)",
+        "description": "High-risk classification not explicitly resolved",
+        "action": "Confirm whether the system falls within an Annex III high-risk area and record the classification rationale.",
+    },
+    "annex_iii_high_risk_domain": {
+        "article_id": "annex:III",
+        "paragraph_num": None,
+        "provision": "Annex III",
+        "description": "Possible Annex III high-risk domain needs classification evidence",
+        "action": "Map the intended use to the relevant Annex III area and document the classification decision.",
+    },
     "risk_management": {
         "article_id": "art:9",
         "paragraph_num": 1,
@@ -71,6 +98,13 @@ CATEGORY_FALLBACK_RISKS = {
         "description": "Technical documentation expectations not fully specified",
         "action": "Document design decisions, evidence, and compliance rationale.",
     },
+    "annex_iv_technical_documentation": {
+        "article_id": "annex:IV",
+        "paragraph_num": None,
+        "provision": "Annex IV",
+        "description": "Annex IV technical documentation content not fully specified",
+        "action": "Add intended purpose, design details, model/data description, validation results, risk controls, and monitoring evidence.",
+    },
     "record_keeping": {
         "article_id": "art:12",
         "paragraph_num": 1,
@@ -84,6 +118,41 @@ CATEGORY_FALLBACK_RISKS = {
         "provision": "Article 13(1)",
         "description": "Transparency expectations not fully specified",
         "action": "Define explanation detail, user information, and instructions for use.",
+    },
+    "general_transparency": {
+        "article_id": "art:50",
+        "paragraph_num": 1,
+        "provision": "Article 50(1)",
+        "description": "General AI transparency expectations not fully specified",
+        "action": "Define who is informed, when disclosure appears, and how disclosure remains accessible.",
+    },
+    "ai_interaction_disclosure": {
+        "article_id": "art:50",
+        "paragraph_num": 1,
+        "provision": "Article 50(1)",
+        "description": "AI interaction disclosure expectations not fully specified",
+        "action": "Tell users when they are interacting with an AI system unless this is obvious from context.",
+    },
+    "synthetic_content_labelling": {
+        "article_id": "art:50",
+        "paragraph_num": 2,
+        "provision": "Article 50(2)",
+        "description": "Synthetic-content labelling expectations not fully specified",
+        "action": "Define machine-readable marking, labelling, and detection support for synthetic outputs.",
+    },
+    "deepfake_disclosure": {
+        "article_id": "art:50",
+        "paragraph_num": 4,
+        "provision": "Article 50(4)",
+        "description": "Deepfake or manipulated-content disclosure expectations not fully specified",
+        "action": "Disclose when image, audio, or video content has been artificially generated or manipulated.",
+    },
+    "biometric_emotion_disclosure": {
+        "article_id": "art:50",
+        "paragraph_num": 3,
+        "provision": "Article 50(3)",
+        "description": "Biometric or emotion-recognition notice expectations not fully specified",
+        "action": "Inform exposed persons of biometric categorisation or emotion-recognition operation and data-processing context.",
     },
     "human_oversight": {
         "article_id": "art:14",
@@ -113,6 +182,13 @@ CATEGORY_FALLBACK_RISKS = {
         "description": "Post-market monitoring expectations not fully specified",
         "action": "Define monitoring metrics, thresholds, review cadence, and corrective actions.",
     },
+    "serious_incident_reporting": {
+        "article_id": "art:73",
+        "paragraph_num": 1,
+        "provision": "Article 73(1)",
+        "description": "Serious incident reporting expectations not fully specified",
+        "action": "Define serious-incident detection, escalation, authority reporting, and corrective-action workflow.",
+    },
 }
 
 CATEGORY_ANCHORS = {
@@ -120,20 +196,33 @@ CATEGORY_ANCHORS = {
     for key, value in CATEGORY_FALLBACK_RISKS.items()
 }
 
-# Core Chapter 3 articles that can always be cited even if not pre-fetched
-CORE_ARTICLE_IDS = {
-    "art:9", "art:10", "art:11", "art:12", "art:13",
-    "art:14", "art:15", "art:72",
+# Core provision nodes that can always be cited even if not pre-fetched.
+# Includes the Chapter III anchors plus the expanded software-checker scope.
+CORE_PROVISION_IDS = {
+    "art:5", "art:6", "art:9", "art:10", "art:11", "art:12",
+    "art:13", "art:14", "art:15", "art:17", "art:27", "art:43",
+    "art:49", "art:50", "art:72", "art:73", "annex:III", "annex:IV",
 }
 
 
 @lru_cache(maxsize=128)
+def _cached_provision(provision_id: str) -> dict:
+    if provision_id.startswith("annex:"):
+        return get_annex(provision_id) or {}
+    return get_article(provision_id) or {}
+
+
+@lru_cache(maxsize=128)
 def _cached_article(article_id: str) -> dict:
+    # Kept for backwards compatibility with any caller expecting article-only
+    # behaviour. The assessor itself uses _cached_provision.
     return get_article(article_id) or {}
 
 
 @lru_cache(maxsize=128)
 def _cached_references(article_id: str) -> dict:
+    if article_id.startswith("annex:"):
+        return {"article_id": article_id, "references_to": [], "referenced_by": []}
     return get_references(article_id) or {}
 
 
@@ -172,9 +261,10 @@ def _build_prompt(
         )
 
     if articles:
-        parts.append("\n## Key article obligations\n")
+        parts.append("\n## Key EU AI Act provisions\n")
         for article_id, article in articles.items():
-            parts.append(f"### {article['title']} ({article_id})\n")
+            title = article.get("title", article_id)
+            parts.append(f"### {title} ({article_id})\n")
 
             dimensions = article.get("dimensions", {}) or {}
             requirement_categories = dimensions.get(
@@ -184,6 +274,12 @@ def _build_prompt(
                     f"- Categories: {', '.join(requirement_categories)}\n"
                 )
 
+            if article_id.startswith("annex:"):
+                text = article.get("text", "")
+                if text:
+                    parts.append(f"- Annex content excerpt: {text[:520]}\n")
+                continue
+
             binding = [
                 paragraph for paragraph in article.get("paragraphs", [])
                 if paragraph.get("obligation_type") in ("requirement", "prohibition")
@@ -191,7 +287,7 @@ def _build_prompt(
             for article_paragraph in binding:
                 parts.append(
                     f"- ({article_paragraph['num']}) "
-                    f"{article_paragraph['text'][:180]}\n"
+                    f"{article_paragraph['text'][:220]}\n"
                 )
 
     if referenced_articles:
@@ -312,10 +408,13 @@ def _apply_profile_gap_fallback(
         if not fallback:
             continue
         article_id = fallback["article_id"]
-        if articles and article_id not in articles and article_id not in CORE_ARTICLE_IDS:
+        if articles and article_id not in articles and article_id not in CORE_PROVISION_IDS:
             continue
 
-        severity = "low" if profile.is_safeguard_or_control else "medium"
+        severity = fallback.get(
+            "default_severity",
+            "low" if profile.is_safeguard_or_control else "medium",
+        )
         fallback_risks.append(RiskItem(
             description=fallback["description"],
             severity=severity,
@@ -432,6 +531,7 @@ def assess_requirement(
     """Assess a single requirement against the EU AI Act graph."""
     if categories is None:
         categories = list_categories()
+    categories = extend_requirement_categories(categories)
 
     profile = extract_requirement_profile(
         requirement_id=requirement_id,
@@ -457,7 +557,7 @@ def assess_requirement(
 
     articles = {}
     for article_id in hit_article_ids[:TOP_K_ARTICLES]:
-        article = _cached_article(article_id)
+        article = _cached_provision(article_id)
         if article:
             articles[article_id] = article
 

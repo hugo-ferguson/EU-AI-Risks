@@ -151,9 +151,10 @@ def list_categories() -> list[dict]:
     with get_session() as session:
         query_result = session.run(
             """
-			MATCH (a:Article)-[:IMPOSES]->(rc:RequirementCategory)
+			MATCH (source)-[:IMPOSES]->(rc:RequirementCategory)
+			WHERE source:Article OR source:Annex
 			RETURN rc.key AS key, rc.name AS name,
-			       collect(a.id) AS article_ids
+			       collect(source.id) AS article_ids
 			ORDER BY rc.name
 			"""
         )
@@ -187,7 +188,8 @@ def get_category_articles(
     with get_session() as session:
         query_result = session.run(
             """
-			MATCH (a:Article)-[:IMPOSES]->(rc:RequirementCategory {key: $key})
+			MATCH (a)-[:IMPOSES]->(rc:RequirementCategory {key: $key})
+			WHERE a:Article OR a:Annex
 			OPTIONAL MATCH (a)-[:HAS_PARAGRAPH]->(p:Paragraph)
 			WHERE $filter_types = false
 			   OR p.obligation_type IN $obligation_types
@@ -295,6 +297,49 @@ def get_article(article_id: str) -> dict | None:
             "chapter_title": record["chapter_title"],
             "paragraphs": paragraphs,
             "dimensions": dimensions,
+        }
+
+
+
+def get_annex(annex_id: str) -> dict | None:
+    """
+    Return Annex details in the same broad shape as get_article.
+
+    :param annex_id: e.g. "annex:III".
+    :return: dict with annex details, or None if not found.
+    """
+    with get_session() as session:
+        result = session.run(
+            """
+            MATCH (annex:Annex {id: $annex_id})
+            OPTIONAL MATCH (annex)-[:IMPOSES]->(rc:RequirementCategory)
+            OPTIONAL MATCH (annex)-[:COVERS]->(sc:SystemCategory)
+            RETURN annex.id AS id, annex.num AS num, annex.title AS title,
+                   annex.text AS text,
+                   collect(DISTINCT rc.key) AS requirement_categories,
+                   collect(DISTINCT sc.key) AS system_categories
+            """,
+            annex_id=annex_id,
+        )
+        record = result.single()
+        if not record or record["id"] is None:
+            return None
+
+        return {
+            "id": record["id"],
+            "num": record["num"],
+            "title": record["title"] or record["id"],
+            "text": record["text"] or "",
+            "chapter_id": "annexes",
+            "chapter_title": "Annexes",
+            "paragraphs": [],
+            "dimensions": {
+                "requirement_categories": record["requirement_categories"],
+                "system_categories": record["system_categories"],
+                "risk_categories": [],
+                "data_categories": [],
+                "responsible_parties": [],
+            },
         }
 
 

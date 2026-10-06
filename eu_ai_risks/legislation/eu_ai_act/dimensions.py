@@ -33,11 +33,20 @@ RESPONSIBLE_PARTIES = {
 
 REQUIREMENT_CATEGORIES = {
     "ai_literacy": "AI literacy",
+    "prohibited_practice": "Prohibited AI practice review",
+    "high_risk_classification": "High-risk classification",
+    "annex_iii_high_risk_domain": "Annex III high-risk domain",
     "risk_management": "Risk management system",
     "data_governance": "Data and data governance",
     "technical_documentation": "Technical documentation",
+    "annex_iv_technical_documentation": "Annex IV technical documentation detail",
     "record_keeping": "Record-keeping and logging",
     "transparency": "Transparency and provision of information",
+    "general_transparency": "General transparency obligations",
+    "ai_interaction_disclosure": "AI interaction disclosure",
+    "synthetic_content_labelling": "Synthetic content labelling",
+    "deepfake_disclosure": "Deepfake disclosure",
+    "biometric_emotion_disclosure": "Biometric/emotion-recognition disclosure",
     "human_oversight": "Human oversight",
     "accuracy_robustness_cybersecurity": "Accuracy, robustness and cybersecurity",
     "quality_management": "Quality management system",
@@ -50,23 +59,34 @@ REQUIREMENT_CATEGORIES = {
 
 # Maps each article to the requirement theme it establishes
 REQUIREMENT_ARTICLE_MAP = {
-    "art:4": "ai_literacy",
-    "art:9": "risk_management",
-    "art:10": "data_governance",
-    "art:11": "technical_documentation",
-    "art:12": "record_keeping",
-    "art:13": "transparency",
-    "art:14": "human_oversight",
-    "art:15": "accuracy_robustness_cybersecurity",
-    "art:17": "quality_management",
-    "art:18": "technical_documentation",
-    "art:19": "record_keeping",
-    "art:27": "fundamental_rights_impact_assessment",
-    "art:43": "conformity_assessment",
-    "art:49": "registration",
-    "art:50": "transparency",
-    "art:72": "post_market_monitoring",
-    "art:73": "serious_incident_reporting",
+    "art:4": ["ai_literacy"],
+    "art:5": ["prohibited_practice"],
+    "art:6": ["high_risk_classification"],
+    "annex:III": ["annex_iii_high_risk_domain"],
+    "art:9": ["risk_management"],
+    "art:10": ["data_governance"],
+    "art:11": ["technical_documentation", "annex_iv_technical_documentation"],
+    "annex:IV": ["annex_iv_technical_documentation"],
+    "art:12": ["record_keeping"],
+    "art:13": ["transparency"],
+    "art:14": ["human_oversight"],
+    "art:15": ["accuracy_robustness_cybersecurity"],
+    "art:17": ["quality_management"],
+    "art:18": ["technical_documentation"],
+    "art:19": ["record_keeping"],
+    "art:27": ["fundamental_rights_impact_assessment"],
+    "art:43": ["conformity_assessment"],
+    "art:49": ["registration"],
+    "art:50": [
+        "transparency",
+        "general_transparency",
+        "ai_interaction_disclosure",
+        "synthetic_content_labelling",
+        "deepfake_disclosure",
+        "biometric_emotion_disclosure",
+    ],
+    "art:72": ["post_market_monitoring"],
+    "art:73": ["serious_incident_reporting"],
 }
 
 # Four risk tiers plus two general-purpose AI classes
@@ -255,15 +275,19 @@ def add_requirement_categories() -> None:
     with get_session() as session:
         existing = {
             row["id"] for row in session.run(
-                "MATCH (a:Article) RETURN a.id AS id"
+                "MATCH (n) WHERE n:Article OR n:Annex RETURN n.id AS id"
             ).data()
         }
 
-    assignments = [
-        (article_id, [category])
-        for article_id, category in REQUIREMENT_ARTICLE_MAP.items()
-        if article_id in existing
-    ]
+    assignments = []
+    for article_id, categories in REQUIREMENT_ARTICLE_MAP.items():
+        if article_id not in existing:
+            continue
+        if isinstance(categories, str):
+            category_list = [categories]
+        else:
+            category_list = list(categories)
+        assignments.append((article_id, category_list))
 
     _write_dimension(
         "requirement_category", "RequirementCategory", "IMPOSES",

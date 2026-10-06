@@ -286,21 +286,9 @@
 
         <div class="review-layout">
           <div class="findings-list" id="findings-list">
-            {% if overall_analysis %}
-            <button class="finding-card summary-tile active" data-target="detail-summary" data-summary="true"
-              data-categories="{{ overall_analysis.priority_categories | map(attribute='name') | join(' ') }}"
-              data-search="{{ ('overall summary ' ~ overall_analysis.text)|lower }}">
-              <div class="finding-topline"><strong>Overall summary</strong><span class="summary-label">review</span></div>
-              <p>{{ overall_analysis.text }}</p>
-              <div class="category-row">
-                {% for category in overall_analysis.priority_categories[:3] %}<span>{{ category.label }}</span>{% endfor %}
-                {% if not overall_analysis.priority_categories %}<span>overall review</span>{% endif %}
-              </div>
-            </button>
-            {% endif %}
             {% for entry in entries %}
             {% set cats = entry.risks | map(attribute='obligation_category') | select | unique | list %}
-            <button class="finding-card" data-target="detail-{{ loop.index }}"
+            <button class="finding-card {% if loop.first %}active{% endif %}" data-target="detail-{{ loop.index }}"
               data-level="{{ entry.risk_level }}" data-categories="{{ cats | join(' ') }}"
               data-search="{{ (entry.id ~ ' ' ~ entry.text ~ ' ' ~ entry.analysis)|lower }}">
               <div class="finding-topline"><strong>{{ entry.id }}</strong><span
@@ -320,56 +308,8 @@
           </div>
 
           <div class="details-stack">
-            {% if overall_analysis %}
-            <article class="detail-panel" id="detail-summary">
-              <div class="detail-header">
-                <div><span class="eyebrow">Overall review</span>
-                  <h2>Overall summary</h2>
-                </div>
-              </div>
-
-              <section>
-                <h3>Overall analysis</h3>
-                <p>{{ overall_analysis.text }}</p>
-              </section>
-
-              <section>
-                <h3>Review points</h3>
-                <ul class="recommendations">
-                  {% for point in overall_analysis.key_points %}<li>{{ point }}</li>{% endfor %}
-                </ul>
-              </section>
-
-              <section>
-                <h3>Priority obligation areas</h3>
-                <div class="risk-list">
-                  {% if overall_analysis.priority_categories %}
-                  {% for category in overall_analysis.priority_categories %}
-                  <div class="risk-item">
-                    <div><span>{{ category.label }}</span>
-                      <p>{{ category.count }} mapped finding{% if category.count != 1 %}s{% endif %}</p>
-                    </div>
-                  </div>
-                  {% endfor %}
-                  {% else %}
-                  <div class="positive-card">
-                    <p>No repeated obligation categories were identified in this assessment.</p>
-                  </div>
-                  {% endif %}
-                </div>
-              </section>
-
-              <section>
-                <h3>Recommended follow-up actions</h3>
-                <ul class="recommendations">
-                  {% for action in overall_analysis.recommended_actions %}<li>{{ action }}</li>{% endfor %}
-                </ul>
-              </section>
-            </article>
-            {% endif %}
-
             {% for entry in entries %}
-            <article class="detail-panel hidden" id="detail-{{ loop.index }}">
+            <article class="detail-panel {% if not loop.first %}hidden{% endif %}" id="detail-{{ loop.index }}">
               <div class="detail-header">
                 <div><span class="eyebrow">Requirement finding</span>
                   <h2>{{ entry.id }}</h2>
@@ -387,7 +327,7 @@
               </section>
 
               <section>
-                <h3>Mapped obligations</h3>
+                <h3>Mapped EU AI Act provisions</h3>
                 <div class="risk-list">
                   {% if entry.risks %}
                   {% for risk in entry.risks %}
