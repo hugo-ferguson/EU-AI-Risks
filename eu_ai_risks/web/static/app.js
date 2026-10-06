@@ -139,13 +139,14 @@ function initResultsInteractivity() {
     let visible = [];
 
     cards.forEach((c) => {
+      const isSummary = c.dataset.summary === 'true';
       const matchQ = !q || (c.dataset.search || '').includes(q);
       const matchL = lv === 'all' || c.dataset.level === lv;
       const cats = (c.dataset.categories || '').split(' ').filter(Boolean);
       const matchC = cat === 'all' || cats.includes(cat);
-      const show = matchQ && matchL && matchC;
+      const show = isSummary || (matchQ && matchL && matchC);
       c.classList.toggle('hidden', !show);
-      if (show) visible.push(c);
+      if (show && !isSummary) visible.push(c);
     });
 
     if (noRes) noRes.hidden = visible.length !== 0;
