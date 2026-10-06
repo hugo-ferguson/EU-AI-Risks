@@ -33,6 +33,38 @@ MAX_RELATED_REQUIREMENTS = 1
 MAX_SHARED_ENTITIES = 3
 MAX_TOKENS = 2048
 
+SEVERITY_RANK = {"low": 0, "medium": 1, "high": 2}
+
+
+def _normalise_severity(value: str | None, default: str = "medium") -> str:
+    level = str(value or default).strip().lower()
+    return level if level in SEVERITY_RANK else default
+
+
+def _highest_severity(risks: list[RiskItem], default: str = "low") -> str:
+    if not risks:
+        return default
+    return max(
+        (_normalise_severity(risk.severity, default) for risk in risks),
+        key=lambda level: SEVERITY_RANK[level],
+    )
+
+
+def _sync_risk_level_with_risks(assessment: RequirementRisk) -> RequirementRisk:
+    """Keep requirement-level risk equal to the highest mapped risk severity.
+
+    The UI/report summary counts requirement-level risk. If a requirement has a
+    high-severity provision mapping, for example an Article 5 prohibited-practice
+    concern, the requirement finding must inherit that high severity rather than
+    staying medium.
+    """
+    if not assessment.risks:
+        assessment.risk_level = "low"
+        return assessment
+
+    assessment.risk_level = _highest_severity(assessment.risks)
+    return assessment
+
 # Intents that represent existing safeguards; cap their severity
 LOW_RISK_CONTROL_INTENTS = {
     "logging_or_audit",
@@ -429,10 +461,7 @@ def _apply_profile_gap_fallback(
 
     if fallback_risks:
         assessment.risks = fallback_risks
-        assessment.risk_level = (
-            "low" if all(risk.severity == "low" for risk in fallback_risks)
-            else "medium"
-        )
+        assessment.risk_level = _highest_severity(fallback_risks)
         categories_text = ", ".join(
             risk.obligation_category for risk in fallback_risks
         )
@@ -602,6 +631,7 @@ def assess_requirement(
     assessment = _apply_profile_gap_fallback(assessment, profile, articles)
     assessment = _apply_control_severity_policy(assessment, profile)
     assessment = _remove_duplicate_risks(assessment)
+    assessment = _sync_risk_level_with_risks(assessment)
     return assessment, articles, raw
 
 

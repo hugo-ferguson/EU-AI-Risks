@@ -8,6 +8,29 @@ from pathlib import Path
 
 MAX_CITATION_TEXT_LENGTH = 500
 
+SEVERITY_RANK = {"low": 0, "medium": 1, "high": 2}
+
+
+def _normalise_level(value: str | None, default: str = "medium") -> str:
+    level = str(value or default).strip().lower()
+    return level if level in SEVERITY_RANK else default
+
+
+def _entry_risk_level(assessment) -> str:
+    """Use the highest mapped risk severity as the requirement-level risk.
+
+    This keeps the Markdown summary and frontend counters logically aligned with
+    the detailed mapped provisions. For example, an Article 5 high-severity
+    prohibited-practice item should make the whole requirement finding high.
+    """
+    risks = getattr(assessment, "risks", []) or []
+    if not risks:
+        return _normalise_level(getattr(assessment, "risk_level", None), "low")
+    return max(
+        (_normalise_level(getattr(risk, "severity", None), "medium") for risk in risks),
+        key=lambda level: SEVERITY_RANK[level],
+    )
+
 # Extracts the value of "summary" from JSON even when the rest is truncated
 _RE_SUMMARY_VALUE = re.compile(r'"summary"\s*:\s*"((?:[^"\\]|\\.)*)"')
 
@@ -41,6 +64,7 @@ def entries_from_assessments(assessment_entries: list[dict]) -> list[dict]:
             severity = f" [{risk.severity}]" if risk.severity else ""
             risks.append({
                 "description": f"{risk.description}{severity}",
+                "severity": _normalise_level(risk.severity),
                 "provision": risk.provision,
                 "obligation_category": risk.obligation_category,
                 "engineering_action": risk.engineering_action,
@@ -49,7 +73,7 @@ def entries_from_assessments(assessment_entries: list[dict]) -> list[dict]:
         entries.append({
             "id": requirement.get("id", "Unknown"),
             "text": requirement.get("text", ""),
-            "risk_level": assessment.risk_level,
+            "risk_level": _entry_risk_level(assessment),
             "analysis": _sanitise_analysis(assessment.summary),
             "risks": risks,
             "citations": entry.get("citations", []),
