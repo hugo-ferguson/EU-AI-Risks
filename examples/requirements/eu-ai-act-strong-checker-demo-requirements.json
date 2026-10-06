@@ -26,5 +26,17 @@
   {
     "id": "EUAI-DEMO-7",
     "text": "The system shall record and escalate serious incidents that may affect health, safety, or fundamental rights and support reporting to the relevant authority."
+  },
+  {
+    "id": "EUAI-DEMO-8",
+    "text": "The HR team shall use the recruitment scoring system only according to the provider instructions and assign trained recruiters to monitor outputs and escalate abnormal operation."
+  },
+  {
+    "id": "EUAI-DEMO-9",
+    "text": "Before deployment, the organisation shall inform worker representatives and affected employees that AI will be used to support workplace hiring and assessment decisions."
+  },
+  {
+    "id": "EUAI-DEMO-10",
+    "text": "The deployer shall complete a fundamental rights impact assessment covering affected groups, discrimination risks, human oversight, mitigation measures, and complaint handling before first use."
   }
 ]

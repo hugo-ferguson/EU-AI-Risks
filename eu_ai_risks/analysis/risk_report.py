@@ -137,10 +137,14 @@ def build_overall_analysis(entries: list[dict]) -> dict:
             + "."
         )
     if control_like:
-        label = "requirement appears" if control_like == 1 else "requirements appear"
-        key_points.append(
-            f"{control_like} low-risk {label} to describe a control or safeguard, but still needs clarification/evidence review."
-        )
+        if control_like == 1:
+            key_points.append(
+                "1 low-risk requirement appears to describe a control or safeguard, but still needs clarification/evidence review."
+            )
+        else:
+            key_points.append(
+                f"{control_like} low-risk requirements appear to describe controls or safeguards, but still need clarification/evidence review."
+            )
 
     follow_up_actions = []
     if counts["high"]:

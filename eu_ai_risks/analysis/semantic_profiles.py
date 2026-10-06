@@ -44,6 +44,13 @@ DEFAULT_CATEGORY_KEYS = {
     "human_oversight",
     "accuracy_robustness_cybersecurity",
     "quality_management",
+    "deployer_obligations",
+    "deployer_use_instructions",
+    "deployer_human_oversight_operation",
+    "input_data_control",
+    "deployer_log_retention",
+    "workplace_ai_notification",
+    "affected_person_notification",
     "fundamental_rights_impact_assessment",
     "conformity_assessment",
     "registration",
@@ -81,6 +88,12 @@ INTENT_VALUES = {
     "post_market_monitoring",
     "serious_incident_reporting",
     "annex_iv_documentation",
+    "deployer_use_operation",
+    "deployer_input_data_control",
+    "deployer_log_retention",
+    "workplace_ai_notification",
+    "affected_person_notification",
+    "fundamental_rights_impact_assessment",
     "data_validation_or_bias_testing",
     "protected_attribute_control",
     "technical_documentation",
@@ -113,6 +126,38 @@ EXTENDED_REQUIREMENT_CATEGORIES = {
     "annex_iv_technical_documentation": {
         "name": "Annex IV technical documentation detail",
         "article_ids": ["annex:IV", "art:11"],
+    },
+    "deployer_obligations": {
+        "name": "Deployer obligations",
+        "article_ids": ["art:26"],
+    },
+    "deployer_use_instructions": {
+        "name": "Use according to instructions",
+        "article_ids": ["art:26", "art:13"],
+    },
+    "deployer_human_oversight_operation": {
+        "name": "Operational human oversight by deployer",
+        "article_ids": ["art:26", "art:14"],
+    },
+    "input_data_control": {
+        "name": "Input data control by deployer",
+        "article_ids": ["art:26", "art:10"],
+    },
+    "deployer_log_retention": {
+        "name": "Deployer log retention",
+        "article_ids": ["art:26", "art:12"],
+    },
+    "workplace_ai_notification": {
+        "name": "Workplace AI notification",
+        "article_ids": ["art:26"],
+    },
+    "affected_person_notification": {
+        "name": "Affected person notification",
+        "article_ids": ["art:26"],
+    },
+    "fundamental_rights_impact_assessment": {
+        "name": "Fundamental rights impact assessment",
+        "article_ids": ["art:27"],
     },
     "general_transparency": {
         "name": "General transparency obligations",
@@ -353,6 +398,45 @@ INTENT_CATEGORY_POLICY = {
         "existing": ["annex_iv_technical_documentation"],
         "safeguard": True,
     },
+    "deployer_use_operation": {
+        "primary": "deployer_use_instructions",
+        "secondary": ["deployer_obligations", "deployer_human_oversight_operation"],
+        "missing": ["deployer_use_instructions", "deployer_human_oversight_operation"],
+        "existing": [],
+    },
+    "deployer_input_data_control": {
+        "primary": "input_data_control",
+        "secondary": ["data_governance", "deployer_obligations"],
+        "missing": ["input_data_control"],
+        "existing": ["input_data_control"],
+        "safeguard": True,
+    },
+    "deployer_log_retention": {
+        "primary": "deployer_log_retention",
+        "secondary": ["record_keeping", "deployer_obligations"],
+        "missing": ["deployer_log_retention"],
+        "existing": ["deployer_log_retention"],
+        "safeguard": True,
+    },
+    "workplace_ai_notification": {
+        "primary": "workplace_ai_notification",
+        "secondary": ["affected_person_notification", "deployer_obligations"],
+        "missing": ["workplace_ai_notification"],
+        "existing": [],
+    },
+    "affected_person_notification": {
+        "primary": "affected_person_notification",
+        "secondary": ["transparency", "deployer_obligations"],
+        "missing": ["affected_person_notification"],
+        "existing": [],
+    },
+    "fundamental_rights_impact_assessment": {
+        "primary": "fundamental_rights_impact_assessment",
+        "secondary": ["risk_management", "human_oversight", "transparency"],
+        "missing": ["fundamental_rights_impact_assessment"],
+        "existing": ["fundamental_rights_impact_assessment"],
+        "safeguard": True,
+    },
     "ai_literacy_training": {
         "primary": "ai_literacy",
         "secondary": [],
@@ -393,6 +477,12 @@ INTENT_SEMANTIC_DESCRIPTIONS = {
     "post_market_monitoring": "monitoring deployed AI system performance, drift, accuracy, bias, risk, incidents or compliance after release",
     "serious_incident_reporting": "detecting, escalating, documenting or reporting serious incidents or fundamental-rights impacts to authorities or responsible teams",
     "annex_iv_documentation": "maintaining technical documentation contents such as intended purpose, design specifications, model architecture, training data, validation results, risk controls and monitoring plans",
+    "deployer_use_operation": "deploying or operating a high-risk AI system according to provider instructions, assigning competent human oversight, supervising operation, stopping use or notifying provider/authority when risks arise",
+    "deployer_input_data_control": "deployer checking input data for relevance, representativeness, suitability, quality or fit for the intended purpose during use",
+    "deployer_log_retention": "deployer keeping, retaining, preserving, exporting or reviewing automatically generated logs during high-risk AI system use",
+    "workplace_ai_notification": "informing workers, employees, staff representatives or unions before deploying or using a high-risk AI system in the workplace",
+    "affected_person_notification": "informing natural persons, applicants, customers, students, patients or affected people that a high-risk AI system will make or assist a decision about them",
+    "fundamental_rights_impact_assessment": "fundamental rights impact assessment, FRIA, affected groups, risks of harm, human oversight, mitigation measures, complaint mechanisms or authority notification before deployment",
     "ai_literacy_training": "training staff, deployers, users or operators so they understand AI system capabilities, limitations, risks and appropriate use",
     "conformity_or_registration": "conformity assessment, declaration of conformity, CE marking, registration or market-placement compliance workflow",
 }
@@ -776,7 +866,7 @@ def apply_regulatory_scope_guardrails(
     Embedding similarity is good for ordinary software intents, but some EU AI
     Act areas need high-precision legal routing. This pass adds deterministic
     guardrails for the Act areas we explicitly support beyond the existing
-    Chapter III implementation: Article 5, Article 50, Annex III, Annex IV, and
+    Chapter III implementation: Article 5, Article 26, Article 27, Article 50, Annex III, Annex IV, and
     Articles 72-73. The guardrails affect retrieval/reranking only; the final
     output remains an engineering review finding, not a legal conclusion.
     """
@@ -917,6 +1007,112 @@ def apply_regulatory_scope_guardrails(
             existing=("annex_iv_technical_documentation",),
             safeguard=True,
             note="regulatory guardrail: Annex IV technical-documentation route",
+        )
+
+
+    # Article 26 deployer obligations for high-risk AI systems.
+    if _contains_any(text, (
+        r"(use|operate|deploy|run)\w*.*(according to|in accordance with|provider instructions|instructions for use|user instructions)",
+        r"(stop|suspend|halt|disable)\w*.*(use|operation|deployment).*(risk|unsafe|non[- ]compliance|malfunction)",
+        r"monitor\w*.*(operation|use|outputs|performance).*(deployer|operator|organisation|organization|hr|recruiter)",
+    )):
+        _route_profile_to_categories(
+            profile,
+            intent="deployer_use_operation",
+            primary="deployer_use_instructions",
+            secondary=("deployer_obligations", "deployer_human_oversight_operation"),
+            missing=("deployer_use_instructions", "deployer_human_oversight_operation"),
+            note="regulatory guardrail: Article 26 deployer-use and operation route",
+        )
+
+    if _contains_any(text, (
+        r"competent.*(human oversight|reviewer|operator|staff|personnel)",
+        r"(assign|designate|appoint)\w*.*(human oversight|reviewer|operator|staff|personnel)",
+        r"(human oversight|human reviewer|human operator).*(training|competence|authority|responsib|escalation)",
+    )):
+        _route_profile_to_categories(
+            profile,
+            intent=(profile.requirement_intent or "deployer_use_operation"),
+            primary=(profile.primary_obligation_category or "deployer_human_oversight_operation"),
+            secondary=("deployer_human_oversight_operation", "human_oversight", "deployer_obligations"),
+            missing=("deployer_human_oversight_operation",),
+            existing=("deployer_human_oversight_operation",),
+            safeguard=True,
+            note="regulatory guardrail: Article 26 competent human oversight route",
+        )
+
+    if _contains_any(text, (
+        r"input data.*(relevant|representative|appropriate|suitable|accurate|quality|validated|checked)",
+        r"(deployer|operator|user|hr|recruiter).*(check|validate|verify|ensure)\w*.*(input data|case data|application data|operational data)",
+    )):
+        _route_profile_to_categories(
+            profile,
+            intent="deployer_input_data_control",
+            primary="input_data_control",
+            secondary=("data_governance", "deployer_obligations"),
+            missing=("input_data_control",),
+            existing=("input_data_control",),
+            safeguard=True,
+            note="regulatory guardrail: Article 26 input-data control route",
+        )
+
+    if _contains_any(text, (
+        r"(retain|keep|store|preserve)\w*.*(logs?|event records?|audit trail)",
+        r"(logs?|audit trail|event records?).*(retain|kept|stored|preserved|six months|6 months)",
+    )):
+        _route_profile_to_categories(
+            profile,
+            intent="deployer_log_retention",
+            primary="deployer_log_retention",
+            secondary=("record_keeping", "deployer_obligations"),
+            missing=("deployer_log_retention",),
+            existing=("deployer_log_retention",),
+            safeguard=True,
+            note="regulatory guardrail: Article 26 deployer log-retention route",
+        )
+
+    if _contains_any(text, (
+        r"(worker|employee|staff|workforce|union|representative)\w*.*(inform|notify|consult|notice|disclose)\w*.*(ai|automated|algorithmic)",
+        r"(inform|notify|consult|notice|disclose)\w*.*(worker|employee|staff|workforce|union|representative)\w*.*(ai|automated|algorithmic)",
+    )):
+        _route_profile_to_categories(
+            profile,
+            intent="workplace_ai_notification",
+            primary="workplace_ai_notification",
+            secondary=("affected_person_notification", "deployer_obligations", "transparency"),
+            missing=("workplace_ai_notification",),
+            note="regulatory guardrail: Article 26 workplace notification route",
+        )
+
+    if _contains_any(text, (
+        r"(applicant|candidate|customer|patient|student|person|natural person|affected person|individual)\w*.*(inform|notify|disclose|notice|explain)\w*.*(ai|automated|algorithmic|decision support|score|ranking)",
+        r"(inform|notify|disclose|notice|explain)\w*.*(applicant|candidate|customer|patient|student|person|natural person|affected person|individual)\w*.*(ai|automated|algorithmic|decision support|score|ranking)",
+        r"subject to.*(ai|automated|algorithmic).*(decision|assessment|score|ranking)",
+    )):
+        _route_profile_to_categories(
+            profile,
+            intent="affected_person_notification",
+            primary="affected_person_notification",
+            secondary=("transparency", "deployer_obligations"),
+            missing=("affected_person_notification",),
+            note="regulatory guardrail: Article 26 affected-person notification route",
+        )
+
+    # Article 27 fundamental-rights impact assessment.
+    if _contains_any(text, (
+        r"(fundamental rights impact assessment|fria)",
+        r"impact assessment.*(fundamental rights|affected groups|affected persons|rights|discrimination|human oversight|mitigation measures|complaint)",
+        r"(identify|assess|document)\w*.*(fundamental rights|affected groups|rights risks|risk of harm)",
+    )):
+        _route_profile_to_categories(
+            profile,
+            intent="fundamental_rights_impact_assessment",
+            primary="fundamental_rights_impact_assessment",
+            secondary=("risk_management", "human_oversight", "transparency"),
+            missing=("fundamental_rights_impact_assessment",),
+            existing=("fundamental_rights_impact_assessment",),
+            safeguard=True,
+            note="regulatory guardrail: Article 27 fundamental-rights impact-assessment route",
         )
 
     # Chapter IX lifecycle obligations.
@@ -1248,6 +1444,18 @@ def build_profile_retrieval_query(
         parts.append("EU AI Act Article 50 transparency obligations")
     if "annex_iv_technical_documentation" in supported:
         parts.append("EU AI Act Annex IV technical documentation contents")
+    if {
+        "deployer_obligations",
+        "deployer_use_instructions",
+        "deployer_human_oversight_operation",
+        "input_data_control",
+        "deployer_log_retention",
+        "workplace_ai_notification",
+        "affected_person_notification",
+    } & supported:
+        parts.append("EU AI Act Article 26 deployer obligations for high-risk AI systems")
+    if "fundamental_rights_impact_assessment" in supported:
+        parts.append("EU AI Act Article 27 fundamental rights impact assessment for high-risk AI systems")
     if {"post_market_monitoring", "serious_incident_reporting"} & supported:
         parts.append("EU AI Act Articles 72 and 73 post-market monitoring and serious incident reporting")
     parts.append("EU AI Act software system compliance obligations")

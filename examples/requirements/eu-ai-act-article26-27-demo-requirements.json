@@ -1,0 +1,22 @@
+[
+  {
+    "id": "A26-27-DEMO-1",
+    "text": "The HR team shall use the recruitment scoring system only according to the provider instructions and assign trained recruiters to monitor outputs and escalate abnormal operation."
+  },
+  {
+    "id": "A26-27-DEMO-2",
+    "text": "The deployer shall check that operational input data is relevant and representative before it is submitted to the high-risk AI system."
+  },
+  {
+    "id": "A26-27-DEMO-3",
+    "text": "The deployer shall retain system logs for compliance review and make them available for audit when required."
+  },
+  {
+    "id": "A26-27-DEMO-4",
+    "text": "Before deployment, the organisation shall inform worker representatives and affected employees that AI will be used to support workplace hiring and assessment decisions."
+  },
+  {
+    "id": "A26-27-DEMO-5",
+    "text": "The deployer shall complete a fundamental rights impact assessment covering affected groups, discrimination risks, human oversight, mitigation measures, and complaint handling before first use."
+  }
+]

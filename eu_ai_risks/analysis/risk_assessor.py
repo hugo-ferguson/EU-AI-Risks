@@ -76,6 +76,9 @@ LOW_RISK_CONTROL_INTENTS = {
     "post_market_monitoring",
     "serious_incident_reporting",
     "annex_iv_documentation",
+    "deployer_input_data_control",
+    "deployer_log_retention",
+    "fundamental_rights_impact_assessment",
     "ai_literacy_training",
 }
 
@@ -207,6 +210,62 @@ CATEGORY_FALLBACK_RISKS = {
         "description": "Quality management expectations not fully specified",
         "action": "Record the relevant quality-management procedure and owner.",
     },
+    "deployer_obligations": {
+        "article_id": "art:26",
+        "paragraph_num": 1,
+        "provision": "Article 26(1)",
+        "description": "Deployer obligations for high-risk AI system use not fully specified",
+        "action": "Define who deploys the system, the operating procedure, monitoring responsibility, and escalation path.",
+    },
+    "deployer_use_instructions": {
+        "article_id": "art:26",
+        "paragraph_num": 1,
+        "provision": "Article 26(1)",
+        "description": "Use according to provider instructions not fully specified",
+        "action": "Document how deployers will use the system in accordance with the provider's instructions for use.",
+    },
+    "deployer_human_oversight_operation": {
+        "article_id": "art:26",
+        "paragraph_num": 2,
+        "provision": "Article 26(2)",
+        "description": "Competent human oversight during deployment not fully specified",
+        "action": "Assign competent human oversight personnel and define their authority, training, and escalation responsibilities.",
+    },
+    "input_data_control": {
+        "article_id": "art:26",
+        "paragraph_num": 4,
+        "provision": "Article 26(4)",
+        "description": "Deployer input-data control expectations not fully specified",
+        "action": "Define how deployers will check that input data is relevant and sufficiently representative for the intended purpose.",
+    },
+    "deployer_log_retention": {
+        "article_id": "art:26",
+        "paragraph_num": 6,
+        "provision": "Article 26(6)",
+        "description": "Deployer log-retention expectations not fully specified",
+        "action": "Define which logs deployers retain, how long they are retained, who can access them, and how they support compliance review.",
+    },
+    "workplace_ai_notification": {
+        "article_id": "art:26",
+        "paragraph_num": 7,
+        "provision": "Article 26(7)",
+        "description": "Workplace AI notification expectations not fully specified",
+        "action": "Define how workers and worker representatives are informed before the high-risk AI system is put into service or used in the workplace.",
+    },
+    "affected_person_notification": {
+        "article_id": "art:26",
+        "paragraph_num": 11,
+        "provision": "Article 26(11)",
+        "description": "Affected-person notification expectations not fully specified",
+        "action": "Define how natural persons are informed when a high-risk AI system makes or assists a decision concerning them.",
+    },
+    "fundamental_rights_impact_assessment": {
+        "article_id": "art:27",
+        "paragraph_num": 1,
+        "provision": "Article 27(1)",
+        "description": "Fundamental rights impact assessment expectations not fully specified",
+        "action": "Document the intended use, affected groups, fundamental-rights risks, oversight measures, mitigation actions, and update/notification process.",
+    },
     "post_market_monitoring": {
         "article_id": "art:72",
         "paragraph_num": 1,
@@ -232,7 +291,7 @@ CATEGORY_ANCHORS = {
 # Includes the Chapter III anchors plus the expanded software-checker scope.
 CORE_PROVISION_IDS = {
     "art:5", "art:6", "art:9", "art:10", "art:11", "art:12",
-    "art:13", "art:14", "art:15", "art:17", "art:27", "art:43",
+    "art:13", "art:14", "art:15", "art:17", "art:26", "art:27", "art:43",
     "art:49", "art:50", "art:72", "art:73", "annex:III", "annex:IV",
 }
 
@@ -354,7 +413,22 @@ def _normalise_risk_provision(risk: RiskItem) -> None:
         "art:6", "art:7", "art:43", "art:74", "art:79",
         "art:81", "art:92", "art:93", "art:112", "art:113",
     }
-    if risk.article_id in weak_for_category:
+    article_26_categories = {
+        "deployer_obligations",
+        "deployer_use_instructions",
+        "deployer_human_oversight_operation",
+        "input_data_control",
+        "deployer_log_retention",
+        "workplace_ai_notification",
+        "affected_person_notification",
+    }
+    article_27_categories = {"fundamental_rights_impact_assessment"}
+
+    if (
+        risk.article_id in weak_for_category
+        or (category in article_26_categories and risk.article_id != "art:26")
+        or (category in article_27_categories and risk.article_id != "art:27")
+    ):
         risk.article_id, risk.paragraph_num, risk.provision = anchor
 
 
