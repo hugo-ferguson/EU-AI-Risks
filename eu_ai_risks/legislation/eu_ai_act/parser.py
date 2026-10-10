@@ -17,6 +17,10 @@ RE_ANNEX = re.compile(r'^ANNEX ([IVX]+)$')
 # Two numbering styles: 'N.' is standard, '(N)' appears in definition articles
 RE_PARAGRAPH_DOT = re.compile(r'^(\d+)\.\s')
 RE_PARAGRAPH_PAREN = re.compile(r'^\((\d+)\)\s')
+RE_POINT = re.compile(r'^\(([a-z])\)\s')
+RE_ANNEX_POINT = re.compile(r'^(\d+)\.\s')
+# Letters that are also roman numerals, and the numeral that follows each
+ROMAN_LETTER_SUCCESSORS = {"i": "ii", "v": "vi", "x": "xi"}
 RE_FOOTER = re.compile(r'^(EN\s*$|OJ L,|ELI:|/144)')
 
 ROMAN_TO_INT = {
@@ -122,6 +126,99 @@ def extract_paragraphs(article_segment: Segment) -> list[Segment]:
         ))
 
     return paragraphs
+
+
+def _is_roman_sub_point(lines: list[str], index: int, letter: str) -> bool:
+    """
+    Check whether '(i)', '(v)' or '(x)' starts a roman sub-point, not a letter.
+
+    After point (h) the next letter is (i), but '(i)' there is often the first
+    roman sub-point of (h). It is roman when its roman successor, e.g. '(ii)',
+    appears before the letter after it, e.g. '(j)'.
+
+    :param lines: the parent segment's body lines.
+    :param index: the index of the line starting with the candidate marker.
+    :param letter: the candidate letter.
+    :return: whether the marker is a roman sub-point.
+    """
+    successor = ROMAN_LETTER_SUCCESSORS.get(letter)
+    if not successor:
+        return False
+    next_letter = f"({chr(ord(letter) + 1)})"
+    for line in lines[index + 1:]:
+        if line.startswith(f"({successor})"):
+            return True
+        if line.startswith(next_letter):
+            return False
+    return False
+
+
+def extract_points(parent_segment: Segment) -> list[Segment]:
+    """
+    Get the lettered points, e.g. (a), (b), from a paragraph or annex point.
+
+    Letters must run in sequence, so roman sub-points such as (i) under (b)
+    stay inside their point rather than starting a new one. Lines after the
+    last point stay with it, as the PDF does not mark where a list ends.
+
+    :param parent_segment: the paragraph or annex point segment.
+    :return: a list of point segments, titled with their letter.
+    """
+    points = []
+    expected_letter = "a"
+    lines = parent_segment.body
+
+    for index, line in enumerate(lines):
+        point_match = RE_POINT.match(line)
+
+        if (point_match and point_match.group(1) == expected_letter
+                and not _is_roman_sub_point(lines, index, expected_letter)):
+            points.append(Segment(
+                type="point",
+                id=f"{parent_segment.id}:{expected_letter}",
+                num=len(points) + 1,
+                title=expected_letter,
+                parent_id=parent_segment.id,
+                body=[line],
+            ))
+            expected_letter = chr(ord(expected_letter) + 1)
+        elif points:
+            points[-1].body.append(line)
+
+    return points
+
+
+def extract_annex_points(annex_segment: Segment) -> list[Segment]:
+    """
+    Get the numbered points of an annex, e.g. Annex III point 4.
+
+    Numbers must run in sequence, so stray numbered lines are kept in the
+    current point. Annexes whose numbering restarts per section only get
+    their first run of points.
+
+    :param annex_segment: the annex segment.
+    :return: a list of point segments, titled with their number.
+    """
+    points = []
+    expected_number = 1
+
+    for line in annex_segment.body:
+        point_match = RE_ANNEX_POINT.match(line)
+
+        if point_match and int(point_match.group(1)) == expected_number:
+            points.append(Segment(
+                type="point",
+                id=f"{annex_segment.id}:{expected_number}",
+                num=expected_number,
+                title=str(expected_number),
+                parent_id=annex_segment.id,
+                body=[line],
+            ))
+            expected_number += 1
+        elif points:
+            points[-1].body.append(line)
+
+    return points
 
 
 def extract_segments(pdf_path: Path) -> list[Segment]:
@@ -273,16 +370,21 @@ def extract_segments(pdf_path: Path) -> list[Segment]:
         i += 1
 
     # Build the flat list by going over segments and expanding each article
-    # into its numbered paragraphs.
-    segments_with_paragraphs: list[Segment] = []
+    # into its numbered paragraphs and their lettered points, and each annex
+    # into its numbered points and their lettered points.
+    expanded_segments: list[Segment] = []
 
-    # For each segment, if it is an article, extract its paragraphs from its
-    # body.
     for segment in segments:
-        segments_with_paragraphs.append(segment)
+        expanded_segments.append(segment)
         if segment.type == "article":
-            segments_with_paragraphs.extend(extract_paragraphs(segment))
+            for paragraph in extract_paragraphs(segment):
+                expanded_segments.append(paragraph)
+                expanded_segments.extend(extract_points(paragraph))
+        elif segment.type == "annex":
+            for annex_point in extract_annex_points(segment):
+                expanded_segments.append(annex_point)
+                expanded_segments.extend(extract_points(annex_point))
 
     # Return the flat list of segments.
-    # Chapters, sections, articles, paragraphs, and annexes.
-    return segments_with_paragraphs
+    # Chapters, sections, articles, paragraphs, annexes, and points.
+    return expanded_segments

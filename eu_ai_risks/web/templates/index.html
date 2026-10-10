@@ -380,6 +380,8 @@
               <section>
                 <h3>Requirement</h3>
                 <p class="requirement-text">{{ entry.text }}</p>
+                {% if entry.classification %}<small>Classified as: {{ entry.classification | join('; ') }}</small>{% endif %}
+                {% if entry.selected_articles %}<small>Articles selected from the index: {{ entry.selected_articles | join('; ') }}</small>{% endif %}
               </section>
               <section>
                 <h3>Risk analysis</h3>
@@ -394,6 +396,9 @@
                   <div class="risk-item">
                     <div><span>{{ risk.obligation_category_label }}</span>
                       <p>{{ risk.description }}{% if risk.provision %} — {{ risk.provision }}{% endif %}</p>
+                      {% if risk.citation_supplied is false %}<small>Cited provision was not among the retrieved provisions (not grounded in the graph).</small>{% endif %}
+                      {% if risk.scope_warning %}<small>Scope warning: {{ risk.scope_warning }}</small>{% endif %}
+                      {% if risk.trace %}<small>Trace: {{ risk.trace | join('; ') }}</small>{% endif %}
                     </div>
                     {% if risk.engineering_action %}<small>{{ risk.engineering_action }}</small>{% endif %}
                   </div>

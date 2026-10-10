@@ -276,7 +276,7 @@ def assess_risks(
                             format="%(name)s: %(message)s")
 
     from eu_ai_risks.requirements.loader import write_triples
-    from eu_ai_risks.db.graph import list_requirements, list_categories
+    from eu_ai_risks.db.graph import list_requirements
     from eu_ai_risks.analysis.risk_report import (
         collect_citations, entries_from_assessments,
         write_markdown_report,
@@ -298,7 +298,6 @@ def assess_risks(
     else:
         from eu_ai_risks.analysis.risk_assessor import assess_requirement
 
-    categories = list_categories()
     article_cache: dict[str, dict] = {}
 
     assessment_entries: list[dict] = []
@@ -308,7 +307,7 @@ def assess_risks(
         print(f"  [{i}/{len(requirements)}] {requirement_id}...")
 
         assessment, fetched_articles, raw = assess_requirement(
-            requirement_id, requirement_text, categories=categories,
+            requirement_id, requirement_text,
         )
         article_cache.update(fetched_articles)
         citations = collect_citations(assessment.risks, article_cache)

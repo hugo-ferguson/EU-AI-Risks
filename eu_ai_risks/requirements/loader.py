@@ -279,6 +279,15 @@ _CANONICALISATION_SYSTEM = """
     ending with }}.
 """
 
+_CONCEPT_ALIGNMENT_SYSTEM = """
+    Given a software requirement, terms extracted from it with their definitions, and for each term some
+    candidate concepts defined in Article 3 of the EU AI Act, choose the candidates each term is an instance of
+    in this context. A term is an instance of a concept when the concept's legal definition covers what the term
+    refers to; a merely related concept is not enough. Choose none for a term if no candidate fits. Respond with a
+    JSON dictionary mapping each term to a list of chosen concept names, nothing else.
+    Do not explain your choice. Your entire response must be the JSON dictionary, starting with { and ending with }.
+"""
+
 # Nearest existing components offered to the LLM as replacements (EDC uses
 # vector-similarity candidates rather than a fixed similarity cut-off)
 _CANDIDATE_COUNT = 5
@@ -489,10 +498,93 @@ def write_triples(document_path: Path, save_json: bool = False) -> list[Requirem
                     rows=definition_rows
                     )
 
+    _align_entities_to_concepts(requirements, entity_schema)
+
     if save_json:
         _save_to_json(document_path, requirements)
 
     return requirements
+
+
+def _align_entities_to_concepts(
+    requirements: list[Requirement], entity_schema: _CanonicalSchema,
+) -> None:
+    """
+    Link requirement entities to the Article 3 concepts they are instances of.
+
+    This is EDC's target-alignment step with the Act's own definitions as the
+    target schema: embeddings propose candidate concepts and the LLM confirms
+    them, writing (Entity)-[:INSTANCE_OF]->(Concept) so findings can trace a
+    requirement's wording back to a legal definition.
+    """
+    from eu_ai_risks.db.graph import get_concepts
+
+    concepts = get_concepts()
+    if not concepts:
+        return
+    concept_embeddings = embed_batch([
+        f"{concept['name']}: {concept['description'] or concept['definition_text']}"
+        for concept in concepts
+    ])
+
+    aligned: set[str] = set()
+    links = []
+    for requirement in requirements:
+        names = [
+            name for name in dict.fromkeys(
+                part for triple in requirement.triples for part in (triple[0], triple[2]))
+            if name in entity_schema.definitions and name not in aligned
+        ]
+        if not names:
+            continue
+
+        candidates: dict[str, list[dict]] = {}
+        term_lines = []
+        for name in names:
+            definition, embedding = entity_schema.definitions[name]
+            ranked = sorted(
+                zip(concepts, concept_embeddings),
+                key=lambda pair: cosine_similarity(embedding, pair[1]),
+                reverse=True,
+            )
+            candidates[name] = [concept for concept, _ in ranked[:_CANDIDATE_COUNT]]
+            choices = "; ".join(
+                f"{concept['name']}: {concept['description']}" for concept in candidates[name])
+            term_lines.append(f"- {name}: {definition}\n  Candidates: {choices}")
+        aligned.update(names)
+
+        result = {}
+        # One retry: the model occasionally answers in prose instead of JSON
+        for _ in range(2):
+            try:
+                result = complete_json(
+                    prompt=f"Text: {requirement.text}\nTerms:\n" + "\n".join(term_lines),
+                    system=_CONCEPT_ALIGNMENT_SYSTEM,
+                )
+                break
+            except ValueError:
+                result = {}
+        if not isinstance(result, dict):
+            continue
+
+        for name, chosen in result.items():
+            valid = {concept["name"] for concept in candidates.get(name, [])}
+            for concept_name in chosen if isinstance(chosen, list) else []:
+                if concept_name in valid:
+                    links.append({"entity": name, "concept": concept_name})
+
+    if not links:
+        return
+    with get_session() as session:
+        session.run("""
+            UNWIND $rows AS row
+            MATCH (e:Entity {name: row.entity})
+            MATCH (c:Concept {name: row.concept})
+            MERGE (e)-[:INSTANCE_OF]->(c)
+            """,
+                    rows=links
+                    )
+    print(f"  Linked {len(links)} entities to Act concepts")
 
 def _generate_and_write_triple_embeddings(session, all_triples: list[dict]) -> None:
     entities = {}

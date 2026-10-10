@@ -6,8 +6,6 @@ import json
 import re
 from pathlib import Path
 
-MAX_CITATION_TEXT_LENGTH = 500
-
 # Extracts the value of "summary" from JSON even when the rest is truncated
 _RE_SUMMARY_VALUE = re.compile(r'"summary"\s*:\s*"((?:[^"\\]|\\.)*)"')
 
@@ -155,6 +153,10 @@ def entries_from_assessments(assessment_entries: list[dict]) -> list[dict]:
                 "provision": risk.provision,
                 "obligation_category": risk.obligation_category,
                 "engineering_action": risk.engineering_action,
+                "provision_id": risk.provision_id,
+                "citation_supplied": risk.citation_supplied,
+                "trace": risk.trace,
+                "scope_warning": risk.scope_warning,
             })
 
         entries.append({
@@ -165,6 +167,8 @@ def entries_from_assessments(assessment_entries: list[dict]) -> list[dict]:
             "risks": risks,
             "citations": entry.get("citations", []),
             "recommendations": assessment.recommendations,
+            "classification": assessment.classification,
+            "selected_articles": assessment.selected_articles,
         })
 
     return entries
@@ -193,6 +197,9 @@ def render_markdown_report(
         count = level_counts.get(level, 0)
         if count:
             lines.append(f"- {level}: {count}")
+    # Failed or unretrievable assessments must stay visible, not vanish from the totals
+    if level_counts.get("Unknown"):
+        lines.append(f"- Not assessed: {level_counts['Unknown']}")
 
     overall_analysis = overall_analysis or build_overall_analysis(entries)
 
@@ -228,6 +235,17 @@ def render_markdown_report(
             "",
             f"**Requirement:** {entry['text']}",
             "",
+        ])
+
+        if entry.get("classification"):
+            lines.extend([f"**Classified as:** {'; '.join(entry['classification'])}", ""])
+        if entry.get("selected_articles"):
+            lines.extend([
+                f"**Articles selected from the index:** {'; '.join(entry['selected_articles'])}",
+                "",
+            ])
+
+        lines.extend([
             f"**Analysis:** {entry['analysis']}",
             "",
         ])
@@ -238,7 +256,14 @@ def render_markdown_report(
             for risk in entry["risks"]:
                 provision = f" - {risk['provision']}" if risk.get(
                     "provision") else ""
-                lines.append(f"- {risk['description']}{provision}")
+                node = f" (`{risk['provision_id']}`)" if risk.get("provision_id") else ""
+                lines.append(f"- {risk['description']}{provision}{node}")
+                if not risk.get("citation_supplied", True):
+                    lines.append(
+                        "  - Warning: the cited provision was not among the provisions "
+                        "retrieved for this assessment, so it is not grounded in the graph.")
+                if risk.get("scope_warning"):
+                    lines.append(f"  - Scope warning: {risk['scope_warning']}")
                 if risk.get("obligation_category"):
                     lines.append(
                         f"  - Category: `{risk['obligation_category']}`")
@@ -246,6 +271,10 @@ def render_markdown_report(
                     lines.append(
                         f"  - Action: {risk['engineering_action']}"
                     )
+                if risk.get("trace"):
+                    lines.append("  - Trace:")
+                    for step in risk["trace"]:
+                        lines.append(f"    - {step}")
             lines.append("")
 
         if entry.get("citations"):
@@ -285,49 +314,42 @@ def collect_citations(
     risks: list,
     article_cache: dict[str, dict],
 ) -> list[dict]:
-    """Look up paragraph text for each risk's article and paragraph number."""
-    from eu_ai_risks.db.graph import get_article
+    """Quote the exact provision each risk cites: a lettered point where one is
+    cited, otherwise the paragraph, falling back to the whole article."""
+    from eu_ai_risks.db.graph import get_article, get_provisions, provision_label
 
-    seen: set[tuple[str, int | None]] = set()
+    node_ids = list(dict.fromkeys(
+        risk.provision_id for risk in risks if getattr(risk, "provision_id", "")))
+    provisions = get_provisions(node_ids)
+
+    seen: set[str] = set()
     citations = []
     for risk in risks:
-        if not risk.article_id:
+        node_id = getattr(risk, "provision_id", "")
+        node = provisions.get(node_id)
+        if node:
+            if node_id in seen:
+                continue
+            seen.add(node_id)
+            citations.append({
+                "label": f"{node['article_title']}, {provision_label(node_id)}",
+                "text": node["text"],
+            })
             continue
 
-        key = (risk.article_id, risk.paragraph_num)
-        if key in seen:
+        if not risk.article_id or risk.article_id in seen:
             continue
-        seen.add(key)
+        seen.add(risk.article_id)
 
         if risk.article_id not in article_cache:
             fetched = get_article(risk.article_id)
             if fetched:
                 article_cache[risk.article_id] = fetched
-
         article = article_cache.get(risk.article_id)
-        if not article:
-            continue
-
-        title = article.get("title", risk.article_id)
-        article_num = article.get("num", "")
-
-        if risk.paragraph_num is not None:
-            paragraph = next(
-                (candidate for candidate in article.get("paragraphs", [])
-                 if candidate.get("num") == risk.paragraph_num),
-                None,
-            )
-            if paragraph:
-                citations.append({
-                    "label": f"{title}, Article {article_num}({risk.paragraph_num})",
-                    "text": paragraph["text"][:MAX_CITATION_TEXT_LENGTH],
-                })
-        else:
-            text = article.get("text", "")
-            if text:
-                citations.append({
-                    "label": title,
-                    "text": text[:MAX_CITATION_TEXT_LENGTH],
-                })
+        if article and article.get("text"):
+            citations.append({
+                "label": article.get("title", risk.article_id),
+                "text": article["text"],
+            })
 
     return citations

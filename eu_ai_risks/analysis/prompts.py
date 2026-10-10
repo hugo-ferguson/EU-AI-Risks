@@ -58,18 +58,16 @@ graph text.
 
 
 RISK_ASSESSMENT_PROMPT = """\
-You are an EU AI Act compliance analyst. Given a software requirement, its \
-semantic profile, and EU AI Act provisions from the knowledge graph, identify \
-requirement-level compliance risks. Be concise. No essays.
+You are an EU AI Act compliance analyst. Given a software requirement and \
+EU AI Act provisions from the knowledge graph, identify requirement-level \
+compliance risks. Be concise. No essays.
 
 Rules:
 - Assess the exact requirement, not the whole SRS.
-- Use the semantic profile as the assessment scope: primary category first, \
-then missing/unclear categories.
 - Distinguish missing obligations from existing controls. If a requirement \
 already addresses an obligation, skip it or flag only the remaining gap.
 - Do not default to human_oversight for every high-risk requirement. Use it \
-only when the requirement or profile directly supports it.
+only when the requirement directly supports it.
 - Controls and safeguards (dataset validation, logging, human override, \
 rollback, bias testing, protected-attribute exclusion) should not be \
 assessed as if the control is absent.
@@ -83,6 +81,17 @@ for binding obligations left entirely unmet.
 - If no provisions support a requirement-level gap, return empty risks and \
 risk_level "low".
 - Only use provisions supplied in the prompt. Do not fabricate articles.
+- Each provision is listed with its graph id in square brackets, e.g. \
+[art:10:p2]. Set provision_id to the most specific id that supports the risk: \
+the paragraph id, or the paragraph id plus a point letter (e.g. art:10:p2:f) \
+when one lettered point is meant. Only cite ids of listed provisions.
+- Definitions from Article 3 are listed to give the Act's meaning of terms \
+used in the provisions; rely on them when interpreting a provision.
+- Some provisions only apply to particular systems (e.g. "high-risk AI \
+systems referred to in point 1(a) of Annex III"). Their "Scope" line names \
+the Annex III points they refer to; compare it with the system's Annex III \
+classification. Do not cite a provision whose stated scope excludes the \
+system this requirement belongs to.
 - Cite the obligation article for each category (e.g. data_governance cites \
 art:10, not art:6).
 - Frame outputs as engineering review support, not legal advice.
@@ -92,7 +101,7 @@ Respond with ONLY a JSON object:
 {"summary":"What the requirement misses and why it matters.",\
 "risks":[{"description":"Specific gap","severity":"medium",\
 "article_id":"art:14","paragraph_num":1,"provision":"Article 14(1)",\
-"obligation_category":"human_oversight",\
+"provision_id":"art:14:p1","obligation_category":"human_oversight",\
 "engineering_action":"Add reviewer training and escalation criteria."}],\
 "risk_level":"medium",\
 "recommendations":["One concrete action per risk"]}
@@ -101,7 +110,8 @@ Schema:
 - summary: 1-2 sentences. Name the gap and consequence.
 - Maximum 5 risks. Prioritise the most severe.
 - Each risk: description (one sentence), severity (high/medium/low), \
-article_id, paragraph_num, provision, obligation_category, engineering_action.
+article_id, paragraph_num, provision, provision_id, obligation_category, \
+engineering_action.
 - risk_level: highest severity among risks.
 - recommendations: one actionable fix per risk.
 - If no risks: summary says why, risks is [], risk_level is "low".
@@ -109,6 +119,31 @@ article_id, paragraph_num, provision, obligation_category, engineering_action.
 category.
 
 /no_think"""
+
+
+ARTICLE_ROUTING_PROMPT = """\
+You map a software requirement to the EU AI Act articles that impose \
+obligations relevant to it{annex_task}. Use only ids from the indexes below.
+
+Articles:
+{index}
+{annex_section}
+List at most {limit} article ids, most relevant first.{annex_instruction} \
+Do not explain your choice. Your entire response must be a JSON object, \
+starting with {{ and ending with }}: \
+{{"articles": ["art:N", ...], "annex_iii_points": [...]}}
+
+/no_think"""
+
+# Filled into ARTICLE_ROUTING_PROMPT only when the graph has Annex III points
+ARTICLE_ROUTING_ANNEX_PARTS = {
+    "annex_task": ", and to the Annex III high-risk areas its system falls under, if any",
+    "annex_section": "\nAnnex III high-risk areas:\n{annex_index}\n",
+    "annex_instruction": (
+        " List Annex III point ids only where the requirement's system clearly "
+        "falls under that point; otherwise give an empty list."
+    ),
+}
 
 
 RISK_ASSESSMENT_AGENT_PROMPT = """\

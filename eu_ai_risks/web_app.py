@@ -24,7 +24,6 @@ from eu_ai_risks.analysis.risk_report import (
     render_markdown_report,
 )
 from eu_ai_risks.db import get_session
-from eu_ai_risks.db.graph import list_categories
 from eu_ai_risks.requirements.loader import (
     SUPPORTED_EXTENSIONS,
     parse_requirements,
@@ -302,7 +301,6 @@ def _run_assessment(
     else:
         from eu_ai_risks.analysis.risk_assessor import assess_requirement
 
-    categories = list_categories()
     article_cache: dict[str, dict] = {}
     assessment_entries: list[dict[str, Any]] = []
     total = len(requirements)
@@ -312,7 +310,6 @@ def _run_assessment(
         assessment, fetched_articles, _raw = assess_requirement(
             requirement.id,
             requirement.text,
-            categories=categories,
         )
         logger.info("[%d/%d] %s → %s", index, total,
                     requirement.id, assessment.risk_level)
