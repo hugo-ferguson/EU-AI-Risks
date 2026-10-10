@@ -73,6 +73,10 @@ only when the requirement or profile directly supports it.
 - Controls and safeguards (dataset validation, logging, human override, \
 rollback, bias testing, protected-attribute exclusion) should not be \
 assessed as if the control is absent.
+- Related requirements from the same SRS are listed when they share \
+entities with this one. If a related requirement already provides a control \
+for a gap, do not flag the gap as missing; reference that requirement and \
+flag only what remains.
 - For controls, retain only specific implementation gaps. Use low severity \
 for clarification gaps, medium for governance gaps. Reserve high severity \
 for binding obligations left entirely unmet.

@@ -238,12 +238,19 @@ _TRIPLE_EXTRACTION_SYSTEM = """
 """
 
 _OPEN_INFORMATION_EXTRACTION_SYSTEM = """
-    Given a piece of text, extract relational triplets in the form of [Subject, Relation, Object] from it. 
+    Given a piece of text, extract relational triplets in the form of [Subject, Relation, Object] from it.
     Respond with a JSON array of 3-element arrays: [subject, relation, object], nothing else.
-    
+
+    Keep each subject and object a short noun phrase (usually one to four words) naming an actor, thing,
+    data item or outcome. Keep each relation a short verb phrase in the active voice, without modal verbs
+    such as "shall", "must" or "should". Split lists and conditions into separate triplets rather than
+    packing a clause into a subject or object.
+
     Here are some examples:
     Text: The 17068.8 millimeter long ALCO RS-3 has a diesel-electric transmission.
-    Triplets: [['ALCO RS-3', 'powerType', 'Dieselelectric transmission'], ['ALCO RS-3', 'length', '17068.8 (millimetres)']] 
+    Triplets: [['ALCO RS-3', 'powerType', 'Dieselelectric transmission'], ['ALCO RS-3', 'length', '17068.8 (millimetres)']]
+    Text: The library system shall allow a librarian to renew or cancel any loan before its due date.
+    Triplets: [['librarian', 'renews', 'loan'], ['librarian', 'cancels', 'loan'], ['loan', 'hasDeadline', 'due date']]
 """
 
 _SCHEMA_DEFINITON_SYSTEM = """
@@ -268,6 +275,8 @@ _CANONICALISATION_SYSTEM = """
     replacement. If none of the choices are suitable or if the choices are empty, return the original {kind} and
     definition. Respond with a JSON dictionary containing exactly one key and value pair, with the key as the
     {kind} and the value as its definition, nothing else.
+    Do not explain your choice. Your entire response must be the JSON dictionary, starting with {{ and
+    ending with }}.
 """
 
 # Nearest existing components offered to the LLM as replacements (EDC uses
@@ -393,7 +402,8 @@ def _canonicalisation(
     return canonical
 
 
-def write_triples(document_path: Path, save_json: bool = False):
+def write_triples(document_path: Path, save_json: bool = False) -> list[Requirement]:
+    """Extract and canonicalise triples, write them to Neo4j, and return the requirements."""
     requirements = load_requirements(document_path)
     relation_schema = _CanonicalSchema()
     entity_schema = _CanonicalSchema()
@@ -428,7 +438,7 @@ def write_triples(document_path: Path, save_json: bool = False):
 
     if not all_triples:
         print("No triples to write.")
-        return
+        return requirements
 
     batch_size = 500
     for i in range(0, len(all_triples), batch_size):
@@ -445,7 +455,8 @@ def write_triples(document_path: Path, save_json: bool = False):
                 MERGE (o:Entity {name: row.object})
 
                 // Merge the relationship between them
-                MERGE (s)-[r:RELATION {type: row.predicate}]->(o)
+                // Scoped to the requirement so its triples can be read back
+                MERGE (s)-[r:RELATION {type: row.predicate, requirement_id: row.requirement_id}]->(o)
 
                 // Merge the requirement node
                 MERGE (req:Requirement {id: row.requirement_id})
@@ -462,8 +473,26 @@ def write_triples(document_path: Path, save_json: bool = False):
 
             _generate_and_write_triple_embeddings(session, batch)
 
+    # Definitions let related-requirement lookups match entities by meaning,
+    # not only by identical names
+    definition_rows = [
+        {"name": name, "definition": definition, "embedding": embedding}
+        for name, (definition, embedding) in entity_schema.definitions.items()
+    ]
+    with get_session() as session:
+        session.run("""
+            UNWIND $rows AS row
+            MATCH (e:Entity {name: row.name})
+            SET e.definition = row.definition,
+                e.definition_embedding = row.embedding
+            """,
+                    rows=definition_rows
+                    )
+
     if save_json:
         _save_to_json(document_path, requirements)
+
+    return requirements
 
 def _generate_and_write_triple_embeddings(session, all_triples: list[dict]) -> None:
     entities = {}

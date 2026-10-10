@@ -5,8 +5,27 @@ This report identifies compliance risks between software requirements and the EU
 ## Summary
 
 - High: 2
-- Medium: 6
-- Low: 8
+- Medium: 5
+- Low: 9
+
+### Overall analysis
+
+Overall, the assessment reviewed 16 requirements and identified 2 high-risk findings, 5 medium-risk findings, 9 low-risk findings. The main review focus areas are data governance, record keeping, accuracy robustness cybersecurity, transparency, human oversight. Use the individual requirement findings below to confirm owners, evidence, and follow-up actions before using this as supporting compliance evidence.
+
+**Review points:**
+
+- 16 requirements reviewed in total.
+- Risk distribution: 2 high, 5 medium, 9 low.
+- Most frequent mapped obligation areas: data governance (13), record keeping (5), accuracy robustness cybersecurity (4), transparency (4), human oversight (2).
+- 7 low-risk requirements appear to describe a control or safeguard, but still needs clarification/evidence review.
+
+**Recommended follow-up actions:**
+
+- Review and assign owners for high-risk findings before the next project checkpoint.
+- Review medium-risk gaps and confirm which engineering actions need to be implemented or documented.
+- Check that the most frequent obligation areas have clear evidence, owners, and documentation links.
+- Use the individual requirement findings as the traceable evidence trail for detailed review.
+
 
 ## Requirement Findings
 
@@ -16,16 +35,16 @@ This report identifies compliance risks between software requirements and the EU
 
 **Requirement:** The system shall ingest candidate resumes, cover letters, and application form responses submitted through the recruitment portal.
 
-**Analysis:** FR-1 ingests candidate resumes, cover letters and form responses in a recruitment context (Annex III employment) but states no data governance practices for data collection, origin, or quality. Without these, the ingested data could introduce bias or poor-quality inputs into downstream scoring (FR-2).
+**Analysis:** FR-1 ingests candidate resumes, cover letters and form responses for a likely Annex III employment system but defines no data governance controls (provenance, relevance, representativeness, bias examination, quality). Ingested data feeds scoring and ranking (FR-2, FR-3), so ungoverned inputs could propagate errors or bias into candidate decisions.
 
 **Risks:**
 
-- No data governance practices are specified for ingested candidate data (collection process, origin, purpose of collection, preparation such as cleaning/annotation, and quality/suitability checks). [medium] - Article 10(2)
+- No data collection process, data origin, or data-preparation practices (cleaning, annotation, labelling) are defined for ingested resumes, cover letters and form responses that may be used for training, validation or testing. [medium] - Article 10(2)
   - Category: `data_governance`
-  - Action: Define and document data collection and origin, preprocessing steps (parsing, normalisation, cleaning), and data quality checks for ingested resumes, cover letters and form responses, and record them in a data governance specification.
-- Requirement does not address examination of ingested data for possible biases (e.g., proxies for protected attributes in free-text resumes, cover letters, or form fields) that could lead to discrimination in recruitment. [medium] - Article 10(2)
+  - Action: Document data sources, collection flow through the portal, and preprocessing steps; record provenance metadata for each ingested item and flag which data is reused for training/validation/testing.
+- No examination or mitigation of possible biases is specified for ingested free-text and form data, which may contain or proxy protected characteristics (name, gender, age, nationality, photo, career gaps) and feed downstream scoring in FR-2. [medium] - Article 10(2)
   - Category: `data_governance`
-  - Action: Add ingestion-stage requirements to identify and flag or exclude sensitive or proxy attributes, and run bias examination on the ingested data before it is used for scoring or model training/validation.
+  - Action: Add ingestion-stage bias checks: identify and minimise protected-attribute fields and proxies, and run representativeness analysis on historical and incoming candidate data before use in model development.
 
 **Cited provisions:**
 
@@ -34,8 +53,9 @@ This report identifies compliance risks between software requirements and the EU
 
 **Recommendations:**
 
-- Create a data governance specification covering collection process, origin, preprocessing, and quality checks for candidate data ingested via the portal.
-- Add ingestion-stage bias and protected-attribute proxy checks, and document their results as input to technical documentation.
+- Document data origin, collection process and preprocessing, with provenance metadata, for all ingested candidate data.
+- Add bias examination and protected-attribute/proxy handling at ingestion, with representativeness checks.
+- Define data quality and validation rules, and record the ingestion pipeline in the technical documentation.
 
 ---
 
@@ -45,19 +65,19 @@ This report identifies compliance risks between software requirements and the EU
 
 **Requirement:** The system shall generate a suitability score for each candidate based on job requirements, experience, education, and skills extracted from the application.
 
-**Analysis:** FR-2 generates candidate suitability scores in an Annex III employment recruitment context but specifies no data governance, representativeness/bias examination, or transparency of score logic. Without these, scores may encode biased or unrepresentative patterns and deployers cannot interpret them.
+**Analysis:** FR-2 generates candidate suitability scores in a recruitment (Annex III) context without specifying data governance for the scoring data and model (representativeness, bias examination, data quality). Transparency, human oversight, and review controls exist in related requirements (FR-4, FR-5, FR-6, FR-10), so the main remaining gap is data governance, plus a minor gap in documenting score semantics.
 
 **Risks:**
 
-- No requirement for training/validation/testing data to be relevant, representative, error-free and statistically appropriate for the candidate groups being scored. [high] - Article 10(3)
+- No requirement for training/validation/testing data sets to be relevant, representative, error-free and statistically appropriate for the candidate groups being scored; skewed data could produce discriminatory suitability scores. [high] - Article 10(3)
   - Category: `data_governance`
-  - Action: Define dataset quality criteria (representativeness across candidate groups, completeness, error rates) and document validation and testing of the scoring model's data.
-- Scoring from extracted resume features (experience, education, skills) lacks stated data governance practices covering data origin, preparation, and bias examination. [medium] - Article 10(2)
+  - Action: Add acceptance criteria for dataset representativeness, completeness and statistical properties across candidate groups; document validation results per model release.
+- No data governance practices (design choices, data origin, preparation, bias examination and mitigation) are specified for how skills, education and experience are extracted and used in scoring. [medium] - Article 10(2)
   - Category: `data_governance`
-  - Action: Add a data governance procedure covering data collection/origin, feature extraction design choices, and bias detection and mitigation for the scoring pipeline.
-- No requirement that score outputs be interpretable by recruiters, or that instructions for use describe score meaning, factors, and limitations. [medium] - Article 13(1)
+  - Action: Define and record data provenance, extraction/labeling steps, and a bias examination and mitigation process (e.g., proxy-feature checks on education/experience) as part of the scoring pipeline.
+- Score meaning, scale, intended use and known limitations are not defined in FR-2; FR-4 explains factors but does not cover score documentation or instructions for use for deployers. [low] - Article 13(2)
   - Category: `transparency`
-  - Action: Output per-candidate factor contributions with each score and provide deployer documentation on score interpretation, accuracy and known limitations.
+  - Action: Document the score definition, range, performance metrics and limitations in the instructions for use, and cross-reference FR-4 and FR-5.
 
 **Cited provisions:**
 
@@ -65,14 +85,14 @@ This report identifies compliance risks between software requirements and the EU
   > 3. Training, validation and testing data sets shall be relevant, sufficiently representative, and to the best extent possible, free of errors and complete in view of the intended purpose. They shall have the appropriate statistical properties, including, where applicable, as regards the persons or groups of persons in relation to whom the high-risk AI system is intended to be used. Those characteristics of the data sets may be met at the level of individual data sets or at the level of a combina
 - **Data and data governance, Article 10(2)**
   > 2. Training, validation and testing data sets shall be subject to data governance and management practices appropriate for the intended purpose of the high-risk AI system. Those practices shall concern in particular: (a) the relevant design choices; (b) data collection processes and the origin of data, and in the case of personal data, the original purpose of the data collection; (c) relevant data-preparation processing operations, such as annotation, labelling, cleaning, updating, enrichment an
-- **Transparency and provision of information to deployers, Article 13(1)**
-  > 1. High-risk AI systems shall be designed and developed in such a way as to ensure that their operation is sufficiently transparent to enable deployers to interpret a system’s output and use it appropriately. An appropriate type and degree of transparency shall be ensured with a view to achieving compliance with the relevant obligations of the provider and deployer set out in Section 3.
+- **Transparency and provision of information to deployers, Article 13(2)**
+  > 2. High-risk AI systems shall be accompanied by instructions for use in an appropriate digital format or otherwise that include concise, complete, correct and clear information that is relevant, accessible and comprehensible to deployers.
 
 **Recommendations:**
 
-- Define and document data quality and representativeness criteria for training, validation and testing data, with results reviewed before release.
-- Establish data governance and bias examination practices for the feature extraction and scoring pipeline.
-- Expose score explanations and ship instructions for use describing the score's meaning, limits and performance.
+- Specify dataset representativeness, completeness and statistical-property criteria for training, validation and testing data, with per-release validation evidence.
+- Establish documented data governance covering provenance, extraction design choices, and bias examination/mitigation for scoring features.
+- Include score definition, accuracy metrics and limitations in the deployer instructions for use, linked to FR-4 and FR-5.
 
 ---
 
@@ -82,22 +102,19 @@ This report identifies compliance risks between software requirements and the EU
 
 **Requirement:** The system shall rank candidates for recruiter review using the generated suitability score.
 
-**Analysis:** FR-3 ranks candidates in an Annex III employment context using a suitability score, but it specifies no data quality or bias controls, no accuracy declaration, no explanation of the ranking, and no recruiter oversight. Without these, ranking could be unrepresentative, biased or opaque, and recruiters could over-rely on it.
+**Analysis:** FR-3 ranks candidates in an Annex III employment context, but it does not specify data governance for the ranking inputs or accuracy declaration for the ranking output. Transparency and human oversight are partly covered by FR-4, FR-5 and FR-6, so only the remaining gaps are flagged.
 
 **Risks:**
 
-- The ranking depends on a suitability score, but the requirement does not specify that the training, validation and testing data are relevant, representative, error-free or examined for bias against candidate groups. [high] - Article 10(3)
+- No requirement ensures that the data behind the suitability score and ranking is relevant, representative, and examined for bias across candidate groups. Biased rankings could systematically disadvantage candidates. [high] - Article 10(3)
   - Category: `data_governance`
-  - Action: Add data governance criteria for the scoring model: representativeness checks across candidate groups, bias examination, data quality validation and documented dataset provenance.
-- The requirement does not state that accuracy levels and metrics for the score and ranking will be measured and declared in the instructions for use, so recruiters cannot judge how reliable the ranking is. [medium] - Article 15(3)
+  - Action: Add requirements for validating training, validation and testing data for representativeness and errors. Include bias testing of ranking outcomes across protected groups and document the data governance practices.
+- FR-3 sets no accuracy or robustness targets for the ranking, and no metrics are declared in the instructions for use. Rank-order quality and consistency cannot be verified or communicated. [medium] - Article 15(3)
   - Category: `accuracy_robustness_cybersecurity`
-  - Action: Define accuracy and robustness metrics for the ranking, test them (including per-group performance), and declare them in the instructions for use.
-- The requirement does not say the ranking output will be interpretable by recruiters or accompanied by documentation of the system's capabilities, limitations and intended purpose. [medium] - Article 13(3)
+  - Action: Define ranking accuracy metrics, such as rank correlation or error rates per group, with acceptance thresholds. Add robustness tests and declare the metrics in the instructions for use.
+- FR-4 and FR-5 explain scores and notify recruiters, but nothing requires the instructions for use to document the ranking logic, its limitations, or the known circumstances in which it performs poorly. Recruiters may over-rely on the ranking. [low] - Article 13(3)
   - Category: `transparency`
-  - Action: Show the main factors behind each score and ranking, and write instructions for use covering intended purpose, performance limitations and known failure modes.
-- Recruiters review the ranked list, but the requirement defines no oversight measures such as the ability to override or disregard the ranking, or guidance on automation bias. The ranking could therefore become the de facto decision. [medium] - Article 14(4)
-  - Category: `human_oversight`
-  - Action: Let recruiters override or re-order rankings and see the basis for each rank. Add automation-bias guidance and log overrides.
+  - Action: Add a requirement for instructions for use covering the ranking's intended purpose, performance limitations, and the input data specifications. Link it to FR-4 and FR-5.
 
 **Cited provisions:**
 
@@ -107,15 +124,12 @@ This report identifies compliance risks between software requirements and the EU
   > 3. The levels of accuracy and the relevant accuracy metrics of high-risk AI systems shall be declared in the accompanying instructions of use.
 - **Transparency and provision of information to deployers, Article 13(3)**
   > 3. The instructions for use shall contain at least the following information: (a) the identity and the contact details of the provider and, where applicable, of its authorised representative; (b) the characteristics, capabilities and limitations of performance of the high-risk AI system, including: (i) its intended purpose; (ii) the level of accuracy, including its metrics, robustness and cybersecurity referred to in Article 15 against which the high-risk AI system has been tested and validated 
-- **Human oversight, Article 14(4)**
-  > 4. For the purpose of implementing paragraphs 1, 2 and 3, the high-risk AI system shall be provided to the deployer in such a way that natural persons to whom human oversight is assigned are enabled, as appropriate and proportionate: (a) to properly understand the relevant capacities and limitations of the high-risk AI system and be able to duly monitor its operation, including in view of detecting and addressing anomalies, dysfunctions and unexpected performance; (b) to remain aware of the poss
 
 **Recommendations:**
 
-- Specify data governance and bias examination for the scoring model's datasets (representativeness, quality, group-level checks).
-- Define and declare accuracy and robustness metrics for the ranking, including per-group performance.
-- Provide per-candidate score explanations and instructions for use covering limitations.
-- Add recruiter override capability, automation-bias safeguards and override logging.
+- Add data governance and bias-testing requirements for the data feeding FR-2 scoring and FR-3 ranking.
+- Specify ranking accuracy and robustness metrics and thresholds, and declare them in the instructions for use.
+- Document ranking limitations and logic in the instructions for use, cross-referencing FR-4 and FR-5.
 
 ---
 
@@ -125,34 +139,29 @@ This report identifies compliance risks between software requirements and the EU
 
 **Requirement:** The system shall explain the main factors that influenced each candidate suitability score in language understandable to a recruiter.
 
-**Analysis:** FR-4 provides explanations for candidate scores in an Annex III recruitment context but does not specify that explanations are faithful to the model, nor does it address the quality of the data driving them or declared accuracy. Unfaithful or unrepresentative-data-driven explanations could mislead recruiters and obscure bias.
+**Analysis:** FR-4 provides recruiter-facing explanations of suitability scores, but does not state that the explanations faithfully reflect the model's actual drivers, nor that they are built on validated, representative data or have a declared accuracy. Misleading or unvalidated explanations could cause recruiters to over-trust biased scores in a high-risk employment context.
 
 **Risks:**
 
-- No requirement that the data sets behind the scores (and thus the explained factors) are relevant, representative and error-free, so explanations may surface factors reflecting biased or unrepresentative data. [medium] - Article 10(3)
+- Nothing ensures the explained factors are derived from data sets that are representative, relevant and checked for bias; explanations built on skewed data could present discriminatory factors as legitimate. [medium] - Article 10(3)
   - Category: `data_governance`
-  - Action: Define data quality and representativeness checks for training/validation data and verify that explained factors are not proxies for protected attributes.
-- Requirement does not account for the specific contextual or functional setting (recruitment roles, regions, job types) in which factor explanations must be valid. [low] - Article 10(4)
-  - Category: `data_governance`
-  - Action: Specify the deployment context (roles, geographies, languages) and validate that explanations are meaningful within it.
-- No accuracy or fidelity metric is defined for the explanations or scores, and nothing indicates that accuracy levels will be declared in the instructions for use, so recruiters cannot gauge reliability. [medium] - Article 15(3)
+  - Action: Document data set representativeness and bias checks for the features that appear in explanations, and exclude or flag proxies for protected attributes.
+- The requirement does not define accuracy or fidelity metrics for the explanations, or declare them in the instructions for use, so recruiters cannot gauge how reliable the explanations are. [medium] - Article 15(3)
   - Category: `accuracy_robustness_cybersecurity`
-  - Action: Define explanation fidelity and score accuracy metrics, test them, and document the declared levels in the instructions for use.
+  - Action: Define and test explanation fidelity and stability metrics, and declare them with the score accuracy metrics in the instructions for use.
 
 **Cited provisions:**
 
 - **Data and data governance, Article 10(3)**
   > 3. Training, validation and testing data sets shall be relevant, sufficiently representative, and to the best extent possible, free of errors and complete in view of the intended purpose. They shall have the appropriate statistical properties, including, where applicable, as regards the persons or groups of persons in relation to whom the high-risk AI system is intended to be used. Those characteristics of the data sets may be met at the level of individual data sets or at the level of a combina
-- **Data and data governance, Article 10(4)**
-  > 4. Data sets shall take into account, to the extent required by the intended purpose, the characteristics or elements that are particular to the specific geographical, contextual, behavioural or functional setting within which the high-risk AI system is intended to be used.
 - **Accuracy, robustness and cybersecurity, Article 15(3)**
   > 3. The levels of accuracy and the relevant accuracy metrics of high-risk AI systems shall be declared in the accompanying instructions of use.
 
 **Recommendations:**
 
-- Add data quality, representativeness and proxy-bias checks for the data behind the explained factors.
-- Specify the deployment context for which explanations must be valid and test within it.
-- Define and declare accuracy and explanation-fidelity metrics in the instructions for use.
+- Validate the data behind the explained features for representativeness and bias, and screen for proxy variables.
+- Set explanation fidelity and accuracy metrics, test them, and declare them in the instructions for use.
+- Treat FR-6 (human override) as the oversight control and FR-5 (automation notice) as the transparency control; keep FR-4 consistent with both, and review whether the explanations meet Article 13 information needs.
 
 ---
 
@@ -162,22 +171,28 @@ This report identifies compliance risks between software requirements and the EU
 
 **Requirement:** The system shall notify recruiters when a candidate ranking was generated by an automated decision-support model.
 
-**Analysis:** FR-5 discloses to recruiters that a ranking is AI-generated, but it does not say what information accompanies the notice. Recruiters may not be able to interpret the ranking or use it appropriately in an Annex III employment context.
+**Analysis:** FR-5 notifies recruiters that a ranking is model-generated, but it does not require the information recruiters need to interpret and use the output appropriately (e.g., limitations, confidence, ranking factors). A bare notification may not give deployers enough transparency in a high-risk recruitment context.
 
 **Risks:**
 
-- The notification only flags that a ranking is model-generated. It does not require accompanying information on the ranking's purpose, accuracy, limitations, or how to interpret the output, so recruiters may over-rely on it. [medium] - Article 13(1)
+- The notification only flags that a ranking is automated; it does not require interpretability information (ranking factors, confidence/accuracy, known limitations) that lets recruiters interpret and appropriately use the output. [medium] - Article 13(1)
   - Category: `transparency`
-  - Action: Extend the notification to link to or show interpretability information (key ranking factors, confidence or score meaning, known limitations). Align it with the instructions for use required by Art. 13(2).
+  - Action: Extend FR-5 so each notification links to an explanation of the main ranking factors, score/confidence indication, and known limitations. Make it available in the recruiter UI at the point of use.
+- The requirement does not specify that recruiters receive instructions for use covering intended purpose, performance, accuracy limits and human oversight measures. FR-5 is a runtime notice, not provider-to-deployer documentation. [low] - Article 13(2)
+  - Category: `transparency`
+  - Action: Add a deliverable for instructions for use for deployers (intended purpose, accuracy metrics, limitations, oversight guidance) and reference it from the notification. Clarify the notification timing, e.g. before the recruiter acts on the ranking.
 
 **Cited provisions:**
 
 - **Transparency and provision of information to deployers, Article 13(1)**
   > 1. High-risk AI systems shall be designed and developed in such a way as to ensure that their operation is sufficiently transparent to enable deployers to interpret a system’s output and use it appropriately. An appropriate type and degree of transparency shall be ensured with a view to achieving compliance with the relevant obligations of the provider and deployer set out in Section 3.
+- **Transparency and provision of information to deployers, Article 13(2)**
+  > 2. High-risk AI systems shall be accompanied by instructions for use in an appropriate digital format or otherwise that include concise, complete, correct and clear information that is relevant, accessible and comprehensible to deployers.
 
 **Recommendations:**
 
-- Specify the notification content and add interpretive context and a link to the instructions for use, so recruiters can interpret and appropriately use the ranking output.
+- Extend FR-5 to supply interpretability information (key factors, confidence, limitations) alongside the automated-ranking notice.
+- Provide deployer instructions for use under Art. 13(2) and link them from the notification. Specify the notification timing and format so it is shown before recruiters act on a ranking.
 
 ---
 
@@ -187,23 +202,29 @@ This report identifies compliance risks between software requirements and the EU
 
 **Requirement:** The system shall allow a human recruiter to review, override, or reject any automated ranking before a candidate is removed from consideration.
 
-**Analysis:** FR-6 provides a human review/override control for rankings, but it does not specify how recruiters are enabled to understand, interpret, and avoid over-relying on the ranking. Without these supports, the oversight may be nominal rather than effective for a high-risk recruitment system.
+**Analysis:** FR-6 provides a review/override/reject control, which addresses the core of Art. 14, but it does not specify the supporting oversight enablers (understanding of limitations, automation-bias awareness, interpretability of outputs, ability to disregard output). Without these, the override may be nominal and reviewers may over-rely on rankings.
 
 **Risks:**
 
-- The requirement does not ensure the reviewing recruiter can understand the system's capacities and limitations or guard against automation bias when reviewing rankings. [medium] - Article 14(4)
+- The requirement does not specify that recruiters are given the information and tooling to understand the ranking model's capacities and limitations or to interpret its outputs (e.g. score drivers), so override may be uninformed. [medium] - Article 14(4)
   - Category: `human_oversight`
-  - Action: Add UI and training requirements covering ranking limitations, a warning on automation bias, and a requirement for recruiters to confirm they have reviewed the ranking rationale before it is finalised.
+  - Action: Show per-candidate score rationale and model limitation notes in the review UI, and include reviewer guidance in the instructions for use. Add acceptance criteria that reviewers can see the inputs and factors behind each ranking.
+- No measures against automation bias are stated, and the scope is unclear: 'before a candidate is removed' does not say whether review is mandatory or optional, or whether overrides and rejections are recorded. Rankings may therefore effectively drive decisions without meaningful human assessment. [medium] - Article 14(3)
+  - Category: `human_oversight`
+  - Action: Define a mandatory review gate before any rejection or removal, with no auto-rejection path. Log reviewer decisions and overrides with reasons, and monitor override rates to detect rubber-stamping. Add automation-bias warnings and reviewer training.
 
 **Cited provisions:**
 
 - **Human oversight, Article 14(4)**
   > 4. For the purpose of implementing paragraphs 1, 2 and 3, the high-risk AI system shall be provided to the deployer in such a way that natural persons to whom human oversight is assigned are enabled, as appropriate and proportionate: (a) to properly understand the relevant capacities and limitations of the high-risk AI system and be able to duly monitor its operation, including in view of detecting and addressing anomalies, dysfunctions and unexpected performance; (b) to remain aware of the poss
+- **Human oversight, Article 14(3)**
+  > 3. The oversight measures shall be commensurate with the risks, level of autonomy and context of use of the high-risk AI system, and shall be ensured through either one or both of the following types of measures: (a) measures identified and built, when technically feasible, into the high-risk AI system by the provider before it is placed on the market or put into service; (b) measures identified by the provider before placing the high-risk AI system on the market or putting it into service and t
 
 **Recommendations:**
 
-- Define recruiter-facing oversight measures (limitations notice, automation-bias safeguards, training, escalation criteria) and record override/reject actions for auditability.
-- Require interpretable ranking explanations in the review interface and cover them in the deployer instructions for use.
+- Provide score rationale and limitation information in the recruiter review interface.
+- Enforce a mandatory human review gate with no auto-rejection, log overrides, and add automation-bias safeguards.
+- Add explanation of ranking outputs and instructions for use for the override workflow, linked to FR-5.
 
 ---
 
@@ -217,20 +238,15 @@ This report identifies compliance risks between software requirements and the EU
 
 **Risks:**
 
-- Logged items cover outputs and overrides only, and omit events that identify risk situations, substantial modifications, and post-market monitoring inputs required for traceability. [low] - Article 12(2)
+- Logged events cover outputs and recruiter actions but omit the Annex III point 1(a) minimum log fields: period of each use, reference database checked, input data leading to a match, and identity of persons verifying results. [low] - Article 12(3)
   - Category: `record_keeping`
-  - Action: Extend the log schema to capture risk-relevant events (e.g., low-confidence outputs, drift alerts, model version changes) and make them available for post-market monitoring.
-- Minimum logging for Annex III point 1(a) systems is not addressed: period of each use, reference database checked, input data leading to a match, and identity of persons verifying results. [low] - Article 12(3)
+  - Action: Extend the log schema to record use start/end timestamps, reference databases and input data references, model version, and the identity of the reviewing recruiter for each verification.
+- No retention period, log integrity protection, or provider access to logs is specified, so logs may not be kept for the period the Act requires or may be altered or deleted. [low] - Article 19(1)
   - Category: `record_keeping`
-  - Action: Add fields for session start/end timestamps, reference data version, input data reference, and reviewer identity, and confirm which of these apply to the screening use case.
-- No log retention period, integrity protection or access control is specified, so logs may not be retained or kept reliably for the period appropriate to the intended purpose. [low] - Article 19(1)
-  - Category: `record_keeping`
-  - Action: Define a retention period (minimum six months unless other law requires longer), tamper-evident storage, and role-based access to logs under the provider's control.
+  - Action: Define a retention policy (at least six months, or longer as sector or data-protection rules require), use append-only or tamper-evident storage, and restrict log access (consistent with NFR-4).
 
 **Cited provisions:**
 
-- **Record-keeping, Article 12(2)**
-  > 2. In order to ensure a level of traceability of the functioning of a high-risk AI system that is appropriate to the intended purpose of the system, logging capabilities shall enable the recording of events relevant for: (a) identifying situations that may result in the high-risk AI system presenting a risk within the meaning of Article 79(1) or in a substantial modification; (b) facilitating the post-market monitoring referred to in Article 72; and (c) monitoring the operation of high-risk AI s
 - **Record-keeping, Article 12(3)**
   > 3. For high-risk AI systems referred to in point 1 (a), of Annex III, the logging capabilities shall provide, at a minimum: (a) recording of the period of each use of the system (start date and time and end date and time of each use); (b) the reference database against which input data has been checked by the system; (c) the input data for which the search has led to a match; (d) the identification of the natural persons involved in the verification of the results, as referred to in Article 14(5
 - **Automatically generated logs, Article 19(1)**
@@ -238,9 +254,8 @@ This report identifies compliance risks between software requirements and the EU
 
 **Recommendations:**
 
-- Extend the log schema to cover risk-relevant, modification and monitoring events per Article 12(2).
-- Add the Article 12(3) minimum fields (use period, reference database, input data, verifier identity) where applicable.
-- Specify log retention, integrity and access-control requirements aligned with Article 19.
+- Extend the log schema to cover the Annex III minimum fields and add model version and reviewer identity.
+- Specify log retention, tamper-evidence and access controls, and align them with the NFR-4 access rules.
 
 ---
 
@@ -254,30 +269,30 @@ This report identifies compliance risks between software requirements and the EU
 
 **Risks:**
 
-- The requirement does not state a log retention period, so audit records may be deleted before the minimum period for automatically generated logs. [low] - Article 19(1)
+- The requirement does not specify the minimum log content for Annex III systems (period of each use, reference database checked, input data leading to a match, and identification of the natural persons verifying results), so traceability may be incomplete. [low] - Article 12(3)
   - Category: `record_keeping`
-  - Action: Define a retention period for audit logs, with a minimum of six months or longer where other law requires. Enforce it through retention policy and deletion controls.
-- The log content is limited to input data, model version, and human actions. It does not mention events that identify risk situations or substantial modifications, or events needed for post-market monitoring. [low] - Article 12(2)
+  - Action: Extend FR-8 to define a log schema covering session start/end timestamps, reference data/versions, input data references, model version, and reviewer identity and action for each screening decision.
+- The requirement does not state that logs capture events relevant to identifying risk situations, substantial modifications, or post-market monitoring (e.g., model updates, anomalies, overrides), so logs cover only individual decisions. [low] - Article 12(2)
   - Category: `record_keeping`
-  - Action: Extend the log schema to capture risk-relevant events, such as anomalies, low-confidence outputs, overrides, and model changes. Link these events to post-market monitoring inputs.
-- The requirement does not say that logs are recorded automatically over the system lifetime or that they include usage period timestamps and the reference database used for input checks, as expected for Annex III systems. [low] - Article 12(3)
+  - Action: Add logging of model/version changes, anomalies, low-confidence outputs, and human overrides, and map each event type to Article 12(2)(a)-(c) purposes.
+- The requirement says 'retain' but gives no retention period, automatic generation guarantee, or tamper-protection, so it cannot be verified against the obligation to keep automatically generated logs. [low] - Article 19(1)
   - Category: `record_keeping`
-  - Action: Specify automatic, tamper-evident logging that records start and end time of each use, the reference data or database checked, matches that led to the decision, and the identity of the human verifier.
+  - Action: Specify automatic log generation, a retention period of at least six months (or longer where other law requires), append-only/tamper-evident storage, and access controls for reviewers and authorities.
 
 **Cited provisions:**
 
-- **Automatically generated logs, Article 19(1)**
-  > 1. Providers of high-risk AI systems shall keep the logs referred to in Article 12(1), automatically generated by their high-risk AI systems, to the extent such logs are under their control. Without prejudice to applicable Union or national law, the logs shall be kept for a period appropriate to the intended purpose of the high-risk AI system, of at least six months, unless provided otherwise in the applicable Union or national law, in particular in Union law on the protection of personal data.
-- **Record-keeping, Article 12(2)**
-  > 2. In order to ensure a level of traceability of the functioning of a high-risk AI system that is appropriate to the intended purpose of the system, logging capabilities shall enable the recording of events relevant for: (a) identifying situations that may result in the high-risk AI system presenting a risk within the meaning of Article 79(1) or in a substantial modification; (b) facilitating the post-market monitoring referred to in Article 72; and (c) monitoring the operation of high-risk AI s
 - **Record-keeping, Article 12(3)**
   > 3. For high-risk AI systems referred to in point 1 (a), of Annex III, the logging capabilities shall provide, at a minimum: (a) recording of the period of each use of the system (start date and time and end date and time of each use); (b) the reference database against which input data has been checked by the system; (c) the input data for which the search has led to a match; (d) the identification of the natural persons involved in the verification of the results, as referred to in Article 14(5
+- **Record-keeping, Article 12(2)**
+  > 2. In order to ensure a level of traceability of the functioning of a high-risk AI system that is appropriate to the intended purpose of the system, logging capabilities shall enable the recording of events relevant for: (a) identifying situations that may result in the high-risk AI system presenting a risk within the meaning of Article 79(1) or in a substantial modification; (b) facilitating the post-market monitoring referred to in Article 72; and (c) monitoring the operation of high-risk AI s
+- **Automatically generated logs, Article 19(1)**
+  > 1. Providers of high-risk AI systems shall keep the logs referred to in Article 12(1), automatically generated by their high-risk AI systems, to the extent such logs are under their control. Without prejudice to applicable Union or national law, the logs shall be kept for a period appropriate to the intended purpose of the high-risk AI system, of at least six months, unless provided otherwise in the applicable Union or national law, in particular in Union law on the protection of personal data.
 
 **Recommendations:**
 
-- Set and enforce an explicit audit log retention period.
-- Expand the log schema to cover risk-relevant events and model changes.
-- Specify automatic, tamper-evident logging with usage timestamps, reference data, and verifier identity.
+- Define a minimum log schema aligned with Article 12(3) for each screening decision.
+- Log risk-relevant and modification events, including overrides, anomalies and model version changes.
+- Specify retention period, automatic generation, and tamper-evident storage with access controls for logs.
 
 ---
 
@@ -293,26 +308,11 @@ This report identifies compliance risks between software requirements and the EU
 
 ### FR-10
 
-**Risk level:** medium
+**Risk level:** low
 
 **Requirement:** The system shall provide candidates with a channel to request review of a decision that was influenced by automated ranking.
 
-**Analysis:** Semantic profile indicates a remaining transparency gap. Conservative risk retained for manual review.
-
-**Risks:**
-
-- Transparency expectations not fully specified [medium] - Article 13(1)
-  - Category: `transparency`
-  - Action: Define explanation detail, user information, and instructions for use.
-
-**Cited provisions:**
-
-- **Transparency and provision of information to deployers, Article 13(1)**
-  > 1. High-risk AI systems shall be designed and developed in such a way as to ensure that their operation is sufficiently transparent to enable deployers to interpret a system’s output and use it appropriately. An appropriate type and degree of transparency shall be ensured with a view to achieving compliance with the relevant obligations of the provider and deployer set out in Section 3.
-
-**Recommendations:**
-
-- Define explanation detail, user information, and instructions for use.
+**Analysis:** No requirement-level risk retained after aligning with the semantic profile.
 
 ---
 
@@ -326,18 +326,30 @@ This report identifies compliance risks between software requirements and the EU
 
 **Risks:**
 
-- Validation checks are limited to missing values, duplicates, and label inconsistency, so they do not cover representativeness or statistical properties across relevant persons or groups. [low] - Article 10(3)
+- Validation covers only missing values, duplicates, and label inconsistency; it does not assess representativeness or statistical properties across relevant persons or groups, so dataset skew may go undetected. [low] - Article 10(3)
   - Category: `data_governance`
-  - Action: Add dataset checks for representativeness and subgroup statistical properties, and define pass/fail thresholds that block training when they are not met.
+  - Action: Add checks for representativeness and group-level distribution/statistical properties on training, validation and test sets, with defined pass/fail thresholds.
+- The requirement does not specify documented data governance practices (data origin, collection processes, preparation operations, bias examination) or retention of validation results as evidence of the controls applied. [low] - Article 10(2)
+  - Category: `data_governance`
+  - Action: Log validation outcomes per dataset version and record data provenance, preparation steps and bias examination results in a data governance record. NFR-5 covers runtime data quality alerts but not pre-training governance documentation.
+- Failure handling is unspecified: it is unclear whether training is blocked or remediation is required when validation fails, nor are acceptable error and completeness thresholds defined, so the gate may not ensure data is 'free of errors and complete' for the intended purpose. [low] - Article 10(1)
+  - Category: `data_governance`
+  - Action: Define quantitative acceptance thresholds and make validation a blocking pipeline gate, with a documented remediation and re-validation workflow before model training.
 
 **Cited provisions:**
 
 - **Data and data governance, Article 10(3)**
   > 3. Training, validation and testing data sets shall be relevant, sufficiently representative, and to the best extent possible, free of errors and complete in view of the intended purpose. They shall have the appropriate statistical properties, including, where applicable, as regards the persons or groups of persons in relation to whom the high-risk AI system is intended to be used. Those characteristics of the data sets may be met at the level of individual data sets or at the level of a combina
+- **Data and data governance, Article 10(2)**
+  > 2. Training, validation and testing data sets shall be subject to data governance and management practices appropriate for the intended purpose of the high-risk AI system. Those practices shall concern in particular: (a) the relevant design choices; (b) data collection processes and the origin of data, and in the case of personal data, the original purpose of the data collection; (c) relevant data-preparation processing operations, such as annotation, labelling, cleaning, updating, enrichment an
+- **Data and data governance, Article 10(1)**
+  > 1. High-risk AI systems which make use of techniques involving the training of AI models with data shall be developed on the basis of training, validation and testing data sets that meet the quality criteria referred to in paragraphs 2 to 5 whenever such data sets are used.
 
 **Recommendations:**
 
-- Extend NFR-1 beyond basic data-quality checks to cover representativeness and subgroup statistics, define acceptance thresholds, and record validation results and data provenance as part of the data governance documentation.
+- Extend dataset validation to representativeness and group-level statistical properties with defined thresholds.
+- Persist validation results and data provenance/bias-examination records per dataset version as governance evidence.
+- Make validation a blocking gate before training with explicit acceptance thresholds and a remediation workflow.
 
 ---
 
@@ -351,19 +363,25 @@ This report identifies compliance risks between software requirements and the EU
 
 **Risks:**
 
-- The requirement does not define how test datasets are checked for representativeness and statistical properties across the relevant groups, nor what happens where demographic data is unavailable, so coverage gaps may go undetected. [low] - Article 10(3)
+- The requirement does not say which demographic groups, metrics, or representativeness criteria apply, so it does not show that test data are sufficiently representative or have appropriate statistical properties for the affected persons or groups. [low] - Article 10(3)
   - Category: `data_governance`
-  - Action: Define the demographic groups and minimum sample sizes, and document dataset representativeness checks and coverage gaps. State a fallback when lawful demographic data is unavailable, such as proxy-free alternatives or documented limitations.
+  - Action: Define the demographic groups, per-group metrics (e.g. error rates, selection rates) and minimum sample sizes. Document how representativeness of the evaluation data is checked against the intended population.
+- The requirement is conditional on 'where lawful demographic evaluation data is available' and gives no fallback, no documented data origin or collection basis, and no handling of groups with insufficient data. Bias examination could be silently skipped. [low] - Article 10(2)
+  - Category: `data_governance`
+  - Action: Document the provenance and legal basis of demographic evaluation data. Define a fallback (e.g. proxy-free alternatives, synthetic or external test sets) and record a gap report when group data are unavailable.
 
 **Cited provisions:**
 
 - **Data and data governance, Article 10(3)**
   > 3. Training, validation and testing data sets shall be relevant, sufficiently representative, and to the best extent possible, free of errors and complete in view of the intended purpose. They shall have the appropriate statistical properties, including, where applicable, as regards the persons or groups of persons in relation to whom the high-risk AI system is intended to be used. Those characteristics of the data sets may be met at the level of individual data sets or at the level of a combina
+- **Data and data governance, Article 10(2)**
+  > 2. Training, validation and testing data sets shall be subject to data governance and management practices appropriate for the intended purpose of the high-risk AI system. Those practices shall concern in particular: (a) the relevant design choices; (b) data collection processes and the origin of data, and in the case of personal data, the original purpose of the data collection; (c) relevant data-preparation processing operations, such as annotation, labelling, cleaning, updating, enrichment an
 
 **Recommendations:**
 
-- Add dataset representativeness checks, group definitions and a documented fallback for when demographic evaluation data is unavailable.
-- Define per-group metrics, disparity thresholds and a release gate, and document the results alongside declared accuracy levels.
+- Specify the groups, metrics, sample-size criteria and representativeness checks for the per-group evaluation.
+- Document the provenance and lawful basis of demographic evaluation data, and define a fallback and gap reporting when such data are unavailable.
+- Define per-group acceptance thresholds, connect them to NFR-5 alerting, and require remediation before release.
 
 ---
 
@@ -377,12 +395,12 @@ This report identifies compliance risks between software requirements and the EU
 
 **Risks:**
 
-- The requirement bans direct use of protected attributes but does not require examination of datasets for biases or proxy features (e.g., postcode, name, language) that could reproduce discrimination in rankings. [low] - Article 10(2)
+- The requirement bans protected attributes as explicit inputs but does not require examination or mitigation of proxy features (e.g. names, photos, address, gaps in employment, extracted from resumes in FR-1/FR-2) that could indirectly encode protected characteristics. [low] - Article 10(2)
   - Category: `data_governance`
-  - Action: Add a requirement for bias examination of training, validation and testing data, including proxy-feature analysis and documented mitigation measures.
-- No mechanism is specified to verify that protected attributes are actually absent from ranking inputs, or to handle their exceptional processing for bias detection and correction, which Article 10(5) allows only under strict conditions. [low] - Article 10(5)
+  - Action: Add a requirement for proxy-variable analysis and bias examination of training, validation and testing data and extracted features, with documented mitigation measures.
+- Excluding protected attributes may prevent bias measurement across groups, and the requirement does not define how bias detection and correction is performed, including whether special-category data may be processed under strict safeguards for this purpose. [low] - Article 10(5)
   - Category: `data_governance`
-  - Action: Clarify whether protected attributes may be held in a segregated store for bias testing only, with access controls, and add automated checks that they are excluded from the ranking feature set.
+  - Action: Define a bias-testing procedure (e.g. a separate, access-controlled evaluation dataset with protected attributes) with necessity justification, safeguards and deletion rules, kept out of the ranking inputs.
 
 **Cited provisions:**
 
@@ -393,9 +411,9 @@ This report identifies compliance risks between software requirements and the EU
 
 **Recommendations:**
 
-- Add bias examination and proxy-feature analysis requirements for datasets used in ranking.
-- Define controlled handling of protected attributes for bias testing and add automated exclusion checks on ranking inputs.
-- Link NFR-3 to the risk management system and add periodic disparate-impact testing of ranking outputs.
+- Require proxy-feature analysis and documented bias examination of datasets and extracted features.
+- Define a controlled bias-testing process using protected attributes only for evaluation, with safeguards.
+- Add per-release verification of attribute exclusion and disparate-impact monitoring within the risk management process.
 
 ---
 
@@ -405,13 +423,13 @@ This report identifies compliance risks between software requirements and the EU
 
 **Requirement:** The system must maintain access controls so that only authorised recruitment staff can view candidate data and model explanations.
 
-**Analysis:** NFR-4 states an access-control safeguard for a likely high-risk recruitment system but leaves the cybersecurity implementation unspecified: no authentication strength, role definitions, or threat coverage beyond viewing. Without these, resilience against unauthorised third parties cannot be verified.
+**Analysis:** NFR-4 states an access-control intent but leaves its scope and enforcement unspecified: no role definitions, authentication strength, or coverage of logs and model outputs, and no protection against tampering. This limits how far it can show resilience against unauthorised access to or alteration of a high-risk recruitment system.
 
 **Risks:**
 
-- The requirement restricts viewing to authorised staff but does not address resilience against unauthorised third parties altering system use, outputs or performance (e.g., tampering with candidate data, model outputs or explanations), so protection is limited to read access. [medium] - Article 15(5)
+- The requirement restricts only viewing of candidate data and explanations. It does not address unauthorised alteration of system use, outputs, scores or rankings (e.g. write/modify permissions, integrity of FR-2 scores, FR-3 rankings and FR-7 logs). [medium] - Article 15(5)
   - Category: `accuracy_robustness_cybersecurity`
-  - Action: Extend the requirement to cover write/modify access and integrity protection, and define the threat model (role-based access, strong authentication, audit logging of access, integrity checks on candidate data, models and explanations), with security testing against it.
+  - Action: Extend access control to write/modify operations on scores, rankings, explanations and FR-7 audit logs. Add integrity protection (e.g. tamper-evident logs, role-based write restrictions) and test against unauthorised-manipulation scenarios.
 
 **Cited provisions:**
 
@@ -420,7 +438,8 @@ This report identifies compliance risks between software requirements and the EU
 
 **Recommendations:**
 
-- Define the role model, authentication strength and integrity controls, and add penetration/security tests tied to a threat model covering tampering as well as viewing.
+- Extend NFR-4 to cover write/modify access and integrity protection for scores, rankings, explanations and logs, and add adversarial/unauthorised-access tests.
+- Define authorised roles, authentication, least-privilege and access-review rules, with stricter controls and audit logging for sensitive candidate data.
 
 ---
 
@@ -434,12 +453,12 @@ This report identifies compliance risks between software requirements and the EU
 
 **Risks:**
 
-- Alerts are not tied to a documented post-market monitoring system or plan covering what data is collected, how it is analysed, and how performance is evaluated across the system lifetime, including deployer-provided data. [low] - Article 72(2)
+- Alerts are not tied to a documented post-market monitoring system or plan (data sources, deployer-provided performance data, analysis cadence, ownership), so threshold breaches may not support continuous evaluation of compliance over the system lifetime. [low] - Article 72(2)
   - Category: `post_market_monitoring`
-  - Action: Link alerting to a documented monitoring plan that defines metrics, data sources (including deployer feedback), review cadence, and retention of alert records.
-- No defined response to threshold breaches (triage, risk re-assessment, mitigation, or corrective action), so alerts are not integrated into the continuous iterative risk management process. [low] - Article 9(2)
+  - Action: Link alerting to a documented monitoring plan that specifies metrics, data sources (including deployer feedback), review cadence, alert owners, and retention of alert records.
+- No escalation, triage, or corrective-action workflow is defined for threshold breaches, and threshold-setting is not tied to identified risks (e.g., health-safety or bias risks), so alerts may not feed the iterative risk management process. [low] - Article 9(2)
   - Category: `risk_management`
-  - Action: Define alert severity levels, owners, escalation paths, and a workflow that feeds breaches into risk register updates and corrective actions.
+  - Action: Define risk-derived threshold rationale and an alert-to-action workflow (severity levels, responders, SLAs, mitigation or rollback, risk register update), and review thresholds periodically.
 
 **Cited provisions:**
 
@@ -450,8 +469,8 @@ This report identifies compliance risks between software requirements and the EU
 
 **Recommendations:**
 
-- Document a post-market monitoring plan that specifies metrics, thresholds rationale, data sources, and review cadence, and trace NFR-5 alerts to it.
-- Add an alert-response procedure with owners, escalation, and risk-register updates for every threshold breach.
+- Link alerting to a documented post-market monitoring plan with metrics, data sources, cadence, owners, and alert record retention.
+- Define risk-based threshold rationale and an escalation and corrective-action workflow that updates the risk management file.
 
 ---
 
@@ -465,12 +484,12 @@ This report identifies compliance risks between software requirements and the EU
 
 **Risks:**
 
-- Rollback is triggered by 'safety, robustness, or fairness checks', but no thresholds, metrics, or detection mechanism are defined, so degraded accuracy or robustness may go undetected or be inconsistently handled. [low] - Article 15(4)
+- Failure thresholds and metrics for 'safety, robustness, or fairness checks' are not defined, so the rollback trigger is unclear and may be applied inconsistently or never fire. [low] - Article 15(4)
   - Category: `accuracy_robustness_cybersecurity`
-  - Action: Define measurable pass/fail thresholds for accuracy, robustness and fairness checks, and automate rollback triggers. Ensure the rollback target version is verified and integrity-protected.
-- The requirement does not link rollback to a risk management process, so failed checks may not trigger root-cause analysis, risk re-evaluation, or confirmation that the prior version still meets risk controls. [low] - Article 20(1)
+  - Action: Define measurable pass/fail thresholds per check (accuracy, robustness, fairness) and automatic or manual rollback triggers. Verify that the rollback target version meets the same thresholds and that fallback behaviour is safe.
+- The requirement does not say that a failed check leads to the corrective-action and information workflow (investigation, notifying deployers or authorities) when the system may be non-conformant. It treats rollback as a purely technical step. [low] - Article 20(1)
   - Category: `risk_management`
-  - Action: Add a workflow in which each rollback creates an incident record, triggers root-cause investigation, re-validates the restored version against current risk controls, and escalates to the provider's compliance function when non-conformity is suspected.
+  - Action: Add an escalation path from a failed check or rollback to the compliance owner. Include criteria for when a rollback must trigger a corrective-action review and a duty-of-information assessment, and keep versioned, approved model artefacts available as rollback targets.
 
 **Cited provisions:**
 
@@ -481,8 +500,8 @@ This report identifies compliance risks between software requirements and the EU
 
 **Recommendations:**
 
-- Specify quantitative rollback trigger thresholds and verify the integrity of approved fallback versions.
-- Tie rollback to an incident and risk-management workflow with root-cause analysis and re-validation of the restored version.
-- Feed rollback and failed-check data into the post-market monitoring plan.
+- Define quantitative thresholds and triggers for safety, robustness and fairness checks, and validate the rollback target against them.
+- Log rollback events and feed them into post-market monitoring, with a risk reassessment before re-promotion.
+- Link failed checks and rollbacks to a documented corrective-action and escalation workflow.
 
 ---

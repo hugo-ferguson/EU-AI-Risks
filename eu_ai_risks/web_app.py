@@ -23,11 +23,13 @@ from eu_ai_risks.analysis.risk_report import (
     entries_from_assessments,
     render_markdown_report,
 )
+from eu_ai_risks.db import get_session
 from eu_ai_risks.db.graph import list_categories
 from eu_ai_risks.requirements.loader import (
     SUPPORTED_EXTENSIONS,
-    load_requirements,
     parse_requirements,
+    reset_requirements,
+    write_triples,
 )
 from eu_ai_risks.requirements.models import Requirement
 
@@ -267,7 +269,11 @@ def _assess_sync(
     uploaded_filename: str | None,
 ) -> RedirectResponse:
     try:
-        requirements = load_requirements(upload_path)
+        # Rebuild the requirements graph from this upload so related-requirement
+        # lookups come from this document, not a previously loaded one
+        with get_session() as session:
+            reset_requirements(session)
+        requirements = write_triples(upload_path)
         if not requirements:
             raise ValueError("No requirements found.")
 

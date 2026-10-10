@@ -499,25 +499,61 @@ def get_requirement(requirement_id: str) -> dict | None:
         }
 
 
-def get_related_requirements(requirement_id: str) -> list[dict]:
+ENTITY_SIMILARITY_THRESHOLD = 0.75
+
+
+def get_related_requirements(requirement_id: str, limit: int = 5) -> list[dict]:
     """
     Find requirements that share entities with the given requirement.
 
+    Entities match when they are the same node or when their EDC definitions
+    are similar (cosine at or above ENTITY_SIMILARITY_THRESHOLD). Each match is
+    weighted by that similarity and by rarity (log of total requirements over
+    requirements mentioning the entity), so an entity every requirement
+    mentions, such as the system itself, carries no weight.
+
     :param requirement_id: the requirement ID, e.g. "REQ-001".
-    :return: list of related requirements with shared entity names.
+    :param limit: maximum number of related requirements to return.
+    :return: related requirements, strongest first, with matched entity pairs
+        and the related requirement's triples that involve them.
     """
     with get_session() as session:
         query_result = session.run(
             """
-			MATCH (r:Requirement {id: $requirement_id})-[:EXTRACTED_FROM]->(s:Entity)
-			OPTIONAL MATCH (s)-[:RELATION*0..1]-(e:Entity)
-			MATCH (other:Requirement)-[:EXTRACTED_FROM]->(e)
+			MATCH (any:Requirement)
+			WITH count(any) AS total
+			MATCH (r:Requirement {id: $requirement_id})-[:EXTRACTED_FROM]->(own:Entity)
+			MATCH (other:Requirement)-[:EXTRACTED_FROM]->(shared:Entity)
 			WHERE other.id <> $requirement_id
-			RETURN DISTINCT other.id AS id, other.text AS text,
-			       collect(DISTINCT e.name) AS shared_entities
-			ORDER BY size(collect(DISTINCT e.name)) DESC
+			WITH total, other, own, shared,
+			     CASE
+			         WHEN own = shared THEN 1.0
+			         WHEN own.definition_embedding IS NULL
+			              OR shared.definition_embedding IS NULL THEN 0.0
+			         // Neo4j rescales cosine to [0, 1]; convert back to raw cosine
+			         ELSE 2 * vector.similarity.cosine(
+			             own.definition_embedding, shared.definition_embedding) - 1
+			     END AS similarity
+			WHERE similarity >= $threshold
+			MATCH (holder:Requirement)-[:EXTRACTED_FROM]->(shared)
+			WITH total, other, own, shared, similarity, count(DISTINCT holder) AS frequency
+			WITH other, own, shared, similarity * log(toFloat(total) / frequency) AS weight
+			WHERE weight > 0
+			// Count each of this requirement's entities once per related requirement
+			ORDER BY weight DESC
+			WITH other, own, collect(shared.name)[0] AS shared_name, max(weight) AS weight
+			WITH other, collect([own.name, shared_name]) AS matches,
+			     collect(shared_name) AS shared_entities, sum(weight) AS score
+			OPTIONAL MATCH (s:Entity)-[rel:RELATION {requirement_id: other.id}]->(o:Entity)
+			WHERE s.name IN shared_entities OR o.name IN shared_entities
+			RETURN other.id AS id, other.text AS text, matches, shared_entities, score,
+			       collect([s.name, rel.type, o.name]) AS triples
+			ORDER BY score DESC, id
+			LIMIT $limit
 			""",
             requirement_id=requirement_id,
+            threshold=ENTITY_SIMILARITY_THRESHOLD,
+            limit=limit,
         )
 
         return [
@@ -525,6 +561,11 @@ def get_related_requirements(requirement_id: str) -> list[dict]:
                 "id": row["id"],
                 "text": row["text"],
                 "shared_entities": row["shared_entities"],
+                # [this requirement's entity, the related requirement's entity]
+                "matches": row["matches"],
+                "score": row["score"],
+                # OPTIONAL MATCH yields [null, null, null] when no triple matches
+                "triples": [triple for triple in row["triples"] if triple[1] is not None],
             }
             for row in query_result
         ]
