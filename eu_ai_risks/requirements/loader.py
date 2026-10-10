@@ -3,13 +3,14 @@ Load and parse requirement documents (PDF, docx, etc.) into structured data.
 """
 
 import re
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import pdfplumber
 import json
 
 from eu_ai_risks.requirements.models import Requirement
-from eu_ai_risks.embeddings import embed_batch
+from eu_ai_risks.embeddings import embed_batch, embed_text, cosine_similarity
 from eu_ai_risks.embeddings.client import EMBEDDING_DIMENSIONS
 from eu_ai_risks.db import get_session
 from eu_ai_risks.llm import complete_json
@@ -126,7 +127,8 @@ def _extract_requirements(
         next_id += 1
 
         requirement_text = _strip_requirement_prefix(text)
-        triples = _split_requirement(requirement_text) if with_triples else []
+        raw_triples = _open_information_extraction_triple(requirement_text) if with_triples else []
+        triples = [t for t in raw_triples if isinstance(t, list) and len(t) == 3 and all(isinstance(x, str) for x in t)]
 
         requirements.append(Requirement(
             id=requirement_id,
@@ -235,6 +237,53 @@ _TRIPLE_EXTRACTION_SYSTEM = """
     - Respond with a JSON array of triple objects, nothing else
 """
 
+_OPEN_INFORMATION_EXTRACTION_SYSTEM = """
+    Given a piece of text, extract relational triplets in the form of [Subject, Relation, Object] from it. 
+    Respond with a JSON array of 3-element arrays: [subject, relation, object], nothing else.
+    
+    Here are some examples:
+    Text: The 17068.8 millimeter long ALCO RS-3 has a diesel-electric transmission.
+    Triplets: [['ALCO RS-3', 'powerType', 'Dieselelectric transmission'], ['ALCO RS-3', 'length', '17068.8 (millimetres)']] 
+"""
+
+_SCHEMA_DEFINITON_SYSTEM = """
+    Given a piece of text and a list of relational triplets extracted from it, write a definition for each
+    relation and each entity (subject or object) present, as used in this text. Respond with a JSON dictionary
+    with two keys, "relations" and "entities", each mapping a name to its definition, nothing else.
+    Example 1:
+    Text: The 17068.8 millimeter long ALCO RS-3 has a diesel-electric transmission.
+    Triplets: [['ALCO RS-3', 'powerType', 'Dieselelectric transmission'], ['ALCO RS-3', 'length', '17068.8 (millimetres)']]
+    Definitions:
+    {"relations": {"powerType": "The subject entity uses the type of power or energy source specified by the object entity.",
+                   "length": "The subject entity has the physical length specified by the object entity."},
+     "entities": {"ALCO RS-3": "A model of diesel-electric locomotive.",
+                  "Dieselelectric transmission": "A transmission that converts diesel engine power into electricity to drive the wheels.",
+                  "17068.8 (millimetres)": "A length measurement."}}
+"""
+
+_CANONICALISATION_SYSTEM = """
+    Given a piece of text, a relational triplet extracted from it, a {kind} from that triplet and its definition,
+    choose the most appropriate {kind} from the choices to replace it in this context if there is any. Only choose
+    a {kind} that means the same thing in this context; a broader, narrower or merely related {kind} is not a
+    replacement. If none of the choices are suitable or if the choices are empty, return the original {kind} and
+    definition. Respond with a JSON dictionary containing exactly one key and value pair, with the key as the
+    {kind} and the value as its definition, nothing else.
+"""
+
+# Nearest existing components offered to the LLM as replacements (EDC uses
+# vector-similarity candidates rather than a fixed similarity cut-off)
+_CANDIDATE_COUNT = 5
+
+RE_LEADING_ARTICLE = re.compile(r'^(?:the|a|an)\s+')
+
+
+@dataclass
+class _CanonicalSchema:
+    """Canonical relations or entities built up while canonicalising a document."""
+    definitions: dict[str, tuple[str, list[float]]] = field(default_factory=dict)
+    # Normalised surface form -> canonical name, so exact repeats skip the LLM
+    aliases: dict[str, str] = field(default_factory=dict)
+
 
 def _split_requirement(requirement_text: str) -> list[dict]:
     try:
@@ -254,16 +303,125 @@ def _split_requirement(requirement_text: str) -> list[dict]:
     return [triple for triple in result if isinstance(triple, dict) and "subject" in triple]
 
 
+def _open_information_extraction_triple(requirement_text: str) -> list[list[str]]:
+    try:
+        result = complete_json(
+            prompt = f"Now please extract triplets from the following text: {requirement_text}",
+            system = _OPEN_INFORMATION_EXTRACTION_SYSTEM
+        )
+    except ValueError:
+        return []
+    if isinstance(result, dict):
+        for value in result.values():
+            if isinstance(value, list):
+                result = value
+                break
+    if not isinstance(result, list):
+        result = [result] if isinstance(result, dict) else []
+    return result
+
+    
+def _schema_definition(requirement_text: str, triples: list[list[str]]) -> tuple[dict, dict]:
+    """Return (relation definitions, entity definitions) for one requirement's triples."""
+    try:
+        result = complete_json(
+            prompt = f"Now write a definition for each relation and entity present in the triplets extracted from the following text: Text: {requirement_text} Triplets: {triples}",
+            system = _SCHEMA_DEFINITON_SYSTEM
+        )
+    except ValueError:
+        return {}, {}
+    if isinstance(result, list):
+        for value in result:
+            if isinstance(value, dict):
+                result = value
+                break
+    if not isinstance(result, dict):
+        return {}, {}
+
+    relations = result.get("relations")
+    entities = result.get("entities")
+    if not isinstance(relations, dict) and not isinstance(entities, dict):
+        # Model answered in the flat relation-only format
+        return result, {}
+    return relations or {}, entities or {}
+
+
+def _normalise_component(name: str) -> str:
+    return RE_LEADING_ARTICLE.sub('', _normalise_text(name).lower())
+
+
+def _canonicalisation(
+    requirement_text: str, triple: list[str], name: str, definition: str,
+    schema: _CanonicalSchema, kind: str,
+) -> str:
+    """Return the canonical name for a relation or entity, growing the schema as needed."""
+    alias = schema.aliases.get(_normalise_component(name))
+    if alias:
+        return alias
+
+    definition_embed = embed_text(definition)
+    ranked = sorted(
+        schema.definitions.items(),
+        key=lambda item: cosine_similarity(definition_embed, item[1][1]),
+        reverse=True,
+    )
+    choices = [{key: value[0]} for key, value in ranked[:_CANDIDATE_COUNT]]
+
+    canonical, canonical_definition = name, definition
+    # With no choices the LLM can only return the original, so skip the call
+    if choices:
+        try:
+            result = complete_json(
+                prompt = f"Text: {requirement_text} Triplet: {triple} {kind.capitalize()}: {name} Definition of {name}: {definition} Choices: {choices}",
+                system = _CANONICALISATION_SYSTEM.format(kind=kind)
+            )
+        except ValueError:
+            print(f"  Error canonicalising {kind} '{name}', keeping original.")
+            result = {}
+        if isinstance(result, list):
+            result = next((value for value in result if isinstance(value, dict)), {})
+        if isinstance(result, dict) and len(result) == 1:
+            key, value = next(iter(result.items()))
+            if isinstance(key, str) and key.strip() and isinstance(value, str):
+                canonical, canonical_definition = key.strip(), value
+
+    if canonical not in schema.definitions:
+        embed = definition_embed if canonical_definition == definition else embed_text(canonical_definition)
+        schema.definitions[canonical] = (canonical_definition, embed)
+    schema.aliases[_normalise_component(name)] = canonical
+    schema.aliases.setdefault(_normalise_component(canonical), canonical)
+    return canonical
+
+
 def write_triples(document_path: Path, save_json: bool = False):
     requirements = load_requirements(document_path)
-
+    relation_schema = _CanonicalSchema()
+    entity_schema = _CanonicalSchema()
     all_triples = []
+
     for requirement in requirements:
-        for triple in requirement.triples:
+        req_text = requirement.text
+        triples = requirement.triples
+        relation_definitions, entity_definitions = _schema_definition(req_text, triples)
+
+        for triple in triples:
+            original = list(triple)
+            subject, relation, obj = original
+            # Fall back to the name itself when the LLM skipped a definition
+            triple[0] = _canonicalisation(
+                req_text, original, subject, entity_definitions.get(subject, subject),
+                entity_schema, "entity")
+            triple[1] = _canonicalisation(
+                req_text, original, relation, relation_definitions.get(relation, relation),
+                relation_schema, "relation")
+            triple[2] = _canonicalisation(
+                req_text, original, obj, entity_definitions.get(obj, obj),
+                entity_schema, "entity")
+
             all_triples.append({
-                "subject":        triple["subject"],
-                "predicate":      triple["predicate"],
-                "object":         triple["object"],
+                "subject":        triple[0],
+                "predicate":      triple[1],
+                "object":         triple[2],
                 "requirement_id":   requirement.id,
                 "requirement_text": requirement.text,
             })
@@ -293,8 +451,9 @@ def write_triples(document_path: Path, save_json: bool = False):
                 MERGE (req:Requirement {id: row.requirement_id})
                 SET req.text = row.requirement_text
 
-                // Link requirement to its subject entity
+                // Link requirement to both entities; objects carry most of its meaning
                 MERGE (req)-[:EXTRACTED_FROM]->(s)
+                MERGE (req)-[:EXTRACTED_FROM]->(o)
                 """,
                         rows=batch
                         )
@@ -305,7 +464,6 @@ def write_triples(document_path: Path, save_json: bool = False):
 
     if save_json:
         _save_to_json(document_path, requirements)
-    
 
 def _generate_and_write_triple_embeddings(session, all_triples: list[dict]) -> None:
     entities = {}
@@ -350,6 +508,7 @@ def _generate_and_write_triple_embeddings(session, all_triples: list[dict]) -> N
 
 
 def reset_requirements(session, batch_size: int = 5000) -> None:
+    print(f"Reseting requirements ..")
     # delete Requirement nodes and EXTRACTED_FROM relationships
     deleted_requirements = 0
     while True:
@@ -387,9 +546,6 @@ def reset_requirements(session, batch_size: int = 5000) -> None:
         
     print(f"  Deleted {deleted_entities} Entity nodes.")
 
-    print("Requirements, entities, and relations cleared.")
-
-
 def _save_to_json(doc_path: Path, requirements: list[Requirement]):
     out_path = doc_path.with_name(f"{doc_path.stem}_req.json")
     out_path.write_text(json.dumps([req.__dict__ for req in requirements], indent=4))
@@ -397,6 +553,12 @@ def _save_to_json(doc_path: Path, requirements: list[Requirement]):
 
 
 if __name__ == "__main__":
-    doc = Path("./examples/sample-srs.md")
+    doc = Path("./examples/requirements/sample-srs.md")
 
-    write_triples(doc)
+    write_triples(doc, True)
+
+    # req = "The system shall provide educational content on healthy ageing, fall prevention, nutrition, exercise, chronic disease management, medication safety, and mental wellbeing. "
+    # oic = _open_information_extraction_triple(req)
+    # sd = _schema_definition(req, oic)
+    # can = _canonicalisation(req, oic[0], sd[oic[0][1]],{})
+

@@ -231,12 +231,12 @@ def infer_high_risk_context_semantically(requirement_text: str) -> tuple[str, fl
     not make a final legal classification.
     """
     try:
-        from eu_ai_risks.embeddings import embed_text
+        from eu_ai_risks.embeddings import embed_text, cosine_similarity
 
         items, embeddings = _cached_high_risk_domain_embeddings()
         requirement_embedding = embed_text(requirement_text)
         scored = [
-            (domain, _cosine_similarity(requirement_embedding, list(embedding)))
+            (domain, cosine_similarity(requirement_embedding, list(embedding)))
             for (domain, _), embedding in zip(items, embeddings)
         ]
         scored.sort(key=lambda item: item[1], reverse=True)
@@ -408,14 +408,6 @@ def _normalise_category_list(values: list[str], valid: set[str]) -> list[str]:
     return normalised
 
 
-def _cosine_similarity(left: list[float], right: list[float]) -> float:
-    left_norm = sum(value * value for value in left) ** 0.5
-    right_norm = sum(value * value for value in right) ** 0.5
-    if not left_norm or not right_norm:
-        return 0.0
-    return sum(a * b for a, b in zip(left, right)) / (left_norm * right_norm)
-
-
 @lru_cache(maxsize=1)
 def _cached_intent_embeddings() -> tuple[tuple[tuple[str, str], ...], tuple[tuple[float, ...], ...]]:
     """Embed stable intent descriptions once per API process.
@@ -439,13 +431,13 @@ def infer_requirement_intent_semantically(requirement_text: str) -> tuple[str, f
     than exact keywords. The return value is (best_intent, best_score, margin).
     """
     try:
-        from eu_ai_risks.embeddings import embed_text
+        from eu_ai_risks.embeddings import embed_text, cosine_similarity
 
         intent_items, description_embeddings = _cached_intent_embeddings()
         requirement_embedding = embed_text(requirement_text)
 
         scored = [
-            (intent, _cosine_similarity(requirement_embedding, list(embedding)))
+            (intent, cosine_similarity(requirement_embedding, list(embedding)))
             for (intent, _), embedding in zip(intent_items, description_embeddings)
         ]
         scored.sort(key=lambda item: item[1], reverse=True)
