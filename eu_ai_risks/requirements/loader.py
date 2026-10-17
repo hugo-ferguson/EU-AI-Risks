@@ -6,7 +6,6 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import pdfplumber
 import json
 
 from eu_ai_risks.requirements.models import Requirement
@@ -15,8 +14,10 @@ from eu_ai_risks.embeddings.client import EMBEDDING_DIMENSIONS
 from eu_ai_risks.db import get_session
 from eu_ai_risks.llm import complete_json
 
+# Only an id that opens a requirement names it; one later in the text, e.g.
+# "as in FR-7", is a reference to another requirement
 RE_REQUIREMENT_ID = re.compile(
-    r'\b((?:CH3-FR|CH3-NFR|FR|NFR|REQ|R|UC|SR|SYS|SRS)[-_ ]?\d+(?:\.\d+)*)\b',
+    r'^[\s\-*•#\[(]*((?:CH3-FR|CH3-NFR|FR|NFR|REQ|R|UC|SR|SYS|SRS)[-_ ]?\d+(?:\.\d+)*)\b',
     re.IGNORECASE,
 )
 RE_NUMBERED_ITEM = re.compile(r'^(\d+(?:\.\d+)*|[A-Z]\d+)[.)]\s+(.+)$')
@@ -26,7 +27,7 @@ RE_REQUIREMENT_VERB = re.compile(
     re.IGNORECASE,
 )
 
-SUPPORTED_EXTENSIONS = {".json", ".txt", ".md", ".markdown", ".pdf", ".docx"}
+SUPPORTED_EXTENSIONS = {".json", ".txt", ".md", ".markdown", ".docx"}
 
 
 def load_requirements(
@@ -47,9 +48,7 @@ def load_requirements(
 
     if extension == ".json":
         return _requirements_from_json(document_path)
-    if extension == ".pdf":
-        blocks = _read_pdf_blocks(document_path)
-    elif extension == ".docx":
+    if extension == ".docx":
         blocks = _read_docx_blocks(document_path)
     else:
         blocks = _read_text_blocks(document_path)
@@ -63,23 +62,13 @@ def parse_requirements(document_path: Path) -> list[Requirement]:
 
 
 def _read_text_blocks(document_path: Path) -> list[dict]:
+    """Each non-empty line is one block, so each requirement must be on its own line."""
     text = document_path.read_text(encoding="utf-8")
     return [
         {"text": line.strip(), "page": None}
         for line in text.splitlines()
         if line.strip()
     ]
-
-
-def _read_pdf_blocks(document_path: Path) -> list[dict]:
-    blocks = []
-    with pdfplumber.open(document_path) as pdf:
-        for page_number, page in enumerate(pdf.pages, start=1):
-            text = page.extract_text() or ""
-            for line in text.splitlines():
-                if line.strip():
-                    blocks.append({"text": line.strip(), "page": page_number})
-    return blocks
 
 
 def _read_docx_blocks(document_path: Path) -> list[dict]:
@@ -106,6 +95,10 @@ def _extract_requirements(
     requirements = []
     current_section = None
     current_title = None
+    explicit_ids = {
+        requirement_id for block in blocks
+        if (requirement_id := _extract_requirement_id(_normalise_text(block["text"])))
+    }
     next_id = 1
 
     for block in blocks:
@@ -122,9 +115,12 @@ def _extract_requirements(
         if not _looks_like_requirement(text):
             continue
 
-        explicit_id = _extract_requirement_id(text)
-        requirement_id = explicit_id or f"REQ-{next_id:03d}"
-        next_id += 1
+        requirement_id = _extract_requirement_id(text)
+        if not requirement_id:
+            while f"REQ-{next_id:03d}" in explicit_ids:
+                next_id += 1
+            requirement_id = f"REQ-{next_id:03d}"
+            next_id += 1
 
         requirement_text = _strip_requirement_prefix(text)
         raw_triples = _open_information_extraction_triple(requirement_text) if with_triples else []
@@ -180,7 +176,7 @@ def _normalise_text(text: str) -> str:
 
 
 def _looks_like_requirement(text: str) -> bool:
-    if RE_REQUIREMENT_ID.search(text) and len(text.split()) >= 4:
+    if RE_REQUIREMENT_ID.match(text) and len(text.split()) >= 4:
         return True
     if RE_REQUIREMENT_VERB.search(text) and len(text.split()) >= 5:
         return True
@@ -189,14 +185,16 @@ def _looks_like_requirement(text: str) -> bool:
 
 
 def _extract_requirement_id(text: str) -> str | None:
-    match = RE_REQUIREMENT_ID.search(text)
+    match = RE_REQUIREMENT_ID.match(text)
     if not match:
         return None
     return re.sub(r'\s+', '-', match.group(1).upper())
 
 
 def _strip_requirement_prefix(text: str) -> str:
-    text = RE_REQUIREMENT_ID.sub('', text, count=1).strip(" :-\t")
+    match = RE_REQUIREMENT_ID.match(text)
+    if match:
+        text = text[match.end():].strip(" :-–\t")
     numbered_match = RE_NUMBERED_ITEM.match(text)
     if numbered_match:
         return numbered_match.group(2).strip()

@@ -232,7 +232,7 @@ def reset_requirements(confirm: bool = typer.Option(
 @app.command("load-requirements")
 def load_requirements(
         document_path: Path = typer.Argument(
-            help="Path to a .txt, .md, .pdf, or .docx SRS",
+            help="Path to a .md, .txt, .docx or .json SRS",
         ),
         save_to_json: bool = typer.Option(
             False, "--save",
@@ -250,7 +250,7 @@ def load_requirements(
 @app.command("assess-risks")
 def assess_risks(
     document_path: Path = typer.Argument(
-        help="Path to a requirements document (.txt, .md, .pdf, .docx)",
+        help="Path to a requirements document (.md, .txt, .docx, .json)",
     ),
     output: Path = typer.Option(
         Path("risk-assessment.md"),
