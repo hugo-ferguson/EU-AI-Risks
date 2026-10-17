@@ -2,7 +2,7 @@
 Data models for the agent and risk assessment layers.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class Citation(BaseModel):
@@ -26,6 +26,11 @@ class AgentResult(BaseModel):
     tool_calls_made: int = 0
     iterations: int = 0
     messages: list[dict] = Field(default_factory=list)
+
+
+class Coverage(BaseModel):
+    id: str = Field(description="Requirement id, e.g. NFR-5")
+    covers: str = Field(default="", description="The part of the cited provision it implements")
 
 
 class RiskItem(BaseModel):
@@ -59,6 +64,22 @@ class RiskItem(BaseModel):
         default="",
         description="Set when the cited provision's scope may exclude this system",
     )
+    addressed_by: list[Coverage] = Field(
+        default_factory=list,
+        description="Other requirements that implement part of the cited provision",
+    )
+    gap_scope: str = Field(
+        default="",
+        description="'requirement' if this requirement must change, 'system' if the SRS as a whole lacks it",
+    )
+
+    @field_validator("addressed_by", mode="before")
+    @classmethod
+    def _ids_as_coverage(cls, value):
+        # The model sometimes returns bare ids instead of {id, covers} objects
+        if isinstance(value, list):
+            return [{"id": item} if isinstance(item, str) else item for item in value]
+        return value
 
 
 class RequirementRisk(BaseModel):

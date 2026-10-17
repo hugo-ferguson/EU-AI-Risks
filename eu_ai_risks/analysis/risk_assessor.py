@@ -18,8 +18,8 @@ from eu_ai_risks.analysis.prompts import (
 from eu_ai_risks.db.graph import (
     binding_paragraphs_for_articles, find_paragraphs, get_annex_iii_points,
     get_article_index, get_articles_using_concepts, get_concepts,
-    get_provisions, get_referenced_provisions, get_related_requirements,
-    get_requirement_concepts, provision_label,
+    get_points, get_provisions, get_referenced_provisions, get_related_requirements,
+    get_requirement_concepts, list_categories, provision_label,
 )
 from eu_ai_risks.embeddings import embed_text
 from eu_ai_risks.llm import complete_json
@@ -42,7 +42,8 @@ MAX_SHARED_ENTITIES = 3
 MAX_RELATED_TRIPLES = 4
 # Beyond this the rest of the SRS is left out and only related requirements are shown
 MAX_SRS_REQUIREMENTS = 80
-MAX_TOKENS = 2048
+# Coverage notes on each risk make the output longer than the old 2048 allowed safely
+MAX_TOKENS = 4096
 ROUTING_MAX_TOKENS = 300
 CLASSIFICATION_MAX_TOKENS = 400
 BINDING_OBLIGATION_TYPES = {"requirement", "prohibition"}
@@ -153,8 +154,26 @@ def _concept_patterns() -> dict[str, re.Pattern]:
     }
 
 
-def _concepts_in(text: str) -> list[str]:
-    return [name for name, pattern in _concept_patterns().items() if pattern.search(text)]
+def _concepts_in(text: str, article_id: str | None = None) -> list[str]:
+    """
+    Defined terms appearing in the text. With article_id, only terms that
+    article uses in the graph count, so a common word that is also a defined
+    term (e.g. "subject" in "subject to") isn't mistaken for it.
+    """
+    concepts = _concepts()
+    return [
+        name for name, pattern in _concept_patterns().items()
+        if pattern.search(text)
+        and (article_id is None or article_id in (concepts[name]["article_ids"] or []))
+    ]
+
+
+@lru_cache(maxsize=1)
+def _assessment_system_prompt() -> str:
+    categories = "\n".join(
+        f"- {category['key']} ({', '.join(category['article_ids'])})"
+        for category in list_categories())
+    return RISK_ASSESSMENT_PROMPT.replace("{categories}", categories)
 
 
 def _complete_json_dict(prompt: str, system: str, max_tokens: int) -> dict | None:
@@ -331,7 +350,7 @@ def _select_definitions(
 
     mentioned = {
         name for paragraph in retrieval.paragraphs.values()
-        for name in _concepts_in(paragraph["paragraph_text"] or "")
+        for name in _concepts_in(paragraph["paragraph_text"] or "", paragraph["article_id"])
     }
     # The requirement's own terms first, then the most specific (least used) terms
     ranked = list(retrieval.requirement_concepts) + sorted(
@@ -382,6 +401,7 @@ def _build_prompt(
     ]
 
     parts.append("\n## Provisions from the EU AI Act graph\n")
+    points = get_points(list(retrieval.paragraphs))
     by_article: dict[str, list[dict]] = {}
     for paragraph in retrieval.paragraphs.values():
         by_article.setdefault(paragraph["article_id"], []).append(paragraph)
@@ -390,10 +410,7 @@ def _build_prompt(
         parts.append(
             f"### Article {first['article_num']}: {first['article_title']} ({article_id})\n")
         for paragraph in sorted(article_paragraphs, key=lambda p: p["paragraph_num"] or 0):
-            parts.append(
-                f"- [{paragraph['paragraph_id']}] paragraph {paragraph['paragraph_num']} "
-                f"[{paragraph['obligation_type']}]: {paragraph['paragraph_text']}\n"
-            )
+            parts.extend(_paragraph_lines(paragraph, points.get(paragraph["paragraph_id"], [])))
             scope = retrieval.scope.get(paragraph["paragraph_id"])
             if scope:
                 parts.append(f"  Scope: refers to {_labels(scope)}\n")
@@ -429,6 +446,27 @@ def _build_prompt(
                  "based on the provisions above.")
 
     return "".join(parts)
+
+
+def _paragraph_lines(paragraph: dict, points: list[dict]) -> list[str]:
+    """
+    A paragraph with each lettered point on its own line under its graph id,
+    so the model can cite e.g. art:10:p2:f rather than infer the id.
+    """
+    head = (f"- [{paragraph['paragraph_id']}] paragraph {paragraph['paragraph_num']} "
+            f"[{paragraph['obligation_type']}]: ")
+    text = paragraph["paragraph_text"] or ""
+    first = text.find(points[0]["text"][:40]) if points else -1
+    if first <= 0:
+        return [f"{head}{text}\n"]
+    lines = [f"{head}{text[:first].strip()}\n"]
+    lines.extend(f"  - [{point['id']}] {point['text']}\n" for point in points)
+    # Text after the last point, e.g. a closing sentence that applies to all of them
+    last = text.find(points[-1]["text"][:40])
+    tail = text[last + len(points[-1]["text"]):].strip() if last >= 0 else ""
+    if tail:
+        lines.append(f"  {tail}\n")
+    return lines
 
 
 def _labels(node_ids: list[str]) -> str:
@@ -544,8 +582,10 @@ def _trace_citations(assessment: RequirementRisk, retrieval: _Retrieval) -> None
         else:
             risk.trace = list(retrieval.via.get(paragraph_id, []))
         # Only defined terms that link the requirement's wording to this provision
-        text = (node or {}).get("text") or retrieval.paragraphs.get(paragraph_id, {}).get("paragraph_text", "")
-        for name in _concepts_in(text):
+        paragraph = retrieval.paragraphs.get(paragraph_id, {})
+        text = (node or {}).get("text") or paragraph.get("paragraph_text", "")
+        article_id = (node or {}).get("article_id") or paragraph.get("article_id")
+        for name in _concepts_in(text, article_id):
             # Skip terms the concept route above already explains
             if name in retrieval.requirement_concepts and not any(
                     f"'{name}'" in step for step in risk.trace):
@@ -622,7 +662,7 @@ def assess_requirement(
         requirement_id, requirement_text, retrieval, related_requirements, system)
 
     try:
-        raw = complete_json(prompt=prompt, system=RISK_ASSESSMENT_PROMPT, max_tokens=MAX_TOKENS)
+        raw = complete_json(prompt=prompt, system=_assessment_system_prompt(), max_tokens=MAX_TOKENS)
     except ValueError:
         assessment = _not_assessed(
             "Assessment failed: the model did not return valid JSON, "

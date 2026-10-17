@@ -57,6 +57,8 @@ graph text.
 /no_think"""
 
 
+# {categories} is filled with the graph's requirement categories; the prompt
+# contains JSON braces, so fill it with str.replace rather than str.format
 RISK_ASSESSMENT_PROMPT = """\
 You are an EU AI Act compliance analyst. Given a software requirement and \
 EU AI Act provisions from the knowledge graph, identify requirement-level \
@@ -76,10 +78,27 @@ share entities with this one first. If another requirement already provides \
 a control for a gap, do not flag the gap as missing; name that requirement's \
 id and flag only what remains.
 - For controls, retain only specific implementation gaps.
-- Severity: high when a binding obligation that applies to this \
-requirement's function is unmet and no requirement in the SRS addresses it; \
-medium when it is only partly addressed, or for a governance or process gap; \
-low for clarification gaps.
+- For each risk, set addressed_by to the other requirements that implement \
+part of what the cited provision itself demands, each with "covers": the part \
+of the provision its text implements ([] if none). If you cannot name such a \
+part, do not list the requirement: sharing a topic is not coverage (monitoring \
+alerts are not a risk management process, and logging is not an explanation). \
+A "covers" that needs a disclaimer such as "does not cover..." means the \
+requirement does not cover it; leave it out. Set gap_scope to "requirement" \
+when this requirement's own wording must change to close the gap, or "system" \
+when the gap belongs to the SRS as a whole (no single requirement owns it, \
+e.g. a missing risk management process).
+- Severity is about the gap that remains after crediting addressed_by:
+  - high: the gap leaves a binding obligation for this requirement's function \
+with nothing in place, so affected persons could be harmed or the system \
+could not pass conformity assessment as specified (e.g. no accuracy metrics \
+declared for a scoring model; affected persons never told a high-risk system \
+is used; untrusted inputs with no integrity controls).
+  - medium: a control exists but is incomplete for what the provision demands \
+(e.g. bias measured but no mitigation or acceptance criteria).
+  - low: the wording should be clarified or evidence documented; the control \
+is substantively there.
+  Do not default to medium: decide each risk against these anchors.
 - If no provisions support a requirement-level gap, return empty risks and \
 risk_level "low".
 - Only use provisions supplied in the prompt. Do not fabricate articles.
@@ -96,6 +115,9 @@ classification. Do not cite a provision whose stated scope excludes the \
 system this requirement belongs to.
 - Cite the obligation article for each category (e.g. data_governance cites \
 art:10, not art:6).
+- obligation_category is one of these keys (anchor articles in brackets), or \
+"other" when none fits the cited provision:
+{categories}
 - Frame outputs as engineering review support, not legal advice.
 
 Respond with ONLY a JSON object:
@@ -104,7 +126,9 @@ Respond with ONLY a JSON object:
 "risks":[{"description":"Specific gap","severity":"medium",\
 "article_id":"art:14","paragraph_num":1,"provision":"Article 14(1)",\
 "provision_id":"art:14:p1","obligation_category":"human_oversight",\
-"engineering_action":"Add reviewer training and escalation criteria."}],\
+"engineering_action":"Add reviewer training and escalation criteria.",\
+"addressed_by":[{"id":"FR-6","covers":"override of the output (14(4)(d))"}],\
+"gap_scope":"requirement"}],\
 "risk_level":"medium",\
 "recommendations":["One concrete action per risk"]}
 
@@ -113,12 +137,12 @@ Schema:
 - Maximum 5 risks. Prioritise the most severe.
 - Each risk: description (one sentence), severity (high/medium/low), \
 article_id, paragraph_num, provision, provision_id, obligation_category, \
-engineering_action.
+engineering_action, addressed_by, gap_scope.
 - risk_level: highest severity among risks.
 - recommendations: one actionable fix per risk.
 - If no risks: summary says why, risks is [], risk_level is "low".
-- Do not repeat the same article. Keep only the strongest provision per \
-category.
+- One risk per distinct gap. Several risks may cite the same article when \
+they concern different obligations in it; never raise two risks for the same gap.
 
 /no_think"""
 

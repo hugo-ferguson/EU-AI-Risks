@@ -268,18 +268,44 @@ def get_concepts() -> list[dict]:
     Return the Article 3 concepts with the paragraph that defines each.
 
     :return: list of dicts with keys: name, description, definition_id,
-        definition_text, article_count (articles that use the concept).
+        definition_text, article_ids and article_count (articles that use the concept).
     """
     with get_session() as session:
         return session.run(
             """
 			MATCH (definition:Paragraph)-[:DEFINES]->(c:Concept)
 			OPTIONAL MATCH (a:Article)-[:USES]->(c)
+			WITH c, definition, collect(DISTINCT a.id) AS article_ids
 			RETURN c.name AS name, c.description AS description,
 			       definition.id AS definition_id, definition.text AS definition_text,
-			       count(DISTINCT a) AS article_count
+			       article_ids, size(article_ids) AS article_count
 			"""
         ).data()
+
+
+def get_points(paragraph_ids: list[str]) -> dict[str, list[dict]]:
+    """
+    Return the lettered points of each paragraph, in order.
+
+    :param paragraph_ids: paragraph node ids, e.g. ["art:10:p2"].
+    :return: dict of paragraph id to its points, each with keys: id, text.
+    """
+    if not paragraph_ids:
+        return {}
+    with get_session() as session:
+        rows = session.run(
+            """
+			UNWIND $paragraph_ids AS paragraph_id
+			MATCH (:Paragraph {id: paragraph_id})-[:HAS_POINT]->(point:Point)
+			RETURN paragraph_id, point.id AS id, point.text AS text
+			ORDER BY paragraph_id, point.num
+			""",
+            paragraph_ids=paragraph_ids,
+        ).data()
+    points: dict[str, list[dict]] = {}
+    for row in rows:
+        points.setdefault(row["paragraph_id"], []).append({"id": row["id"], "text": row["text"]})
+    return points
 
 
 def get_requirement_concepts(requirement_id: str) -> list[dict]:

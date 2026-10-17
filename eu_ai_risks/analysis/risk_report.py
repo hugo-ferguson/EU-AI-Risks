@@ -163,6 +163,8 @@ def entries_from_assessments(assessment_entries: list[dict]) -> list[dict]:
                     "citation_supplied": risk.citation_supplied,
                     "trace": risk.trace,
                     "scope_warning": risk.scope_warning,
+                    "addressed_by": [coverage.model_dump() for coverage in risk.addressed_by],
+                    "gap_scope": risk.gap_scope,
                 }
                 for risk in assessment.risks
             ],
@@ -189,6 +191,12 @@ def _risk_lines(risk: dict) -> list[str]:
             "retrieved for this assessment, so it is not grounded in the graph.")
     if risk.get("scope_warning"):
         lines.append(f"  - Scope warning: {risk['scope_warning']}")
+    if risk.get("gap_scope") == "system":
+        lines.append("  - SRS-wide gap: no single requirement owns this obligation.")
+    if risk.get("addressed_by"):
+        lines.append("  - Partly addressed by: " + "; ".join(
+            f"{coverage['id']} ({coverage['covers']})" if coverage.get("covers") else coverage["id"]
+            for coverage in risk["addressed_by"]))
     if risk.get("obligation_category"):
         lines.append(f"  - Category: `{risk['obligation_category']}`")
     if risk.get("engineering_action"):
