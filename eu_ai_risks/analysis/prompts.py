@@ -71,13 +71,15 @@ only when the requirement directly supports it.
 - Controls and safeguards (dataset validation, logging, human override, \
 rollback, bias testing, protected-attribute exclusion) should not be \
 assessed as if the control is absent.
-- Related requirements from the same SRS are listed when they share \
-entities with this one. If a related requirement already provides a control \
-for a gap, do not flag the gap as missing; reference that requirement and \
-flag only what remains.
-- For controls, retain only specific implementation gaps. Use low severity \
-for clarification gaps, medium for governance gaps. Reserve high severity \
-for binding obligations left entirely unmet.
+- The rest of the SRS is listed after the provisions, with requirements that \
+share entities with this one first. If another requirement already provides \
+a control for a gap, do not flag the gap as missing; name that requirement's \
+id and flag only what remains.
+- For controls, retain only specific implementation gaps.
+- Severity: high when a binding obligation that applies to this \
+requirement's function is unmet and no requirement in the SRS addresses it; \
+medium when it is only partly addressed, or for a governance or process gap; \
+low for clarification gaps.
 - If no provisions support a requirement-level gap, return empty risks and \
 risk_level "low".
 - Only use provisions supplied in the prompt. Do not fabricate articles.
@@ -121,29 +123,38 @@ category.
 /no_think"""
 
 
-ARTICLE_ROUTING_PROMPT = """\
-You map a software requirement to the EU AI Act articles that impose \
-obligations relevant to it{annex_task}. Use only ids from the indexes below.
+SYSTEM_CLASSIFICATION_PROMPT = """\
+You classify a software system under the EU AI Act from its requirements. \
+Use only ids from the Annex III index below.
 
-Articles:
-{index}
-{annex_section}
-List at most {limit} article ids, most relevant first.{annex_instruction} \
-Do not explain your choice. Your entire response must be a JSON object, \
-starting with {{ and ending with }}: \
-{{"articles": ["art:N", ...], "annex_iii_points": [...]}}
+Annex III high-risk areas:
+{annex_index}
+
+State the system's intended purpose in one sentence, as its requirements \
+describe it. List the Annex III point ids the system clearly falls under, \
+preferring a lettered point (e.g. annex:III:4:a) over its numbered heading \
+where one fits; give an empty list if none clearly applies. Do not explain \
+your choice. Your entire response must be a JSON object, starting with {{ and \
+ending with }}: \
+{{"intended_purpose": "...", "annex_iii_points": ["annex:III:N:x", ...]}}
 
 /no_think"""
 
-# Filled into ARTICLE_ROUTING_PROMPT only when the graph has Annex III points
-ARTICLE_ROUTING_ANNEX_PARTS = {
-    "annex_task": ", and to the Annex III high-risk areas its system falls under, if any",
-    "annex_section": "\nAnnex III high-risk areas:\n{annex_index}\n",
-    "annex_instruction": (
-        " List Annex III point ids only where the requirement's system clearly "
-        "falls under that point; otherwise give an empty list."
-    ),
-}
+
+ARTICLE_ROUTING_PROMPT = """\
+You map a software requirement to the EU AI Act articles that impose \
+obligations relevant to it. The system it belongs to has already been \
+classified, so choose articles for what this requirement does. Use only ids \
+from the index below.
+
+Articles:
+{index}
+
+List at most {limit} article ids, most relevant first. Do not explain your \
+choice. Your entire response must be a JSON object, starting with {{ and \
+ending with }}: {{"articles": ["art:N", ...]}}
+
+/no_think"""
 
 
 RISK_ASSESSMENT_AGENT_PROMPT = """\

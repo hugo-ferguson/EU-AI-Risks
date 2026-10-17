@@ -167,7 +167,7 @@ def get_article_index() -> list[dict]:
 def binding_paragraphs_for_articles(
     article_ids: list[str],
     query_embedding: list[float],
-    per_article: int = 2,
+    per_article: int | None = 2,
 ) -> list[dict]:
     """
     Return each article's binding paragraphs (requirements and prohibitions)
@@ -179,7 +179,7 @@ def binding_paragraphs_for_articles(
 
     :param article_ids: article node ids, e.g. ["art:10", "art:13"].
     :param query_embedding: the query embedding vector.
-    :param per_article: maximum paragraphs to keep per article.
+    :param per_article: maximum paragraphs to keep per article, or None for all.
     :return: paragraph dicts in the same shape as find_paragraphs, plus
         best_point_id (None when the paragraph text itself matched best).
     """
@@ -215,7 +215,7 @@ def binding_paragraphs_for_articles(
     by_article: dict[str, list[dict]] = {}
     for row in sorted(rows, key=lambda row: row["score"], reverse=True):
         kept = by_article.setdefault(row["article_id"], [])
-        if len(kept) < per_article:
+        if per_article is None or len(kept) < per_article:
             row["score"] = round(row["score"], 4)
             kept.append(row)
 

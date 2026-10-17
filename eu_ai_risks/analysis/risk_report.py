@@ -6,6 +6,11 @@ import json
 import re
 from pathlib import Path
 
+RISK_LEVELS = ("high", "medium", "low")
+# Assessments that failed or had nothing retrieved; see risk_assessor._not_assessed
+NOT_ASSESSED = "unknown"
+MAX_PRIORITY_CATEGORIES = 5
+
 # Extracts the value of "summary" from JSON even when the rest is truncated
 _RE_SUMMARY_VALUE = re.compile(r'"summary"\s*:\s*"((?:[^"\\]|\\.)*)"')
 
@@ -19,7 +24,7 @@ def _sanitise_analysis(text: str) -> str:
         data = json.loads(stripped)
         if isinstance(data, dict) and "summary" in data:
             return data["summary"]
-    except (json.JSONDecodeError, ValueError):
+    except json.JSONDecodeError:
         # JSON is malformed/truncated; try regex extraction
         match = _RE_SUMMARY_VALUE.search(stripped)
         if match:
@@ -27,19 +32,17 @@ def _sanitise_analysis(text: str) -> str:
     return text
 
 
-
-
-def _pretty_category(category: str) -> str:
+def pretty_category(category: str) -> str:
     return category.replace("_", " ").replace("-", " ").strip() or "mapped obligation"
 
 
+def _join(items: list[str]) -> str:
+    return items[0] if len(items) == 1 else f"{', '.join(items[:-1])} and {items[-1]}"
+
+
 def _highest_risk_level(entries: list[dict]) -> str:
-    levels = [str(entry.get("risk_level", "")).lower() for entry in entries]
-    if "high" in levels:
-        return "high"
-    if "medium" in levels:
-        return "medium"
-    return "low"
+    levels = {str(entry.get("risk_level", "")).lower() for entry in entries}
+    return next((level for level in RISK_LEVELS if level in levels), "low")
 
 
 def build_overall_analysis(entries: list[dict]) -> dict:
@@ -49,92 +52,92 @@ def build_overall_analysis(entries: list[dict]) -> dict:
     requirement-level analyses rather than making another LLM call.
     """
     total = len(entries)
-    counts = {"high": 0, "medium": 0, "low": 0}
+    counts = dict.fromkeys(RISK_LEVELS, 0)
+    not_assessed = 0
     category_counts: dict[str, int] = {}
-    recommendations: list[str] = []
     control_like = 0
 
     for entry in entries:
         level = str(entry.get("risk_level", "medium")).lower()
         if level in counts:
             counts[level] += 1
+        elif level == NOT_ASSESSED:
+            not_assessed += 1
         if level == "low":
             analysis = str(entry.get("analysis", "")).lower()
             if "control" in analysis or "safeguard" in analysis:
                 control_like += 1
 
-        for risk in entry.get("risks", []) or []:
+        for risk in entry.get("risks") or []:
             category = risk.get("obligation_category")
             if category:
                 category_counts[category] = category_counts.get(category, 0) + 1
-            action = risk.get("engineering_action")
-            if action and action not in recommendations:
-                recommendations.append(action)
 
     priority_categories = [
-        {
-            "name": category,
-            "label": _pretty_category(category),
-            "count": count,
-        }
+        {"name": category, "label": pretty_category(category), "count": count}
         for category, count in sorted(
-            category_counts.items(), key=lambda item: (-item[1], _pretty_category(item[0]))
+            category_counts.items(), key=lambda item: (-item[1], pretty_category(item[0]))
         )
-    ]
+    ][:MAX_PRIORITY_CATEGORIES]
 
     if total == 0:
         text = "No requirement findings are available yet."
     else:
-        count_bits = []
-        for level in ("high", "medium", "low"):
-            if counts[level]:
-                label = "finding" if counts[level] == 1 else "findings"
-                count_bits.append(f"{counts[level]} {level}-risk {label}")
-        risk_sentence = ", ".join(count_bits) if count_bits else "no retained risk findings"
-        if priority_categories:
-            category_sentence = ", ".join(item["label"] for item in priority_categories[:5])
-        else:
-            category_sentence = "no specific obligation category"
-
+        rated = [f"{counts[level]} as {level} risk" for level in RISK_LEVELS if counts[level]]
+        sentence = f"Overall, the assessment reviewed {total} requirements"
+        if rated:
+            sentence += f" and rated {_join(rated)}"
+        if not_assessed:
+            sentence += f"; {not_assessed} could not be assessed"
+        focus = (
+            _join([item["label"] for item in priority_categories])
+            if priority_categories else "no specific obligation category"
+        )
         text = (
-            f"Overall, the assessment reviewed {total} requirements and identified {risk_sentence}. "
-            f"The main review focus areas are {category_sentence}. "
-            "Use the individual requirement findings below to confirm owners, evidence, and follow-up actions before using this as supporting compliance evidence."
+            f"{sentence}. The main review focus areas are {focus}. "
+            "Use the individual requirement findings below to confirm owners, evidence, "
+            "and follow-up actions before using this as supporting compliance evidence."
         )
 
+    distribution = ", ".join(f"{counts[level]} {level}" for level in RISK_LEVELS)
+    if not_assessed:
+        distribution += f", {not_assessed} not assessed"
     key_points = [
         f"{total} requirements reviewed in total.",
-        f"Risk distribution: {counts['high']} high, {counts['medium']} medium, {counts['low']} low.",
+        f"Risk distribution: {distribution}.",
     ]
     if priority_categories:
         key_points.append(
             "Most frequent mapped obligation areas: "
-            + ", ".join(f"{item['label']} ({item['count']})" for item in priority_categories[:5])
+            + ", ".join(f"{item['label']} ({item['count']})" for item in priority_categories)
             + "."
         )
     if control_like:
         label = "requirement appears" if control_like == 1 else "requirements appear"
         key_points.append(
-            f"{control_like} low-risk {label} to describe a control or safeguard, but still needs clarification/evidence review."
+            f"{control_like} low-risk {label} to describe a control or safeguard, "
+            "but still needs clarification/evidence review."
         )
 
-    pm_actions = []
+    actions = []
+    if not_assessed:
+        actions.append("Re-run or manually review the requirements that could not be assessed.")
     if counts["high"]:
-        pm_actions.append("Review and assign owners for high-risk findings before the next project checkpoint.")
+        actions.append("Review and assign owners for high-risk findings before the next project checkpoint.")
     if counts["medium"]:
-        pm_actions.append("Review medium-risk gaps and confirm which engineering actions need to be implemented or documented.")
+        actions.append("Review medium-risk gaps and confirm which engineering actions need to be implemented or documented.")
     if priority_categories:
-        pm_actions.append("Check that the most frequent obligation areas have clear evidence, owners, and documentation links.")
-    pm_actions.append("Use the individual requirement findings as the traceable evidence trail for detailed review.")
+        actions.append("Check that the most frequent obligation areas have clear evidence, owners, and documentation links.")
+    actions.append("Use the individual requirement findings as the traceable evidence trail for detailed review.")
 
     return {
         "risk_level": _highest_risk_level(entries),
         "text": text,
         "counts": counts,
+        "not_assessed": not_assessed,
         "priority_categories": priority_categories,
         "key_points": key_points,
-        "recommended_actions": pm_actions,
-        "top_recommendations": recommendations[:5],
+        "recommended_actions": actions,
     }
 
 
@@ -144,34 +147,91 @@ def entries_from_assessments(assessment_entries: list[dict]) -> list[dict]:
     for entry in assessment_entries:
         requirement = entry["requirement"]
         assessment = entry["assessment"]
-
-        risks = []
-        for risk in assessment.risks:
-            severity = f" [{risk.severity}]" if risk.severity else ""
-            risks.append({
-                "description": f"{risk.description}{severity}",
-                "provision": risk.provision,
-                "obligation_category": risk.obligation_category,
-                "engineering_action": risk.engineering_action,
-                "provision_id": risk.provision_id,
-                "citation_supplied": risk.citation_supplied,
-                "trace": risk.trace,
-                "scope_warning": risk.scope_warning,
-            })
-
         entries.append({
             "id": requirement.get("id", "Unknown"),
             "text": requirement.get("text", ""),
             "risk_level": assessment.risk_level,
             "analysis": _sanitise_analysis(assessment.summary),
-            "risks": risks,
+            "risks": [
+                {
+                    "text": risk.description,
+                    "severity": risk.severity,
+                    "provision": risk.provision,
+                    "obligation_category": risk.obligation_category,
+                    "engineering_action": risk.engineering_action,
+                    "provision_id": risk.provision_id,
+                    "citation_supplied": risk.citation_supplied,
+                    "trace": risk.trace,
+                    "scope_warning": risk.scope_warning,
+                }
+                for risk in assessment.risks
+            ],
             "citations": entry.get("citations", []),
             "recommendations": assessment.recommendations,
             "classification": assessment.classification,
             "selected_articles": assessment.selected_articles,
         })
-
     return entries
+
+
+def _bullets(heading: str, items: list[str]) -> list[str]:
+    return [f"**{heading}:**", "", *(f"- {item}" for item in items), ""] if items else []
+
+
+def _risk_lines(risk: dict) -> list[str]:
+    severity = f" [{risk['severity']}]" if risk.get("severity") else ""
+    provision = f" - {risk['provision']}" if risk.get("provision") else ""
+    node = f" (`{risk['provision_id']}`)" if risk.get("provision_id") else ""
+    lines = [f"- {risk['text']}{severity}{provision}{node}"]
+    if not risk.get("citation_supplied", True):
+        lines.append(
+            "  - Warning: the cited provision was not among the provisions "
+            "retrieved for this assessment, so it is not grounded in the graph.")
+    if risk.get("scope_warning"):
+        lines.append(f"  - Scope warning: {risk['scope_warning']}")
+    if risk.get("obligation_category"):
+        lines.append(f"  - Category: `{risk['obligation_category']}`")
+    if risk.get("engineering_action"):
+        lines.append(f"  - Action: {risk['engineering_action']}")
+    if risk.get("trace"):
+        lines.append("  - Trace:")
+        lines.extend(f"    - {step}" for step in risk["trace"])
+    return lines
+
+
+def _entry_lines(entry: dict) -> list[str]:
+    lines = [
+        f"### {entry['id']}",
+        "",
+        f"**Risk level:** {entry['risk_level']}",
+        "",
+        f"**Requirement:** {entry['text']}",
+        "",
+    ]
+    if entry.get("classification"):
+        lines.extend([f"**Classified as:** {'; '.join(entry['classification'])}", ""])
+    if entry.get("selected_articles"):
+        lines.extend([
+            f"**Articles selected from the index:** {'; '.join(entry['selected_articles'])}",
+            "",
+        ])
+    lines.extend([f"**Analysis:** {entry['analysis']}", ""])
+
+    if entry.get("risks"):
+        lines.extend(["**Risks:**", ""])
+        for risk in entry["risks"]:
+            lines.extend(_risk_lines(risk))
+        lines.append("")
+
+    if entry.get("citations"):
+        lines.extend(["**Cited provisions:**", ""])
+        for citation in entry["citations"]:
+            lines.extend([f"- **{citation['label']}**", f"  > {citation['text']}"])
+        lines.append("")
+
+    lines.extend(_bullets("Recommendations", entry.get("recommendations") or []))
+    lines.extend(["---", ""])
+    return lines
 
 
 def render_markdown_report(
@@ -179,6 +239,9 @@ def render_markdown_report(
     title: str = "EU AI Act Risk Assessment",
     overall_analysis: dict | None = None,
 ) -> str:
+    overall_analysis = overall_analysis or build_overall_analysis(entries)
+    counts = overall_analysis["counts"]
+
     lines = [
         f"# {title}",
         "",
@@ -188,112 +251,20 @@ def render_markdown_report(
         "## Summary",
         "",
     ]
-
-    level_counts: dict[str, int] = {}
-    for entry in entries:
-        level = entry["risk_level"].capitalize()
-        level_counts[level] = level_counts.get(level, 0) + 1
-    for level in ("High", "Medium", "Low"):
-        count = level_counts.get(level, 0)
-        if count:
-            lines.append(f"- {level}: {count}")
+    lines.extend(
+        f"- {level.capitalize()}: {counts[level]}" for level in RISK_LEVELS if counts[level])
     # Failed or unretrievable assessments must stay visible, not vanish from the totals
-    if level_counts.get("Unknown"):
-        lines.append(f"- Not assessed: {level_counts['Unknown']}")
+    if overall_analysis.get("not_assessed"):
+        lines.append(f"- Not assessed: {overall_analysis['not_assessed']}")
 
-    overall_analysis = overall_analysis or build_overall_analysis(entries)
+    lines.extend(["", "### Overall analysis", "", overall_analysis["text"], ""])
+    lines.extend(_bullets("Review points", overall_analysis.get("key_points") or []))
+    lines.extend(_bullets(
+        "Recommended follow-up actions", overall_analysis.get("recommended_actions") or []))
 
-    lines.extend([
-        "",
-        "### Overall analysis",
-        "",
-        overall_analysis["text"],
-        "",
-    ])
-
-    if overall_analysis.get("key_points"):
-        lines.append("**Review points:**")
-        lines.append("")
-        for point in overall_analysis["key_points"]:
-            lines.append(f"- {point}")
-        lines.append("")
-
-    if overall_analysis.get("recommended_actions"):
-        lines.append("**Recommended follow-up actions:**")
-        lines.append("")
-        for action in overall_analysis["recommended_actions"]:
-            lines.append(f"- {action}")
-        lines.append("")
-
-    lines.extend(["", "## Requirement Findings", ""])
-
+    lines.extend(["## Requirement Findings", ""])
     for entry in entries:
-        lines.extend([
-            f"### {entry['id']}",
-            "",
-            f"**Risk level:** {entry['risk_level']}",
-            "",
-            f"**Requirement:** {entry['text']}",
-            "",
-        ])
-
-        if entry.get("classification"):
-            lines.extend([f"**Classified as:** {'; '.join(entry['classification'])}", ""])
-        if entry.get("selected_articles"):
-            lines.extend([
-                f"**Articles selected from the index:** {'; '.join(entry['selected_articles'])}",
-                "",
-            ])
-
-        lines.extend([
-            f"**Analysis:** {entry['analysis']}",
-            "",
-        ])
-
-        if entry.get("risks"):
-            lines.append("**Risks:**")
-            lines.append("")
-            for risk in entry["risks"]:
-                provision = f" - {risk['provision']}" if risk.get(
-                    "provision") else ""
-                node = f" (`{risk['provision_id']}`)" if risk.get("provision_id") else ""
-                lines.append(f"- {risk['description']}{provision}{node}")
-                if not risk.get("citation_supplied", True):
-                    lines.append(
-                        "  - Warning: the cited provision was not among the provisions "
-                        "retrieved for this assessment, so it is not grounded in the graph.")
-                if risk.get("scope_warning"):
-                    lines.append(f"  - Scope warning: {risk['scope_warning']}")
-                if risk.get("obligation_category"):
-                    lines.append(
-                        f"  - Category: `{risk['obligation_category']}`")
-                if risk.get("engineering_action"):
-                    lines.append(
-                        f"  - Action: {risk['engineering_action']}"
-                    )
-                if risk.get("trace"):
-                    lines.append("  - Trace:")
-                    for step in risk["trace"]:
-                        lines.append(f"    - {step}")
-            lines.append("")
-
-        if entry.get("citations"):
-            lines.append("**Cited provisions:**")
-            lines.append("")
-            for citation in entry["citations"]:
-                lines.append(f"- **{citation['label']}**")
-                lines.append(f"  > {citation['text']}")
-            lines.append("")
-
-        if entry.get("recommendations"):
-            lines.append("**Recommendations:**")
-            lines.append("")
-            for recommendation in entry["recommendations"]:
-                lines.append(f"- {recommendation}")
-            lines.append("")
-
-        lines.append("---")
-        lines.append("")
+        lines.extend(_entry_lines(entry))
 
     return "\n".join(lines).rstrip() + "\n"
 
@@ -316,25 +287,23 @@ def collect_citations(
 ) -> list[dict]:
     """Quote the exact provision each risk cites: a lettered point where one is
     cited, otherwise the paragraph, falling back to the whole article."""
+    # Imported here so report rendering doesn't need a database connection
     from eu_ai_risks.db.graph import get_article, get_provisions, provision_label
 
-    node_ids = list(dict.fromkeys(
-        risk.provision_id for risk in risks if getattr(risk, "provision_id", "")))
-    provisions = get_provisions(node_ids)
+    provisions = get_provisions(list(dict.fromkeys(
+        risk.provision_id for risk in risks if risk.provision_id)))
 
     seen: set[str] = set()
     citations = []
     for risk in risks:
-        node_id = getattr(risk, "provision_id", "")
-        node = provisions.get(node_id)
+        node = provisions.get(risk.provision_id)
         if node:
-            if node_id in seen:
-                continue
-            seen.add(node_id)
-            citations.append({
-                "label": f"{node['article_title']}, {provision_label(node_id)}",
-                "text": node["text"],
-            })
+            if risk.provision_id not in seen:
+                seen.add(risk.provision_id)
+                citations.append({
+                    "label": f"{node['article_title']}, {provision_label(risk.provision_id)}",
+                    "text": node["text"],
+                })
             continue
 
         if not risk.article_id or risk.article_id in seen:

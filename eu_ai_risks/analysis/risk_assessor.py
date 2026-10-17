@@ -7,10 +7,13 @@ import os
 import re
 from dataclasses import dataclass, field
 from functools import lru_cache
+from typing import NamedTuple
+
+from pydantic import ValidationError
 
 from eu_ai_risks.analysis.models import RequirementRisk, RiskItem
 from eu_ai_risks.analysis.prompts import (
-    ARTICLE_ROUTING_ANNEX_PARTS, ARTICLE_ROUTING_PROMPT, RISK_ASSESSMENT_PROMPT,
+    ARTICLE_ROUTING_PROMPT, RISK_ASSESSMENT_PROMPT, SYSTEM_CLASSIFICATION_PROMPT,
 )
 from eu_ai_risks.db.graph import (
     binding_paragraphs_for_articles, find_paragraphs, get_annex_iii_points,
@@ -26,7 +29,9 @@ from eu_ai_risks.llm import complete_json
 RETRIEVAL_MODE = os.environ.get("EU_AI_RISKS_RETRIEVAL", "graph").strip().lower()
 
 ROUTED_ARTICLES = 5
-PARAGRAPHS_PER_ROUTED_ARTICLE = 2
+# All of them: the router chose the article, so similarity only orders its
+# paragraphs. A cap here dropped e.g. Article 26(11) from notification requirements
+PARAGRAPHS_PER_ROUTED_ARTICLE: int | None = None
 CONCEPT_PARAGRAPHS = 3
 REFERENCED_PARAGRAPHS = 3
 MAX_DEFINITIONS = 8
@@ -35,8 +40,13 @@ VECTOR_CANDIDATES = 15
 MAX_RELATED_REQUIREMENTS = 5
 MAX_SHARED_ENTITIES = 3
 MAX_RELATED_TRIPLES = 4
+# Beyond this the rest of the SRS is left out and only related requirements are shown
+MAX_SRS_REQUIREMENTS = 80
 MAX_TOKENS = 2048
+ROUTING_MAX_TOKENS = 300
+CLASSIFICATION_MAX_TOKENS = 400
 BINDING_OBLIGATION_TYPES = {"requirement", "prohibition"}
+RISK_LEVELS = ("high", "medium", "low")
 
 RE_PROVISION_ID = re.compile(r"art:\d+:p\d+(?::[a-z])?")
 
@@ -65,6 +75,38 @@ class _Retrieval:
         self.paragraphs[paragraph_id] = paragraph
         return True
 
+    def record(self) -> dict:
+        """Recorded alongside the model output so each assessment is traceable."""
+        return {
+            "mode": RETRIEVAL_MODE,
+            "routed_articles": self.routed_articles,
+            "annex_iii_points": self.annex_iii_points,
+            "provisions": dict(self.via),
+            "definitions": [concept["definition_id"] for concept in self.definitions.values()],
+            "scope": self.scope,
+        }
+
+
+@dataclass(frozen=True)
+class SystemContext:
+    """What every requirement's assessment needs to know about the system as a whole."""
+    requirements: tuple[tuple[str, str], ...]  # (id, text) in SRS order
+    intended_purpose: str = ""
+    annex_iii_points: tuple[str, ...] = ()
+
+
+class _ActIndex(NamedTuple):
+    article_index: str
+    headings: dict[str, str]  # article id -> chapter/section heading
+    titles: dict[str, str]  # article id -> title
+    annex_index: str
+    annex_texts: dict[str, str]  # Annex III point id -> text
+
+
+def _paragraph_of(node_id: str) -> str:
+    """art:10:p2:f -> art:10:p2"""
+    return ":".join(node_id.split(":")[:3])
+
 
 def _annex_point_summary(point_id: str, text: str) -> str:
     # Numbered points (annex:III:4) contain their lettered points, so keep the heading only
@@ -72,13 +114,8 @@ def _annex_point_summary(point_id: str, text: str) -> str:
 
 
 @lru_cache(maxsize=1)
-def _act_index() -> tuple[str, dict[str, str], str, dict[str, str], dict[str, str]]:
-    """
-    Render the Act's table of contents and Annex III once.
-
-    :return: (article index text, article id -> chapter/section heading,
-        Annex III index text, Annex III point id -> text, article id -> title).
-    """
+def _act_index() -> _ActIndex:
+    """Render the Act's table of contents and Annex III once."""
     lines: list[str] = []
     headings: dict[str, str] = {}
     titles: dict[str, str] = {}
@@ -99,7 +136,7 @@ def _act_index() -> tuple[str, dict[str, str], str, dict[str, str], dict[str, st
         f"- {point_id}: {_annex_point_summary(point_id, text)[:200]}"
         for point_id, text in annex_texts.items()
     ]
-    return "\n".join(lines), headings, "\n".join(annex_lines), annex_texts, titles
+    return _ActIndex("\n".join(lines), headings, titles, "\n".join(annex_lines), annex_texts)
 
 
 @lru_cache(maxsize=1)
@@ -120,42 +157,84 @@ def _concepts_in(text: str) -> list[str]:
     return [name for name, pattern in _concept_patterns().items() if pattern.search(text)]
 
 
-def _route(requirement_text: str) -> tuple[list[str], list[str]]:
-    """Ask the LLM which articles, and which Annex III points, apply to the requirement."""
-    index_text, headings, annex_index, annex_texts, _ = _act_index()
-    # Without Annex III points in the graph the model tends to explain its
-    # guesses in prose, so that part of the prompt is left out entirely
-    annex_parts = {
-        "annex_task": ARTICLE_ROUTING_ANNEX_PARTS["annex_task"],
-        "annex_section": ARTICLE_ROUTING_ANNEX_PARTS["annex_section"].format(annex_index=annex_index),
-        "annex_instruction": ARTICLE_ROUTING_ANNEX_PARTS["annex_instruction"],
-    } if annex_index else {
-        "annex_task": "", "annex_section": "", "annex_instruction": " Give an empty list for annex_iii_points.",
-    }
-    system = ARTICLE_ROUTING_PROMPT.format(index=index_text, limit=ROUTED_ARTICLES, **annex_parts)
-
+def _complete_json_dict(prompt: str, system: str, max_tokens: int) -> dict | None:
     # One retry: the model occasionally answers in prose instead of JSON
     for _ in range(2):
         try:
-            result = complete_json(
-                prompt=f"Requirement: {requirement_text}",
-                system=system,
-                max_tokens=300,
-            )
+            result = complete_json(prompt=prompt, system=system, max_tokens=max_tokens)
         except ValueError:
             continue
-        if not isinstance(result, dict):
-            return [], []
-        articles = [
-            article_id for article_id in dict.fromkeys(result.get("articles", []))
-            if article_id in headings
-        ][:ROUTED_ARTICLES]
-        annex_points = [
-            point_id for point_id in dict.fromkeys(result.get("annex_iii_points", []))
-            if point_id in annex_texts
-        ]
-        return articles, annex_points
-    return [], []
+        return result if isinstance(result, dict) else None
+    return None
+
+
+def classify_system(requirements: list[tuple[str, str]]) -> SystemContext:
+    """
+    Classify the system once from all its requirements, so that every
+    requirement is assessed as part of the same (possibly high-risk) system.
+
+    :param requirements: (id, text) pairs in SRS order.
+    """
+    index = _act_index()
+    srs = "\n".join(f"- {requirement_id}: {text}" for requirement_id, text in requirements)
+    result = _complete_json_dict(
+        f"Requirements:\n{srs}",
+        SYSTEM_CLASSIFICATION_PROMPT.format(
+            annex_index=index.annex_index or "(none in the graph; give an empty list)"),
+        CLASSIFICATION_MAX_TOKENS,
+    ) or {}
+    purpose = result.get("intended_purpose")
+    return SystemContext(
+        requirements=tuple(requirements),
+        intended_purpose=purpose.strip() if isinstance(purpose, str) else "",
+        annex_iii_points=tuple(
+            point_id for point_id in dict.fromkeys(result.get("annex_iii_points") or [])
+            if point_id in index.annex_texts
+        ),
+    )
+
+
+def _system_lines(system: SystemContext) -> list[str]:
+    annex_texts = _act_index().annex_texts
+    lines = []
+    if system.intended_purpose:
+        lines.append(f"Intended purpose (inferred from the SRS): {system.intended_purpose}")
+    if system.annex_iii_points:
+        lines.append("Annex III classification:")
+        lines.extend(
+            f"- [{point_id}] {provision_label(point_id)}: {annex_texts.get(point_id, '')}"
+            for point_id in system.annex_iii_points)
+    else:
+        lines.append("Annex III classification: none (no Annex III point clearly applies)")
+    return lines
+
+
+def _route(requirement_text: str, system: SystemContext) -> list[str]:
+    """Ask the LLM which articles apply to the requirement, given the system it is part of."""
+    index = _act_index()
+    result = _complete_json_dict(
+        "\n".join([*_system_lines(system), "", f"Requirement: {requirement_text}"]),
+        ARTICLE_ROUTING_PROMPT.format(index=index.article_index, limit=ROUTED_ARTICLES),
+        ROUTING_MAX_TOKENS,
+    ) or {}
+    return [
+        article_id for article_id in dict.fromkeys(result.get("articles") or [])
+        if article_id in index.headings
+    ][:ROUTED_ARTICLES]
+
+
+def _add_routed_provisions(retrieval: _Retrieval, embedding: list[float]) -> None:
+    """Add the binding paragraphs of the articles the LLM picked from the Act's index."""
+    headings = _act_index().headings
+    for paragraph in binding_paragraphs_for_articles(
+            retrieval.routed_articles, embedding, per_article=PARAGRAPHS_PER_ROUTED_ARTICLE):
+        closest_point = paragraph.get("best_point_id")
+        retrieval.add(
+            paragraph,
+            f"selected from the Act's index: {headings.get(paragraph['article_id'], '')} "
+            f"> Article {paragraph['article_num']} {paragraph['article_title']}"
+            + (f" (closest match: {provision_label(closest_point)})" if closest_point else ""),
+        )
 
 
 def _add_concept_provisions(
@@ -181,31 +260,44 @@ def _add_concept_provisions(
         )
         if not link:
             continue
+        # Extra routes to an existing provision are kept as further evidence,
+        # so the cap only limits new provisions
+        if paragraph["paragraph_id"] not in retrieval.paragraphs and added >= CONCEPT_PARAGRAPHS:
+            continue
         definition = _concepts().get(link["concept"], {})
         via = (
             f"requirement term '{link['entity']}' is an instance of the defined term "
             f"'{link['concept']}' ({provision_label(definition.get('definition_id', 'art:3'))}), "
             f"which Article {paragraph['article_num']} uses"
         )
-        # Extra routes to an existing provision are kept as further evidence
-        if paragraph["paragraph_id"] in retrieval.paragraphs:
-            retrieval.add(paragraph, via)
-        elif added < CONCEPT_PARAGRAPHS:
-            retrieval.add(paragraph, via)
-            added += 1
+        added += retrieval.add(paragraph, via)
     return links
+
+
+def _add_vector_provisions(retrieval: _Retrieval, embedding: list[float], via: str) -> None:
+    paragraphs = find_paragraphs(embedding, top_k=VECTOR_CANDIDATES)
+    binding = [p for p in paragraphs if p["obligation_type"] in BINDING_OBLIGATION_TYPES]
+    for paragraph in binding[:VECTOR_PARAGRAPHS]:
+        retrieval.add(paragraph, via)
 
 
 def _add_referenced_provisions(retrieval: _Retrieval) -> None:
     """Follow references from the supplied provisions, and record Annex III scope."""
+    # Most relevant sources first: with every paragraph of the routed articles
+    # supplied, query order would let incidental references take the slots
+    references = sorted(
+        get_referenced_provisions(list(retrieval.paragraphs)),
+        key=lambda reference: retrieval.paragraphs.get(
+            _paragraph_of(reference["source_id"]), {}).get("score") or 0,
+        reverse=True,
+    )
     added = 0
-    for reference in get_referenced_provisions(list(retrieval.paragraphs)):
+    for reference in references:
         source_id = reference["source_id"]
-        source_paragraph = ":".join(source_id.split(":")[:3])
         target_id = reference["target_id"]
 
         if target_id.startswith("annex:III:"):
-            scope = retrieval.scope.setdefault(source_paragraph, [])
+            scope = retrieval.scope.setdefault(_paragraph_of(source_id), [])
             if target_id not in scope:
                 scope.append(target_id)
             continue
@@ -237,13 +329,13 @@ def _select_definitions(
         retrieval.requirement_concepts.setdefault(
             name, f"requirement uses the defined term '{name}'")
 
-    mentioned = [
+    mentioned = {
         name for paragraph in retrieval.paragraphs.values()
         for name in _concepts_in(paragraph["paragraph_text"] or "")
-    ]
+    }
     # The requirement's own terms first, then the most specific (least used) terms
     ranked = list(retrieval.requirement_concepts) + sorted(
-        set(mentioned) - set(retrieval.requirement_concepts),
+        mentioned - set(retrieval.requirement_concepts),
         key=lambda name: int(concepts[name]["article_count"] or 0),
     )
     retrieval.definitions = {
@@ -251,46 +343,28 @@ def _select_definitions(
     }
 
 
-def _retrieve(requirement_id: str, requirement_text: str) -> _Retrieval:
+def _retrieve(requirement_id: str, requirement_text: str, system: SystemContext) -> _Retrieval:
     """Collect the provisions for a requirement, recording how each was reached."""
     embedding = embed_text(requirement_text)
-    retrieval = _Retrieval()
+    retrieval = _Retrieval(annex_iii_points=list(system.annex_iii_points))
 
     if RETRIEVAL_MODE == "vector":
         for paragraph in find_paragraphs(embedding, top_k=VECTOR_PARAGRAPHS):
             retrieval.add(paragraph, "vector similarity to the requirement")
         return retrieval
 
-    articles, annex_points = _route(requirement_text)
-    retrieval.routed_articles, retrieval.annex_iii_points = articles, annex_points
-    headings = _act_index()[1]
-    for paragraph in binding_paragraphs_for_articles(
-            articles, embedding, per_article=PARAGRAPHS_PER_ROUTED_ARTICLE):
-        closest_point = paragraph.get("best_point_id")
-        retrieval.add(
-            paragraph,
-            f"selected from the Act's index: {headings.get(paragraph['article_id'], '')} "
-            f"> Article {paragraph['article_num']} {paragraph['article_title']}"
-            + (f" (closest match: {provision_label(closest_point)})" if closest_point else ""),
-        )
-
+    retrieval.routed_articles = _route(requirement_text, system)
+    _add_routed_provisions(retrieval, embedding)
     links = _add_concept_provisions(retrieval, requirement_id, embedding)
 
     # Vector search only when the graph routes found nothing
     if not retrieval.paragraphs:
-        for paragraph in [
-            paragraph for paragraph in find_paragraphs(embedding, top_k=VECTOR_CANDIDATES)
-            if paragraph["obligation_type"] in BINDING_OBLIGATION_TYPES
-        ][:VECTOR_PARAGRAPHS]:
-            retrieval.add(paragraph, "vector similarity to the requirement (fallback)")
+        _add_vector_provisions(
+            retrieval, embedding, "vector similarity to the requirement (fallback)")
 
     _add_referenced_provisions(retrieval)
     _select_definitions(retrieval, requirement_text, links)
     return retrieval
-
-
-def _normalise_category(value: str) -> str:
-    return value.strip().lower().replace(" ", "_").replace("-", "_")
 
 
 def _build_prompt(
@@ -298,17 +372,14 @@ def _build_prompt(
     requirement_text: str,
     retrieval: _Retrieval,
     related_requirements: list[dict],
+    system: SystemContext,
 ) -> str:
     parts = [
         f"## Requirement {requirement_id}\n",
         f"{requirement_text}\n",
+        "\n## System this requirement belongs to\n",
+        *(f"{line}\n" for line in _system_lines(system)),
     ]
-
-    if retrieval.annex_iii_points:
-        annex_texts = _act_index()[3]
-        parts.append("\n## Annex III classification of this requirement's system\n")
-        for point_id in retrieval.annex_iii_points:
-            parts.append(f"- [{point_id}] {provision_label(point_id)}: {annex_texts.get(point_id, '')}\n")
 
     parts.append("\n## Provisions from the EU AI Act graph\n")
     by_article: dict[str, list[dict]] = {}
@@ -325,8 +396,7 @@ def _build_prompt(
             )
             scope = retrieval.scope.get(paragraph["paragraph_id"])
             if scope:
-                parts.append(
-                    f"  Scope: refers to {', '.join(provision_label(point_id) for point_id in scope)}\n")
+                parts.append(f"  Scope: refers to {_labels(scope)}\n")
 
     if retrieval.definitions:
         parts.append("\n## Definitions (Article 3)\n")
@@ -347,13 +417,75 @@ def _build_prompt(
             for subject, relation, obj in related.get("triples", [])[:MAX_RELATED_TRIPLES]:
                 parts.append(f"  - {subject} → {relation} → {obj}\n")
 
+    # The whole SRS, so a gap another requirement already covers isn't flagged
+    # as missing, and severity can reflect whether anything addresses it
+    shown = {requirement_id} | {related["id"] for related in related_requirements}
+    rest = [(other_id, text) for other_id, text in system.requirements if other_id not in shown]
+    if rest and len(system.requirements) <= MAX_SRS_REQUIREMENTS:
+        parts.append("\n## Rest of the SRS\n")
+        parts.extend(f"- **{other_id}**: {text}\n" for other_id, text in rest)
+
     parts.append("\nIdentify the compliance risks for this requirement "
                  "based on the provisions above.")
 
-    return "\n".join(parts)
+    return "".join(parts)
 
 
-def _remove_duplicate_risks(assessment: RequirementRisk) -> RequirementRisk:
+def _labels(node_ids: list[str]) -> str:
+    return ", ".join(provision_label(node_id) for node_id in node_ids)
+
+
+def _normalise_category(value: str) -> str:
+    return value.strip().lower().replace(" ", "_").replace("-", "_")
+
+
+def _parse_assessment(raw: dict | list) -> RequirementRisk:
+    """Validate the model's JSON, salvaging what it can from malformed output."""
+    if not isinstance(raw, dict):
+        return RequirementRisk(summary=str(raw))
+
+    try:
+        return RequirementRisk.model_validate(raw)
+    except ValidationError:
+        pass
+
+    for key in ("answer", "response", "result", "assessment", "data"):
+        nested = raw.get(key)
+        if isinstance(nested, dict) and "summary" in nested:
+            try:
+                return RequirementRisk.model_validate(nested)
+            except ValidationError:
+                pass
+
+    summary = raw.get("summary", "")
+    if not isinstance(summary, str) or not summary:
+        summary = next(
+            (value for value in raw.values() if isinstance(value, str) and len(value) > 20), "")
+
+    # One malformed risk shouldn't discard the others
+    risks = []
+    for item in raw.get("risks", []) if isinstance(raw.get("risks"), list) else []:
+        try:
+            risks.append(RiskItem.model_validate(item))
+        except ValidationError:
+            pass
+    recommendations = raw.get("recommendations", [])
+    if not isinstance(recommendations, list):
+        recommendations = []
+
+    risk_level = raw.get("risk_level", "medium")
+    if risk_level not in RISK_LEVELS:
+        risk_level = "medium"
+
+    return RequirementRisk(
+        summary=summary or "Model did not produce a valid risk assessment.",
+        risks=risks,
+        risk_level=risk_level,
+        recommendations=[str(item) for item in recommendations],
+    )
+
+
+def _remove_duplicate_risks(assessment: RequirementRisk) -> None:
     seen: set[tuple[str, str, int | None, str]] = set()
     unique: list[RiskItem] = []
     for risk in assessment.risks:
@@ -363,12 +495,10 @@ def _remove_duplicate_risks(assessment: RequirementRisk) -> RequirementRisk:
             risk.paragraph_num,
             _normalise_category(risk.obligation_category),
         )
-        if key in seen:
-            continue
-        seen.add(key)
-        unique.append(risk)
+        if key not in seen:
+            seen.add(key)
+            unique.append(risk)
     assessment.risks = unique
-    return assessment
 
 
 def _scopes_overlap(point_a: str, point_b: str) -> bool:
@@ -376,7 +506,7 @@ def _scopes_overlap(point_a: str, point_b: str) -> bool:
     return point_a == point_b or point_a.startswith(f"{point_b}:") or point_b.startswith(f"{point_a}:")
 
 
-def _trace_citations(assessment: RequirementRisk, retrieval: _Retrieval) -> RequirementRisk:
+def _trace_citations(assessment: RequirementRisk, retrieval: _Retrieval) -> None:
     """Resolve each risk's citation to a graph node and record how it was reached."""
     for risk in assessment.risks:
         found = RE_PROVISION_ID.search(risk.provision_id or "")
@@ -386,11 +516,11 @@ def _trace_citations(assessment: RequirementRisk, retrieval: _Retrieval) -> Requ
             risk.provision_id = f"{risk.article_id}:p{risk.paragraph_num}"
 
     cited = {risk.provision_id for risk in assessment.risks if risk.provision_id}
-    provisions = get_provisions(sorted(cited | {
-        ":".join(node_id.split(":")[:3]) for node_id in cited}))
+    provisions = get_provisions(sorted(cited | {_paragraph_of(node_id) for node_id in cited}))
     definitions_by_id = {
         concept["definition_id"]: name for name, concept in retrieval.definitions.items()}
     supplied = set(retrieval.paragraphs) | set(definitions_by_id)
+    concepts = _concepts()
 
     for risk in assessment.risks:
         if not risk.provision_id:
@@ -398,7 +528,7 @@ def _trace_citations(assessment: RequirementRisk, retrieval: _Retrieval) -> Requ
             risk.trace = ["no provision id was given for this risk"]
             continue
 
-        paragraph_id = ":".join(risk.provision_id.split(":")[:3])
+        paragraph_id = _paragraph_of(risk.provision_id)
         # A point the graph doesn't have (e.g. before a rebuild) falls back to its paragraph
         if risk.provision_id not in provisions and paragraph_id in provisions:
             risk.provision_id = paragraph_id
@@ -416,10 +546,12 @@ def _trace_citations(assessment: RequirementRisk, retrieval: _Retrieval) -> Requ
         # Only defined terms that link the requirement's wording to this provision
         text = (node or {}).get("text") or retrieval.paragraphs.get(paragraph_id, {}).get("paragraph_text", "")
         for name in _concepts_in(text):
-            if name in retrieval.requirement_concepts and name in _concepts():
-                definition_id = _concepts()[name]["definition_id"]
+            # Skip terms the concept route above already explains
+            if name in retrieval.requirement_concepts and not any(
+                    f"'{name}'" in step for step in risk.trace):
                 risk.trace.append(
-                    f"{retrieval.requirement_concepts[name]} ({provision_label(definition_id)}), "
+                    f"{retrieval.requirement_concepts[name]} "
+                    f"({provision_label(concepts[name]['definition_id'])}), "
                     f"which this provision uses")
 
         scope = retrieval.scope.get(paragraph_id, [])
@@ -427,134 +559,80 @@ def _trace_citations(assessment: RequirementRisk, retrieval: _Retrieval) -> Requ
                 _scopes_overlap(point_id, classified)
                 for point_id in scope for classified in retrieval.annex_iii_points):
             risk.scope_warning = (
-                f"{provision_label(paragraph_id)} refers to "
-                f"{', '.join(provision_label(point_id) for point_id in scope)}, but this "
+                f"{provision_label(paragraph_id)} refers to {_labels(scope)}, but this "
                 f"requirement's system was classified under "
-                f"{', '.join(provision_label(point_id) for point_id in retrieval.annex_iii_points)}."
+                f"{_labels(retrieval.annex_iii_points)}."
             )
+
+
+def _record_retrieval_steps(assessment: RequirementRisk, retrieval: _Retrieval) -> None:
+    """Attach the classification and article selection, where every trace starts."""
+    index = _act_index()
+    assessment.classification = [
+        f"{provision_label(point_id)} ({point_id}): "
+        f"{_annex_point_summary(point_id, index.annex_texts.get(point_id, ''))}"
+        for point_id in retrieval.annex_iii_points
+    ]
+    assessment.selected_articles = [
+        f"{provision_label(article_id)} {index.titles.get(article_id, '')} ({article_id})"
+        for article_id in retrieval.routed_articles
+    ]
+
+
+def _not_assessed(summary: str, retrieval: _Retrieval) -> RequirementRisk:
+    # "unknown" rather than "low", so a failure can't pass as a clean result
+    assessment = RequirementRisk(summary=summary, risk_level="unknown")
+    _record_retrieval_steps(assessment, retrieval)
     return assessment
 
 
 def assess_requirement(
     requirement_id: str,
     requirement_text: str,
-) -> tuple[RequirementRisk, dict[str, dict], dict | list]:
-    """Assess a single requirement against the EU AI Act graph."""
-    retrieval = _retrieve(requirement_id, requirement_text)
+    system: SystemContext | None = None,
+) -> tuple[RequirementRisk, dict]:
+    """
+    Assess a single requirement against the EU AI Act graph.
+
+    :param system: from classify_system over the whole SRS; without it the
+        requirement is classified, and assessed, on its own.
+    :return: (assessment, raw model output plus the retrieval record).
+    """
+    system = system or classify_system([(requirement_id, requirement_text)])
+    retrieval = _retrieve(requirement_id, requirement_text, system)
 
     # With nothing retrieved the model can only say "no gap"; report that as
     # not assessed so a broken or unenriched graph can't pass as low risk
     if not retrieval.paragraphs:
-        assessment = RequirementRisk(
-            summary=(
-                "Not assessed: no EU AI Act provisions were retrieved from the graph for "
-                "this requirement. Check that the graph is built and enriched "
-                "(paragraph obligation types are needed to find binding provisions)."
-            ),
-            risks=[],
-            risk_level="unknown",
-            recommendations=[],
+        assessment = _not_assessed(
+            "Not assessed: no EU AI Act provisions were retrieved from the graph for "
+            "this requirement. Check that the graph is built and enriched "
+            "(paragraph obligation types are needed to find binding provisions).",
+            retrieval,
         )
-        _record_retrieval_steps(assessment, retrieval)
-        return assessment, {}, {"retrieval": {
-            "mode": RETRIEVAL_MODE,
-            "routed_articles": retrieval.routed_articles,
-            "annex_iii_points": retrieval.annex_iii_points,
-            "provisions": {},
-        }, "not_assessed": True}
+        return assessment, {"retrieval": retrieval.record(), "not_assessed": True}
 
-    related_requirements: list[dict] = []
     try:
         related_requirements = get_related_requirements(
             requirement_id, limit=MAX_RELATED_REQUIREMENTS)
     except (KeyError, ValueError):
-        pass
+        related_requirements = []
 
     prompt = _build_prompt(
-        requirement_id, requirement_text, retrieval, related_requirements,
-    )
-
-    # Recorded alongside the model output so each assessment is traceable
-    retrieval_record = {
-        "mode": RETRIEVAL_MODE,
-        "routed_articles": retrieval.routed_articles,
-        "annex_iii_points": retrieval.annex_iii_points,
-        "provisions": {paragraph_id: routes for paragraph_id, routes in retrieval.via.items()},
-        "definitions": [concept["definition_id"] for concept in retrieval.definitions.values()],
-        "scope": retrieval.scope,
-    }
+        requirement_id, requirement_text, retrieval, related_requirements, system)
 
     try:
-        raw = complete_json(
-            prompt=prompt,
-            system=RISK_ASSESSMENT_PROMPT,
-            max_tokens=MAX_TOKENS,
-        )
-        assessment = _parse_assessment(raw)
+        raw = complete_json(prompt=prompt, system=RISK_ASSESSMENT_PROMPT, max_tokens=MAX_TOKENS)
     except ValueError:
-        # Report the failure as such rather than as a low-risk finding
-        assessment = RequirementRisk(
-            summary=(
-                "Assessment failed: the model did not return valid JSON, "
-                "so this requirement was not assessed."
-            ),
-            risks=[],
-            risk_level="unknown",
-            recommendations=[],
+        assessment = _not_assessed(
+            "Assessment failed: the model did not return valid JSON, "
+            "so this requirement was not assessed.",
+            retrieval,
         )
-        _record_retrieval_steps(assessment, retrieval)
-        return assessment, {}, {"retrieval": retrieval_record, "fallback_used": True}
+        return assessment, {"retrieval": retrieval.record(), "fallback_used": True}
 
-    assessment = _remove_duplicate_risks(assessment)
-    assessment = _trace_citations(assessment, retrieval)
+    assessment = _parse_assessment(raw)
+    _remove_duplicate_risks(assessment)
+    _trace_citations(assessment, retrieval)
     _record_retrieval_steps(assessment, retrieval)
-    raw = {"retrieval": retrieval_record, **raw} if isinstance(raw, dict) else raw
-    return assessment, {}, raw
-
-
-def _record_retrieval_steps(assessment: RequirementRisk, retrieval: _Retrieval) -> None:
-    """Attach the classification and article selection, where every trace starts."""
-    annex_texts, titles = _act_index()[3], _act_index()[4]
-    assessment.classification = [
-        f"{provision_label(point_id)} ({point_id}): "
-        f"{_annex_point_summary(point_id, annex_texts.get(point_id, ''))}"
-        for point_id in retrieval.annex_iii_points
-    ]
-    assessment.selected_articles = [
-        f"{provision_label(article_id)} {titles.get(article_id, '')} ({article_id})"
-        for article_id in retrieval.routed_articles
-    ]
-
-
-def _parse_assessment(raw: dict | list) -> RequirementRisk:
-    if not isinstance(raw, dict):
-        return RequirementRisk(summary=str(raw))
-
-    try:
-        return RequirementRisk.model_validate(raw)
-    except Exception:
-        pass
-
-    for key in ("answer", "response", "result", "assessment", "data"):
-        nested = raw.get(key)
-        if isinstance(nested, dict) and "summary" in nested:
-            try:
-                return RequirementRisk.model_validate(nested)
-            except Exception:
-                pass
-
-    summary = raw.get("summary", "")
-    if not summary:
-        for value in raw.values():
-            if isinstance(value, str) and len(value) > 20:
-                summary = value
-                break
-
-    risk_level = raw.get("risk_level", "medium")
-    if risk_level not in ("high", "medium", "low"):
-        risk_level = "medium"
-
-    return RequirementRisk(
-        summary=summary or "Model did not produce a valid risk assessment.",
-        risk_level=risk_level,
-    )
+    return assessment, {"retrieval": retrieval.record(), "response": raw}

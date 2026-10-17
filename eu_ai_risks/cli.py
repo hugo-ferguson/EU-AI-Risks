@@ -4,6 +4,7 @@ CLI entry point for eu-ai-risks.
 
 import json
 import os
+from functools import partial
 from pathlib import Path
 
 import typer
@@ -296,7 +297,10 @@ def assess_risks(
     if agent:
         from eu_ai_risks.analysis.risk_assessor_agent import assess_requirement
     else:
-        from eu_ai_risks.analysis.risk_assessor import assess_requirement
+        from eu_ai_risks.analysis.risk_assessor import assess_requirement, classify_system
+        system = classify_system([(r["id"], r["text"]) for r in requirements])
+        print(f"System classified under: {', '.join(system.annex_iii_points) or 'no Annex III point'}")
+        assess_requirement = partial(assess_requirement, system=system)
 
     article_cache: dict[str, dict] = {}
 
@@ -306,10 +310,7 @@ def assess_risks(
         requirement_text = requirement["text"]
         print(f"  [{i}/{len(requirements)}] {requirement_id}...")
 
-        assessment, fetched_articles, raw = assess_requirement(
-            requirement_id, requirement_text,
-        )
-        article_cache.update(fetched_articles)
+        assessment, raw = assess_requirement(requirement_id, requirement_text)
         citations = collect_citations(assessment.risks, article_cache)
 
         if verbose:

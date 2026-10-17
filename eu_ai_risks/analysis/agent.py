@@ -6,6 +6,7 @@ import json
 import logging
 import uuid
 from collections.abc import Callable
+
 from eu_ai_risks.analysis.models import AgentAnswer, AgentResult
 from eu_ai_risks.llm import complete_with_tools, strip_llm_wrapping
 
@@ -61,13 +62,13 @@ def _serialise_tool_call(tool_call) -> dict:
     }
 
 
-def _execute_tool_call(tool_call_dict: dict, executor: Callable) -> tuple[str, str]:
+def _execute_tool_call(tool_call_dict: dict, executor: Callable[[str, dict], str]) -> str:
     tool_name = tool_call_dict["function"]["name"] or ""
     try:
         arguments = json.loads(tool_call_dict["function"]["arguments"] or "{}")
     except json.JSONDecodeError:
         arguments = {}
-    return tool_name, executor(tool_name, arguments)
+    return executor(tool_name, arguments)
 
 
 class AgentLoop:
@@ -164,7 +165,7 @@ class AgentLoop:
             messages.append(assistant_message)
 
             for tool_call_dict in tool_calls:
-                _, result = _execute_tool_call(tool_call_dict, self.tool_executor)
+                result = _execute_tool_call(tool_call_dict, self.tool_executor)
                 if len(result) > MAX_TOOL_RESULT_CHARS:
                     result = result[:MAX_TOOL_RESULT_CHARS] + "\n...(truncated)"
                 total_tool_calls += 1
