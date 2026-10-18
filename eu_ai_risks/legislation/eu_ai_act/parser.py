@@ -17,7 +17,19 @@ RE_ANNEX = re.compile(r'^ANNEX ([IVX]+)$')
 # Two numbering styles: 'N.' is standard, '(N)' appears in definition articles
 RE_PARAGRAPH_DOT = re.compile(r'^(\d+)\.\s')
 RE_PARAGRAPH_PAREN = re.compile(r'^\((\d+)\)\s')
-RE_FOOTER = re.compile(r'^(EN\s*$|OJ L,|ELI:|/144)')
+RE_POINT = re.compile(r'^\(([a-z])\)\s')
+RE_ANNEX_POINT = re.compile(r'^(\d+)\.\s')
+# Letters that are also roman numerals, and the numeral that follows each
+ROMAN_LETTER_SUCCESSORS = {"i": "ii", "v": "vi", "x": "xi"}
+# Page footers, e.g. "60/144 ELI: http://data.europa.eu/eli/reg/2024/1689/oj"
+RE_FOOTER = re.compile(r'^(EN\s*$|OJ L,|ELI:|\d*/144)')
+# A title line ending on one of these continues on the next line
+RE_TITLE_CONTINUES = re.compile(
+    r'\b(?:of|the|and|or|for|in|on|to|with|by|a|an|from|under|its|their)$|—$')
+# Annex section headings, e.g. "Section B — Information to be submitted..."
+RE_ANNEX_SECTION = re.compile(r'^Section [A-Z](?:\.|\s+—)')
+# Sub-numbered annex items, e.g. "3.2." in Annex VII
+RE_SUB_NUMBER = re.compile(r'^\d+\.\d+\.')
 
 ROMAN_TO_INT = {
     "I": 1, "II": 2, "III": 3, "IV": 4, "V": 5,
@@ -67,14 +79,38 @@ def find_title_after_heading(
     :return: the line index of the title string and its text.
     """
 
-    for i in range(heading_index, len(all_lines)):
-        line = all_lines[i]
+    found = _next_text_line(all_lines, heading_index)
+    if found is None:
+        return heading_index, ""
+    title_index, title = found
 
+    # Long titles wrap, e.g. Article 59's ends "...in the AI regulatory" /
+    # "sandbox"; a title never ends on a connecting word, and a body line
+    # never starts lowercase
+    while (found := _next_text_line(all_lines, title_index + 1)) is not None:
+        next_index, next_line = found
+        if not (next_line[0].islower() or RE_TITLE_CONTINUES.search(title)):
+            break
+        title = f"{title} {next_line}"
+        title_index = next_index
+
+    return title_index, title
+
+
+def _next_text_line(all_lines: list[str | None], start: int) -> tuple[int, str] | None:
+    """
+    Find the next line with text, skipping page breaks and footers.
+
+    :param all_lines: the lines in the .PDF file.
+    :param start: the line index to start from.
+    :return: the index and stripped text of that line, or None at the end of the file.
+    """
+    for i in range(start, len(all_lines)):
+        line = all_lines[i]
         # None lines are page breaks; footers never contain titles
         if line is not None and line.strip() and not is_footer(line):
             return i, line.strip()
-
-    return heading_index, ""
+    return None
 
 
 def extract_paragraphs(article_segment: Segment) -> list[Segment]:
@@ -121,7 +157,140 @@ def extract_paragraphs(article_segment: Segment) -> list[Segment]:
             body=paragraph_lines,
         ))
 
+    # An unnumbered article (e.g. Article 4, or Article 16 with its points)
+    # is one paragraph; without it the text has no Paragraph node, so it gets
+    # no obligation type, points or paragraph-level retrieval
+    if not paragraphs and article_segment.body:
+        paragraphs.append(Segment(
+            type="paragraph",
+            id=f"{article_segment.id}:p1",
+            num=1,
+            parent_id=article_segment.id,
+            body=list(article_segment.body),
+        ))
+
     return paragraphs
+
+
+def _is_roman_sub_point(lines: list[str], index: int, letter: str) -> bool:
+    """
+    Check whether '(i)', '(v)' or '(x)' starts a roman sub-point, not a letter.
+
+    After point (h) the next letter is (i), but '(i)' there is often the first
+    roman sub-point of (h). It is roman when its roman successor, e.g. '(ii)',
+    appears before the letter after it, e.g. '(j)'.
+
+    :param lines: the parent segment's body lines.
+    :param index: the index of the line starting with the candidate marker.
+    :param letter: the candidate letter.
+    :return: whether the marker is a roman sub-point.
+    """
+    successor = ROMAN_LETTER_SUCCESSORS.get(letter)
+    if not successor:
+        return False
+    next_letter = f"({chr(ord(letter) + 1)})"
+    for line in lines[index + 1:]:
+        if line.startswith(f"({successor})"):
+            return True
+        if line.startswith(next_letter):
+            return False
+    return False
+
+
+def extract_points(parent_segment: Segment) -> list[Segment]:
+    """
+    Get the lettered points, e.g. (a), (b), from a paragraph or annex point.
+
+    Letters must run in sequence, so roman sub-points such as (i) under (b)
+    stay inside their point rather than starting a new one. The PDF does not
+    mark where a list ends, so the last point ends at the first sentence
+    followed by a capitalised line: the subparagraph after the list, which
+    stays in the parent's text only.
+
+    :param parent_segment: the paragraph or annex point segment.
+    :return: a list of point segments, titled with their letter.
+    """
+    points = []
+    expected_letter = "a"
+    lines = parent_segment.body
+    list_ended = False
+
+    for index, line in enumerate(lines):
+        point_match = RE_POINT.match(line)
+
+        if (point_match and point_match.group(1) == expected_letter
+                and not _is_roman_sub_point(lines, index, expected_letter)):
+            points.append(Segment(
+                type="point",
+                id=f"{parent_segment.id}:{expected_letter}",
+                num=len(points) + 1,
+                title=expected_letter,
+                parent_id=parent_segment.id,
+                body=[line],
+            ))
+            expected_letter = chr(ord(expected_letter) + 1)
+        elif points and not list_ended:
+            # e.g. Article 6(3) continues "Notwithstanding the first
+            # subparagraph, ..." after point (d), which is not part of (d)
+            if (points[-1].body[-1].endswith(".")
+                    and (line[:1].isupper() or RE_SUB_NUMBER.match(line))
+                    and not _letter_follows(lines, index, expected_letter)):
+                list_ended = True
+            else:
+                points[-1].body.append(line)
+
+    return points
+
+
+def _letter_follows(lines: list[str], index: int, letter: str) -> bool:
+    """
+    Check whether a later line starts the given point letter.
+
+    :param lines: the parent segment's body lines.
+    :param index: the index to search after.
+    :param letter: the point letter, e.g. "c".
+    :return: whether the list continues with that letter.
+    """
+    return any(RE_POINT.match(line) and line.startswith(f"({letter})")
+               for line in lines[index:])
+
+
+def extract_annex_points(annex_segment: Segment) -> list[Segment]:
+    """
+    Get the numbered points of an annex, e.g. Annex III point 4.
+
+    Numbers must run in sequence, so stray numbered lines are kept in the
+    current point. Annexes whose numbering restarts per section only get
+    their first run of points, and a section heading ends the current point
+    so later sections stay in the annex's text only (not in its last point).
+
+    :param annex_segment: the annex segment.
+    :return: a list of point segments, titled with their number.
+    """
+    points = []
+    expected_number = 1
+    in_point = False
+
+    for line in annex_segment.body:
+        point_match = RE_ANNEX_POINT.match(line)
+
+        if point_match and int(point_match.group(1)) == expected_number:
+            points.append(Segment(
+                type="point",
+                id=f"{annex_segment.id}:{expected_number}",
+                num=expected_number,
+                title=str(expected_number),
+                parent_id=annex_segment.id,
+                body=[line],
+            ))
+            expected_number += 1
+            in_point = True
+        elif RE_ANNEX_SECTION.match(line):
+            in_point = False
+        elif in_point:
+            points[-1].body.append(line)
+
+    return points
 
 
 def extract_segments(pdf_path: Path) -> list[Segment]:
@@ -273,16 +442,25 @@ def extract_segments(pdf_path: Path) -> list[Segment]:
         i += 1
 
     # Build the flat list by going over segments and expanding each article
-    # into its numbered paragraphs.
-    segments_with_paragraphs: list[Segment] = []
+    # into its numbered paragraphs and their lettered points, and each annex
+    # into its numbered points and their lettered points.
+    expanded_segments: list[Segment] = []
 
-    # For each segment, if it is an article, extract its paragraphs from its
-    # body.
     for segment in segments:
-        segments_with_paragraphs.append(segment)
+        expanded_segments.append(segment)
         if segment.type == "article":
-            segments_with_paragraphs.extend(extract_paragraphs(segment))
+            for paragraph in extract_paragraphs(segment):
+                expanded_segments.append(paragraph)
+                expanded_segments.extend(extract_points(paragraph))
+        elif segment.type == "annex":
+            annex_points = extract_annex_points(segment)
+            for annex_point in annex_points:
+                expanded_segments.append(annex_point)
+                expanded_segments.extend(extract_points(annex_point))
+            # Annex XIII lists its criteria as (a) to (g) with no numbered points
+            if not annex_points:
+                expanded_segments.extend(extract_points(segment))
 
     # Return the flat list of segments.
-    # Chapters, sections, articles, paragraphs, and annexes.
-    return segments_with_paragraphs
+    # Chapters, sections, articles, paragraphs, annexes, and points.
+    return expanded_segments

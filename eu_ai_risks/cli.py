@@ -4,6 +4,7 @@ CLI entry point for eu-ai-risks.
 
 import json
 import os
+from functools import partial
 from pathlib import Path
 
 import typer
@@ -210,23 +211,46 @@ def search(
             print(f"  {article_id}: {title}  score: {score:.4f}")
 
 
+@app.command("reset-requirements")
+def reset_requirements(confirm: bool = typer.Option(
+        False,
+        "--confirm",
+        help="Required to prevent accidental deletion."
+)):
+    """Delete all nodes and relationships from the Neo4j database."""
+    if not confirm:
+        typer.echo("Pass --confirm to drop all requirements.")
+        raise typer.Exit(1)
+    from eu_ai_risks.requirements.loader import reset_requirements
+    from eu_ai_risks.db import get_session
+    
+    with get_session() as session:
+        reset_requirements(session)
+    print("Requirements cleared.")
+
+
 @app.command("load-requirements")
 def load_requirements(
         document_path: Path = typer.Argument(
-            help="Path to a .txt, .md, .pdf, or .docx SRS"),
+            help="Path to a .md, .txt, .docx or .json SRS",
+        ),
+        save_to_json: bool = typer.Option(
+            False, "--save",
+            help="Save loaded requirements for testing purposes"
+        ),
 ):
     """Extract requirements, split into triples, and write to Neo4j."""
     from eu_ai_risks.requirements.loader import write_triples
 
     print(f"Loading requirements from {document_path} ...")
-    write_triples(document_path)
+    write_triples(document_path, save_to_json)
     print("Done.")
 
 
 @app.command("assess-risks")
 def assess_risks(
     document_path: Path = typer.Argument(
-        help="Path to a requirements document (.txt, .md, .pdf, .docx)",
+        help="Path to a requirements document (.md, .txt, .docx, .json)",
     ),
     output: Path = typer.Option(
         Path("risk-assessment.md"),
@@ -253,7 +277,7 @@ def assess_risks(
                             format="%(name)s: %(message)s")
 
     from eu_ai_risks.requirements.loader import write_triples
-    from eu_ai_risks.db.graph import list_requirements, list_categories
+    from eu_ai_risks.db.graph import list_requirements
     from eu_ai_risks.analysis.risk_report import (
         collect_citations, entries_from_assessments,
         write_markdown_report,
@@ -273,9 +297,11 @@ def assess_risks(
     if agent:
         from eu_ai_risks.analysis.risk_assessor_agent import assess_requirement
     else:
-        from eu_ai_risks.analysis.risk_assessor import assess_requirement
+        from eu_ai_risks.analysis.risk_assessor import assess_requirement, classify_system
+        system = classify_system([(r["id"], r["text"]) for r in requirements])
+        print(f"System classified under: {', '.join(system.annex_iii_points) or 'no Annex III point'}")
+        assess_requirement = partial(assess_requirement, system=system)
 
-    categories = list_categories()
     article_cache: dict[str, dict] = {}
 
     assessment_entries: list[dict] = []
@@ -284,10 +310,7 @@ def assess_risks(
         requirement_text = requirement["text"]
         print(f"  [{i}/{len(requirements)}] {requirement_id}...")
 
-        assessment, fetched_articles, raw = assess_requirement(
-            requirement_id, requirement_text, categories=categories,
-        )
-        article_cache.update(fetched_articles)
+        assessment, raw = assess_requirement(requirement_id, requirement_text)
         citations = collect_citations(assessment.risks, article_cache)
 
         if verbose:

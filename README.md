@@ -87,13 +87,13 @@ This outputs a Markdown report (`risk-assessment.md` by default) with specific r
 **Options:**
 
 ```bash
-eu-ai-risks assess-risks ./my-srs.pdf -o report.md      # Custom output path
+eu-ai-risks assess-risks ./my-srs.md -o report.md       # Custom output path
 eu-ai-risks assess-risks ./my-srs.md --agent             # Multi-turn agent loop
 eu-ai-risks assess-risks ./my-srs.md --skip-load         # Skip if requirements already in graph
 eu-ai-risks assess-risks ./my-srs.md --verbose           # Print raw LLM output
 ```
 
-Supported input formats: `.txt`, `.md`, `.pdf`, `.docx`.
+Supported input formats: `.md`, `.txt`, `.docx`, `.json`. In Markdown and text files, put each requirement on its own line; in Word files, in its own paragraph.
 
 ### Deterministic vs agent
 
@@ -113,6 +113,12 @@ Then run the assessment later with `--skip-load`:
 
 ```bash
 eu-ai-risks assess-risks ./my-srs.md --skip-load
+```
+
+Loading requirements and saving to json file
+
+```bash
+eu-ai-risks load-requrirements ./my-srs.md --save
 ```
 
 ## Graph structure
@@ -149,7 +155,7 @@ Then open:
 http://localhost:8000
 ```
 
-The UI supports `.json`, `.txt`, `.md`, `.markdown`, `.pdf`, and `.docx` requirements files. Use non-agent mode for faster demos and agent mode only when a stronger/slower assessment is acceptable.
+The UI supports `.json`, `.txt`, `.md`, `.markdown`, and `.docx` requirements files. Use non-agent mode for faster demos and agent mode only when a stronger/slower assessment is acceptable.
 
 
 ## Project structure

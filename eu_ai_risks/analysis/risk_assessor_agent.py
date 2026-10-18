@@ -3,8 +3,9 @@ Agent-based risk assessment using multi-turn tool calling against
 the Neo4j knowledge graph.
 """
 
-import json
 import re
+
+from pydantic import ValidationError
 
 from eu_ai_risks.analysis.agent import AgentLoop
 from eu_ai_risks.analysis.models import RequirementRisk
@@ -57,23 +58,12 @@ def _parse_result(raw_content: str) -> RequirementRisk:
             summary="Model did not produce a valid risk assessment.",
         )
 
-    try:
-        return RequirementRisk.model_validate_json(content)
-    except Exception:
-        pass
-
-    extracted = _extract_first_json_object(content)
-    if extracted:
-        try:
-            return RequirementRisk.model_validate_json(extracted)
-        except Exception:
-            pass
-        try:
-            data = json.loads(extracted)
-            if isinstance(data, dict):
-                return RequirementRisk.model_validate(data)
-        except Exception:
-            pass
+    for candidate in (content, _extract_first_json_object(content)):
+        if candidate:
+            try:
+                return RequirementRisk.model_validate_json(candidate)
+            except ValidationError:
+                pass
 
     # Last resort: regex-extract fields from truncated JSON
     summary_match = _RE_SUMMARY.search(content)
@@ -85,16 +75,13 @@ def _parse_result(raw_content: str) -> RequirementRisk:
             risk_level=level_match.group(1) if level_match else "medium",
         )
 
-    return RequirementRisk(
-        summary=content[:2000] if len(content) > 2000 else content,
-    )
+    return RequirementRisk(summary=content[:2000])
 
 
 def assess_requirement(
     requirement_id: str,
     requirement_text: str,
-    categories: list[dict] | None = None,
-) -> tuple[RequirementRisk, dict[str, dict], dict]:
+) -> tuple[RequirementRisk, dict]:
     """Assess a single requirement using the agent loop."""
     agent = AgentLoop(
         system_prompt=RISK_ASSESSMENT_AGENT_PROMPT,
@@ -121,4 +108,4 @@ def assess_requirement(
         "raw_content": result.raw_content,
     }
 
-    return assessment, {}, metadata
+    return assessment, metadata

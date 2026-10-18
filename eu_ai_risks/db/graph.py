@@ -142,6 +142,274 @@ def vector_search_paragraphs(
         return [(row["id"], row["num"], row["score"]) for row in query_result]
 
 
+def get_article_index() -> list[dict]:
+    """
+    Return the Act's table of contents: every article with its chapter and
+    section, in article order.
+
+    :return: list of dicts with keys: chapter_id, chapter_title, section_title,
+        article_id, article_title.
+    """
+    with get_session() as session:
+        query_result = session.run(
+            """
+			MATCH (c:Chapter)-[:CONTAINS*1..2]->(a:Article)
+			OPTIONAL MATCH (s:Section)-[:CONTAINS]->(a)
+			RETURN c.id AS chapter_id, c.title AS chapter_title,
+			       s.title AS section_title, a.id AS article_id,
+			       a.title AS article_title
+			ORDER BY toInteger(a.num)
+			"""
+        )
+        return query_result.data()
+
+
+def binding_paragraphs_for_articles(
+    article_ids: list[str],
+    query_embedding: list[float],
+    per_article: int | None = 2,
+) -> list[dict]:
+    """
+    Return each article's binding paragraphs (requirements and prohibitions)
+    most similar to the query, in the order the articles were given.
+
+    A paragraph scores as its own similarity or its best-matching point's,
+    whichever is higher, because one embedding of a long list of points
+    (e.g. Article 5(1)) matches none of them well.
+
+    :param article_ids: article node ids, e.g. ["art:10", "art:13"].
+    :param query_embedding: the query embedding vector.
+    :param per_article: maximum paragraphs to keep per article, or None for all.
+    :return: paragraph dicts in the same shape as find_paragraphs, plus
+        best_point_id (None when the paragraph text itself matched best).
+    """
+    if not article_ids:
+        return []
+
+    with get_session() as session:
+        rows = session.run(
+            """
+			UNWIND $article_ids AS article_id
+			MATCH (a:Article {id: article_id})-[:HAS_PARAGRAPH]->(p:Paragraph)
+			WHERE p.obligation_type IN ['requirement', 'prohibition']
+			      AND p.embedding IS NOT NULL
+			OPTIONAL MATCH (p)-[:HAS_POINT]->(pt:Point)
+			WHERE pt.embedding IS NOT NULL
+			WITH a, p, vector.similarity.cosine(p.embedding, $embedding) AS paragraph_score,
+			     pt, vector.similarity.cosine(pt.embedding, $embedding) AS point_score
+			ORDER BY point_score DESC
+			WITH a, p, paragraph_score,
+			     collect(pt.id)[0] AS best_point_id, max(point_score) AS best_point_score
+			RETURN p.id AS paragraph_id, p.num AS paragraph_num,
+			       p.text AS paragraph_text, p.obligation_type AS obligation_type,
+			       a.id AS article_id, a.num AS article_num,
+			       a.title AS article_title,
+			       CASE WHEN best_point_score > paragraph_score THEN best_point_id END AS best_point_id,
+			       CASE WHEN best_point_score > paragraph_score
+			            THEN best_point_score ELSE paragraph_score END AS score
+			""",
+            article_ids=article_ids,
+            embedding=query_embedding,
+        ).data()
+
+    by_article: dict[str, list[dict]] = {}
+    for row in sorted(rows, key=lambda row: row["score"], reverse=True):
+        kept = by_article.setdefault(row["article_id"], [])
+        if per_article is None or len(kept) < per_article:
+            row["score"] = round(row["score"], 4)
+            kept.append(row)
+
+    return [paragraph for article_id in article_ids for paragraph in by_article.get(article_id, [])]
+
+
+def provision_label(node_id: str) -> str:
+    """
+    Format a provision node id the way the Act cites it.
+
+    :param node_id: e.g. "art:10:p2:f", "art:3:p4", "annex:III:4:a".
+    :return: e.g. "Article 10(2)(f)", "Article 3(4)", "Annex III point 4(a)".
+    """
+    parts = node_id.split(":")
+    if parts[0] == "art" and len(parts) >= 2:
+        label = f"Article {parts[1]}"
+        if len(parts) >= 3 and parts[2].startswith("p"):
+            label += f"({parts[2][1:]})"
+        if len(parts) >= 4:
+            label += f"({parts[3]})"
+        return label
+    if parts[0] == "annex" and len(parts) >= 2:
+        label = f"Annex {parts[1]}"
+        if len(parts) >= 3:
+            label += f" point {parts[2]}"
+        if len(parts) >= 4:
+            label += f"({parts[3]})"
+        return label
+    return node_id
+
+
+def get_annex_iii_points() -> list[dict]:
+    """
+    Return the points of Annex III (the high-risk areas and their use cases).
+
+    :return: list of dicts with keys: id, text, ordered by id.
+    """
+    with get_session() as session:
+        return session.run(
+            """
+			MATCH (:Annex {id: 'annex:III'})-[:HAS_POINT*1..2]->(p:Point)
+			RETURN p.id AS id, p.text AS text
+			ORDER BY p.id
+			"""
+        ).data()
+
+
+def get_concepts() -> list[dict]:
+    """
+    Return the Article 3 concepts with the paragraph that defines each.
+
+    :return: list of dicts with keys: name, description, definition_id,
+        definition_text, article_ids and article_count (articles that use the concept).
+    """
+    with get_session() as session:
+        return session.run(
+            """
+			MATCH (definition:Paragraph)-[:DEFINES]->(c:Concept)
+			OPTIONAL MATCH (a:Article)-[:USES]->(c)
+			WITH c, definition, collect(DISTINCT a.id) AS article_ids
+			RETURN c.name AS name, c.description AS description,
+			       definition.id AS definition_id, definition.text AS definition_text,
+			       article_ids, size(article_ids) AS article_count
+			"""
+        ).data()
+
+
+def get_points(paragraph_ids: list[str]) -> dict[str, list[dict]]:
+    """
+    Return the lettered points of each paragraph, in order.
+
+    :param paragraph_ids: paragraph node ids, e.g. ["art:10:p2"].
+    :return: dict of paragraph id to its points, each with keys: id, text.
+    """
+    if not paragraph_ids:
+        return {}
+    with get_session() as session:
+        rows = session.run(
+            """
+			UNWIND $paragraph_ids AS paragraph_id
+			MATCH (:Paragraph {id: paragraph_id})-[:HAS_POINT]->(point:Point)
+			RETURN paragraph_id, point.id AS id, point.text AS text
+			ORDER BY paragraph_id, point.num
+			""",
+            paragraph_ids=paragraph_ids,
+        ).data()
+    points: dict[str, list[dict]] = {}
+    for row in rows:
+        points.setdefault(row["paragraph_id"], []).append({"id": row["id"], "text": row["text"]})
+    return points
+
+
+def get_requirement_concepts(requirement_id: str) -> list[dict]:
+    """
+    Return the Act concepts a requirement's entities were aligned to.
+
+    :param requirement_id: the requirement ID, e.g. "FR-1".
+    :return: list of dicts with keys: entity, concept.
+    """
+    with get_session() as session:
+        return session.run(
+            """
+			MATCH (:Requirement {id: $requirement_id})-[:EXTRACTED_FROM]->(e:Entity)
+			      -[:INSTANCE_OF]->(c:Concept)
+			RETURN DISTINCT e.name AS entity, c.name AS concept
+			""",
+            requirement_id=requirement_id,
+        ).data()
+
+
+def get_articles_using_concepts(concept_names: list[str]) -> dict[str, list[str]]:
+    """
+    Return the articles that use each concept.
+
+    :param concept_names: concept names, e.g. ["training data"].
+    :return: dict of concept name to article ids.
+    """
+    if not concept_names:
+        return {}
+    with get_session() as session:
+        rows = session.run(
+            """
+			MATCH (a:Article)-[:USES]->(c:Concept)
+			WHERE c.name IN $names
+			RETURN c.name AS concept, collect(a.id) AS article_ids
+			""",
+            names=concept_names,
+        ).data()
+    return {row["concept"]: row["article_ids"] for row in rows}
+
+
+def get_referenced_provisions(paragraph_ids: list[str]) -> list[dict]:
+    """
+    Follow the precise references made by paragraphs (or their points).
+
+    :param paragraph_ids: paragraph node ids, e.g. ["art:13:p3"].
+    :return: list of dicts with keys: source_id (the referencing paragraph or
+        point), target_id, target_label (Paragraph, Point, Article or Annex),
+        target_text, and for targets inside an article the containing
+        paragraph's fields (paragraph_id, paragraph_num, paragraph_text,
+        obligation_type, article_id, article_num, article_title).
+    """
+    if not paragraph_ids:
+        return []
+    with get_session() as session:
+        return session.run(
+            """
+			UNWIND $paragraph_ids AS paragraph_id
+			MATCH (:Paragraph {id: paragraph_id})-[:HAS_POINT*0..1]->(source)
+			      -[:REFERENCES]->(target)
+			OPTIONAL MATCH (point_parent:Paragraph)-[:HAS_POINT]->(target)
+			WITH source, target,
+			     CASE WHEN target:Paragraph THEN target ELSE point_parent END AS paragraph
+			OPTIONAL MATCH (article:Article)-[:HAS_PARAGRAPH]->(paragraph)
+			RETURN DISTINCT source.id AS source_id, target.id AS target_id,
+			       labels(target)[0] AS target_label, target.text AS target_text,
+			       paragraph.id AS paragraph_id, paragraph.num AS paragraph_num,
+			       paragraph.text AS paragraph_text,
+			       paragraph.obligation_type AS obligation_type,
+			       article.id AS article_id, article.num AS article_num,
+			       article.title AS article_title
+			""",
+            paragraph_ids=paragraph_ids,
+        ).data()
+
+
+def get_provisions(node_ids: list[str]) -> dict[str, dict]:
+    """
+    Look up paragraphs and points by id, with their article context.
+
+    :param node_ids: paragraph or point ids, e.g. ["art:10:p2", "art:10:p2:f"].
+    :return: dict of id to a dict with keys: id, label (Paragraph or Point),
+        text, article_id, article_num, article_title, paragraph_num,
+        point_label (None for paragraphs).
+    """
+    if not node_ids:
+        return {}
+    with get_session() as session:
+        rows = session.run(
+            """
+			MATCH (n) WHERE n.id IN $ids AND (n:Paragraph OR n:Point)
+			OPTIONAL MATCH (point_parent:Paragraph)-[:HAS_POINT]->(n)
+			WITH n, CASE WHEN n:Paragraph THEN n ELSE point_parent END AS paragraph
+			OPTIONAL MATCH (article:Article)-[:HAS_PARAGRAPH]->(paragraph)
+			RETURN n.id AS id, labels(n)[0] AS label, n.text AS text,
+			       article.id AS article_id, article.num AS article_num,
+			       article.title AS article_title, paragraph.num AS paragraph_num,
+			       CASE WHEN n:Point THEN n.label END AS point_label
+			""",
+            ids=node_ids,
+        ).data()
+    return {row["id"]: row for row in rows}
+
+
 def list_categories() -> list[dict]:
     """
     List all 14 RequirementCategory nodes with their anchor article IDs.
@@ -499,25 +767,61 @@ def get_requirement(requirement_id: str) -> dict | None:
         }
 
 
-def get_related_requirements(requirement_id: str) -> list[dict]:
+ENTITY_SIMILARITY_THRESHOLD = 0.75
+
+
+def get_related_requirements(requirement_id: str, limit: int = 5) -> list[dict]:
     """
     Find requirements that share entities with the given requirement.
 
+    Entities match when they are the same node or when their EDC definitions
+    are similar (cosine at or above ENTITY_SIMILARITY_THRESHOLD). Each match is
+    weighted by that similarity and by rarity (log of total requirements over
+    requirements mentioning the entity), so an entity every requirement
+    mentions, such as the system itself, carries no weight.
+
     :param requirement_id: the requirement ID, e.g. "REQ-001".
-    :return: list of related requirements with shared entity names.
+    :param limit: maximum number of related requirements to return.
+    :return: related requirements, strongest first, with matched entity pairs
+        and the related requirement's triples that involve them.
     """
     with get_session() as session:
         query_result = session.run(
             """
-			MATCH (r:Requirement {id: $requirement_id})-[:EXTRACTED_FROM]->(s:Entity)
-			OPTIONAL MATCH (s)-[:RELATION*0..1]-(e:Entity)
-			MATCH (other:Requirement)-[:EXTRACTED_FROM]->(e)
+			MATCH (any:Requirement)
+			WITH count(any) AS total
+			MATCH (r:Requirement {id: $requirement_id})-[:EXTRACTED_FROM]->(own:Entity)
+			MATCH (other:Requirement)-[:EXTRACTED_FROM]->(shared:Entity)
 			WHERE other.id <> $requirement_id
-			RETURN DISTINCT other.id AS id, other.text AS text,
-			       collect(DISTINCT e.name) AS shared_entities
-			ORDER BY size(collect(DISTINCT e.name)) DESC
+			WITH total, other, own, shared,
+			     CASE
+			         WHEN own = shared THEN 1.0
+			         WHEN own.definition_embedding IS NULL
+			              OR shared.definition_embedding IS NULL THEN 0.0
+			         // Neo4j rescales cosine to [0, 1]; convert back to raw cosine
+			         ELSE 2 * vector.similarity.cosine(
+			             own.definition_embedding, shared.definition_embedding) - 1
+			     END AS similarity
+			WHERE similarity >= $threshold
+			MATCH (holder:Requirement)-[:EXTRACTED_FROM]->(shared)
+			WITH total, other, own, shared, similarity, count(DISTINCT holder) AS frequency
+			WITH other, own, shared, similarity * log(toFloat(total) / frequency) AS weight
+			WHERE weight > 0
+			// Count each of this requirement's entities once per related requirement
+			ORDER BY weight DESC
+			WITH other, own, collect(shared.name)[0] AS shared_name, max(weight) AS weight
+			WITH other, collect([own.name, shared_name]) AS matches,
+			     collect(shared_name) AS shared_entities, sum(weight) AS score
+			OPTIONAL MATCH (s:Entity)-[rel:RELATION {requirement_id: other.id}]->(o:Entity)
+			WHERE s.name IN shared_entities OR o.name IN shared_entities
+			RETURN other.id AS id, other.text AS text, matches, shared_entities, score,
+			       collect([s.name, rel.type, o.name]) AS triples
+			ORDER BY score DESC, id
+			LIMIT $limit
 			""",
             requirement_id=requirement_id,
+            threshold=ENTITY_SIMILARITY_THRESHOLD,
+            limit=limit,
         )
 
         return [
@@ -525,6 +829,11 @@ def get_related_requirements(requirement_id: str) -> list[dict]:
                 "id": row["id"],
                 "text": row["text"],
                 "shared_entities": row["shared_entities"],
+                # [this requirement's entity, the related requirement's entity]
+                "matches": row["matches"],
+                "score": row["score"],
+                # OPTIONAL MATCH yields [null, null, null] when no triple matches
+                "triples": [triple for triple in row["triples"] if triple[1] is not None],
             }
             for row in query_result
         ]

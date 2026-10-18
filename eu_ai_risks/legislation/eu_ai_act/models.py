@@ -8,11 +8,13 @@ from dataclasses import dataclass, field
 @dataclass
 class Segment:
     """
-    type: chapter/article/paragraph
+    type: chapter/section/article/paragraph/annex/point
     id: a unique identifier
-    num: the chapter/article/paragraph number from the Act
-    title: the chapter/article title (paragraphs aren't titled)
-    parent_id: the id of the parent node (chapter or article id)
+    num: the chapter/article/paragraph/point number from the Act
+    title: the chapter/article title, or a point's letter or number
+            (paragraphs aren't titled)
+    parent_id: the id of the parent node (chapter, article, paragraph, annex
+            or point id)
     body: the text following the title of a chapter/article, or a paragraph's
             text.
     """
