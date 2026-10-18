@@ -13,8 +13,9 @@ requirement, SRS and output format, but differ in what they are given from the E
 ## Before running
 
 - Build and enrich the Act graph (`eu-ai-risks all`).
-- Use one `LLM_MODEL` for every setup. `full-act` sends about 90k tokens per requirement, so
-  the model needs a context window of at least 128k tokens.
+- Use one `LLM_MODEL` for every setup. `full-act` sends about 121k tokens per requirement
+  (measured on Haiku 5.5), so the model needs a context window of at least 200k tokens. On
+  Haiku 5.5 this is above the 100K-token price threshold, so each full-act call costs about $0.06.
 - Evaluate on an SRS that was not used during development, so the results do not reflect
   changes made to suit its requirements.
 
@@ -78,7 +79,14 @@ requirement, SRS and output format, but differ in what they are given from the E
 | RQ2 | `rq2_supported` | Share of risks judged supported by their cited provision |
 | RQ3 | `rq3_specific` | Share of citations of a paragraph or point rather than a whole article |
 | RQ3 | `rq3_quote_match` | Share of risks whose quote appears in the cited provision's text |
+| RQ4 | `rq4_input_tokens_mean`, `rq4_output_tokens_mean` | Mean tokens per requirement over every LLM call of the assessment (for the KG setup, its article selection too); cached input counts as input |
+| RQ4 | `rq4_tokens_per_good_risk` | All tokens the setup used, divided by its risks judged correct and supported |
+| RQ4 | KG one-off tokens | Building the requirements KG (`load_usage.json`) and classifying the system (`system.json`), once per SRS |
 | All | `mean_gap_validity`, `mean_provision_support`, `mean_citation_precision` | With `--llm`, the mean 0-10 rubric score for RQ1, RQ2 and RQ3 |
+
+Token use is recorded from runs made after it was added; older results show `-` for RQ4.
+Tokens are reported rather than prices, which change; they are specific to the model's tokenizer,
+so compare setups run on the same model.
 
 `provisions_supplied_mean` is the mean number of provisions given to the LLM per requirement.
 Recall is relative to the pool, so a risk that no setup found is not counted.

@@ -8,6 +8,8 @@ Score each setup from human judgements (judging.csv) or LLM scores
   RQ2  citations that exist in the Act, and risks judged supported by them
   RQ3  citations of a paragraph or point rather than a whole article, and
        quotes that match the cited provision's text
+  RQ4  tokens per requirement and per risk judged correct and supported, and
+       the KG setup's one-off tokens for building the requirements KG
 
 With --llm, a score at or above --threshold counts as a yes, and if
 judging.csv has human judgements, the LLM's agreement with them is reported.
@@ -93,6 +95,21 @@ def llm_rows(path: Path, threshold: int) -> list[dict]:
     return rows
 
 
+def _tokens_in(usage: dict) -> int:
+    # Cached input still has to be read by the model, so it counts towards input
+    return usage["input"] + usage["cache_read"] + usage["cache_write"]
+
+
+def one_off_usage(results: Path) -> dict | None:
+    """Tokens the KG setup spends once per SRS: building the requirements KG and classifying the system."""
+    usage = {}
+    for name, path in (("load", results / "load_usage.json"),
+                       ("classification", results / "system.json")):
+        if path.exists() and (saved := json.loads(path.read_text(encoding="utf-8"))).get("usage"):
+            usage[name] = {"input": _tokens_in(saved["usage"]), "output": saved["usage"]["output"]}
+    return usage or None
+
+
 def setup_metrics(rows: list[dict], assessments: list[dict]) -> tuple[dict, int]:
     def good(row: dict) -> bool:
         return bool(row["correct"] and row["supported"])
@@ -108,6 +125,10 @@ def setup_metrics(rows: list[dict], assessments: list[dict]) -> tuple[dict, int]
         supported = [row for row in own if row["supported"] is not None]
         found = {(row["requirement_id"], row["paragraph_id"]) for row in own if good(row)}
         provisions = [len((row["retrieval"] or {}).get("provisions", {})) for row in assessed]
+        # Results from before token use was recorded have no usage
+        usages = [row["usage"] for row in assessed if row.get("usage")]
+        tokens = sum(_tokens_in(usage) + usage["output"] for usage in usages)
+        good_risks = sum(good(row) for row in own)
         values = {
             "requirements": len(assessed),
             "not_assessed": sum(row["not_assessed"] for row in assessed),
@@ -120,6 +141,10 @@ def setup_metrics(rows: list[dict], assessments: list[dict]) -> tuple[dict, int]
             "rq3_specific": _rate(
                 sum(row["granularity"] in {"paragraph", "point"} for row in own), len(own)),
             "rq3_quote_match": _rate(sum(row["quote_match"] for row in own), len(own)),
+            "rq4_input_tokens_mean": _rate(sum(map(_tokens_in, usages)), len(usages)),
+            "rq4_output_tokens_mean": _rate(sum(u["output"] for u in usages), len(usages)),
+            "rq4_tokens_per_good_risk": (round(tokens / good_risks) if usages and good_risks
+                                         else None),
         }
         # Mean rubric scores, when an LLM judged
         for criterion in CRITERIA:
@@ -155,18 +180,28 @@ def _percent(value: float | None) -> str:
     return "--" if value is None else f"{round(value * 100)}\\%"
 
 
+def _thousands(value: float | None) -> str:
+    return "--" if value is None else f"{value / 1000:.1f}k"
+
+
 def latex_table(metrics: dict, caption: str, label: str) -> str:
     columns = [("risks", "Risks"), ("rq1_precision", "Correct"), ("rq1_recall", "Recall"),
                ("rq2_exists", "Exists"), ("rq2_supported", "Supported"),
-               ("rq3_specific", "Specific"), ("rq3_quote_match", "Quote")]
+               ("rq3_specific", "Specific"), ("rq3_quote_match", "Quote"),
+               ("rq4_input_tokens_mean", "In/req"), ("rq4_output_tokens_mean", "Out/req"),
+               ("rq4_tokens_per_good_risk", "Per risk")]
+    token_columns = {field for field, _ in columns[7:]}
     lines = [
         "\\begin{table}[t]", "\\centering", f"\\caption{{{caption}}}", f"\\label{{{label}}}",
         "\\begin{tabular}{l" + "r" * len(columns) + "}", "\\hline",
-        " & & \\multicolumn{2}{c}{RQ1} & \\multicolumn{2}{c}{RQ2} & \\multicolumn{2}{c}{RQ3} \\\\",
+        " & & \\multicolumn{2}{c}{RQ1} & \\multicolumn{2}{c}{RQ2} & \\multicolumn{2}{c}{RQ3}"
+        " & \\multicolumn{3}{c}{RQ4 (tokens)} \\\\",
         "Setup & " + " & ".join(name for _, name in columns) + " \\\\", "\\hline",
     ]
     for setup, values in metrics.items():
-        cells = [str(values["risks"])] + [_percent(values[field]) for field, _ in columns[1:]]
+        cells = [str(values["risks"])] + [
+            _thousands(values[field]) if field in token_columns else _percent(values[field])
+            for field, _ in columns[1:]]
         lines.append(f"{SETUP_NAMES[setup]} & " + " & ".join(cells) + " \\\\")
     lines += ["\\hline", "\\end{tabular}", "\\end{table}"]
     return "\n".join(lines)
@@ -204,6 +239,7 @@ def main() -> None:
         assessments = [json.loads(line) for line in file]
     metrics, pool_size = setup_metrics(rows, assessments)
     routes = kg_routes(rows)
+    one_off = one_off_usage(args.results)
 
     agreements = {}
     if args.llm and any(row["correct"] is not None for row in human):
@@ -225,6 +261,13 @@ def main() -> None:
     print("\nKG routes behind its correct and supported risks:")
     for route, counts in routes.items():
         print(f"  {route}: {counts['found']} ({counts['only_route']} found by this route only)")
+    if one_off:
+        requirements = metrics.get("kg", {}).get("requirements") or 1
+        total = sum(usage["input"] + usage["output"] for usage in one_off.values())
+        print("\nKG one-off tokens for this SRS: " + ", ".join(
+            f"{name} {usage['input']:,} in / {usage['output']:,} out"
+            for name, usage in one_off.items())
+              + f" ({total / requirements:,.0f} per requirement assessed)")
     for name, result in agreements.items():
         print(f"\nAgreement, {name.replace('_', ' ')}:")
         for field, values in result.items():
@@ -235,7 +278,7 @@ def main() -> None:
         metrics, f"Results per setup, judged by {judge}.".replace("_", "\\_"), "tab:results")
     (args.results / f"metrics_{source}.json").write_text(json.dumps({
         "source": source, "threshold": args.threshold if args.llm else None,
-        "setups": metrics, "pool_size": pool_size, "kg_routes": routes,
+        "setups": metrics, "pool_size": pool_size, "kg_routes": routes, "kg_one_off": one_off,
         "agreement": agreements,
     }, indent=2), encoding="utf-8")
     (args.results / f"results_{source}.tex").write_text(table + "\n", encoding="utf-8")

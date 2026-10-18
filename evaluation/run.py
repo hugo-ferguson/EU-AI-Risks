@@ -18,6 +18,8 @@ from eu_ai_risks.analysis.risk_assessor import (  # noqa: E402
 )
 from eu_ai_risks.db import get_session  # noqa: E402
 from eu_ai_risks.db.graph import list_requirements  # noqa: E402
+from eu_ai_risks.llm import track_usage  # noqa: E402
+from eu_ai_risks.llm.client import LLM_MODEL  # noqa: E402
 from eu_ai_risks.requirements.loader import reset_requirements, write_triples  # noqa: E402
 
 # Setup name -> retrieval mode in risk_assessor
@@ -42,10 +44,14 @@ def _system_context(requirements: list[tuple[str, str]], path: Path) -> SystemCo
             intended_purpose=saved["intended_purpose"],
             annex_iii_points=tuple(saved["annex_iii_points"]),
         )
-    system = classify_system(requirements)
+    with track_usage() as usage:
+        system = classify_system(requirements)
     path.write_text(json.dumps({
         "intended_purpose": system.intended_purpose,
         "annex_iii_points": list(system.annex_iii_points),
+        # Made once per SRS and shared by every requirement of the KG setup (RQ4)
+        "model": LLM_MODEL,
+        "usage": usage,
     }, indent=2), encoding="utf-8")
     return system
 
@@ -79,7 +85,11 @@ def main() -> None:
         with get_session() as session:
             reset_requirements(session)
         print(f"Loading requirements from {args.srs} ...")
-        write_triples(args.srs)
+        with track_usage() as usage:
+            write_triples(args.srs)
+        # Building the requirements KG is a one-off cost of the KG setup per SRS (RQ4)
+        (out / "load_usage.json").write_text(
+            json.dumps({"model": LLM_MODEL, "usage": usage}, indent=2), encoding="utf-8")
 
     requirements = [(row["id"], row["text"]) for row in list_requirements()]
     if not requirements:
@@ -104,10 +114,11 @@ def main() -> None:
                     print(f"[{done}/{total}] run {run} {setup} {requirement_id}")
                     started = time.monotonic()
                     try:
-                        assessment, raw = assess_requirement(
-                            requirement_id, text,
-                            system=system if mode == "graph" else baseline_system,
-                            mode=mode)
+                        with track_usage() as usage:
+                            assessment, raw = assess_requirement(
+                                requirement_id, text,
+                                system=system if mode == "graph" else baseline_system,
+                                mode=mode)
                     except Exception as error:  # noqa: BLE001
                         # Skipped rather than saved, so rerunning the command retries it
                         print(f"  failed: {error}")
@@ -125,6 +136,9 @@ def main() -> None:
                         "retrieval": raw.get("retrieval"),
                         "not_assessed": bool(raw.get("not_assessed")),
                         "seconds": round(time.monotonic() - started, 1),
+                        "model": LLM_MODEL,
+                        # Every LLM call of the assessment, e.g. the KG's article selection too
+                        "usage": usage,
                     }) + "\n")
                     results.flush()
 
