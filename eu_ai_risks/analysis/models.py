@@ -44,6 +44,10 @@ class RiskItem(BaseModel):
         default="",
         description="Graph node id of the cited paragraph or point, e.g. art:10:p2:f",
     )
+    quote: str = Field(
+        default="",
+        description="Words of the cited provision that impose the obligation",
+    )
     obligation_category: str = Field(
         default="",
         description="RequirementCategory key, e.g. data_governance",
