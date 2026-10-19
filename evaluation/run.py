@@ -5,6 +5,7 @@ for judging (judging.py) and scoring (metrics.py).
 
 import argparse
 import json
+import random
 import time
 from pathlib import Path
 
@@ -67,15 +68,22 @@ def main() -> None:
     parser.add_argument("--runs", type=int, default=1, help="Times to assess each requirement")
     parser.add_argument("--limit", type=int,
                         help="Only assess the first N requirements, for a quick check")
+    parser.add_argument("--sample", type=int,
+                        help="Assess N requirements chosen at random; the whole SRS stays the context")
+    parser.add_argument("--seed", type=int, default=0, help="Seed for --sample")
     parser.add_argument("--skip-load", action="store_true",
                         help="The SRS is already loaded into the graph")
     args = parser.parse_args()
 
+    if args.limit and args.sample:
+        parser.error("use --limit or --sample, not both")
     setups = [setup.strip() for setup in args.setups.split(",") if setup.strip()]
     unknown = sorted(set(setups) - set(SETUPS))
     if unknown:
         parser.error(f"unknown setups: {', '.join(unknown)}")
 
+    # A shell variable overrides .env (load_dotenv doesn't replace it), so show which model runs
+    print(f"Model: {LLM_MODEL}")
     out = args.out / args.srs.stem
     out.mkdir(parents=True, exist_ok=True)
     results_path = out / "assessments.jsonl"
@@ -98,6 +106,21 @@ def main() -> None:
     system = _system_context(requirements, out / "system.json")
     baseline_system = SystemContext(requirements=tuple(requirements))
     assessed = requirements[:args.limit] if args.limit else requirements
+    if args.sample:
+        sample_path = out / "sample.json"
+        if sample_path.exists():
+            # Reuse the saved sample, so a resumed run assesses the same requirements
+            chosen = set(json.loads(sample_path.read_text(encoding="utf-8"))["requirement_ids"])
+        else:
+            chosen = set(random.Random(args.seed).sample(
+                [rid for rid, _ in requirements], min(args.sample, len(requirements))))
+            sample_path.write_text(json.dumps({
+                "seed": args.seed, "of": len(requirements),
+                "requirement_ids": [rid for rid, _ in requirements if rid in chosen],
+            }, indent=2), encoding="utf-8")
+        # In SRS order, so the output reads like the document
+        assessed = [(rid, text) for rid, text in requirements if rid in chosen]
+        print(f"Assessing a sample of {len(assessed)} of {len(requirements)} requirements")
     print(f"System classified under: {', '.join(system.annex_iii_points) or 'no Annex III point'}")
 
     completed = _completed(results_path)
@@ -124,7 +147,7 @@ def main() -> None:
                         print(f"  failed: {error}")
                         continue
                     if raw.get("fallback_used"):
-                        print("  failed: the model did not return valid JSON")
+                        print(f"  failed: {raw.get('error', 'the model did not return valid JSON')[:500]}")
                         continue
                     results.write(json.dumps({
                         "setup": setup,

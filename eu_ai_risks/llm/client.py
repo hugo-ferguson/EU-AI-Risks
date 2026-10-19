@@ -163,11 +163,11 @@ class LLMClient:
 
         content = strip_llm_wrapping(
             str(response.choices[0].message.content or ""))
-        try:
-            return json.loads(content)
-        except json.JSONDecodeError as exc:
-            raise ValueError(
-                f"Model returned invalid JSON: {content!r}") from exc
+        # A model sometimes writes its reasoning before the JSON
+        parsed = _parse_json(content)
+        if parsed is None:
+            raise ValueError(f"Model returned invalid JSON: {content!r}")
+        return parsed
 
     def complete_json_cached(
         self,
@@ -198,9 +198,11 @@ class LLMClient:
             messages = [_cacheable_system_message(system)]
             if shared:
                 user_blocks[0]["cache_control"] = {"type": "ephemeral"}
+            messages.append({"role": "user", "content": user_blocks})
         else:
-            messages = [{"role": "system", "content": system}]
-        messages.append({"role": "user", "content": user_blocks})
+            # Plain text, which every provider accepts; OpenAI still caches the long prefix
+            messages = [{"role": "system", "content": system},
+                        {"role": "user", "content": "\n\n".join(b["text"] for b in user_blocks)}]
 
         kwargs = _base_kwargs(max_tokens, model)
         # Asking for a JSON object doesn't stop some models reasoning in prose first; a schema does

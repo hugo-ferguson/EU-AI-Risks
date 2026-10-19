@@ -118,7 +118,9 @@ def setup_metrics(rows: list[dict], assessments: list[dict]) -> tuple[dict, int]
     pool = {(row["requirement_id"], row["paragraph_id"]) for row in rows if good(row)}
     runs = {row["run"] for row in rows}
     metrics = {}
-    for setup in [s for s in SETUP_NAMES if any(row["setup"] == s for row in rows)]:
+    # From the assessments, so a setup that raised no risks is still reported
+    for setup in [s for s in SETUP_NAMES
+                  if any(row["setup"] == s and row["run"] in runs for row in assessments)]:
         own = [row for row in rows if row["setup"] == setup]
         assessed = [row for row in assessments if row["setup"] == setup and row["run"] in runs]
         correct = [row for row in own if row["correct"] is not None]
@@ -185,24 +187,34 @@ def _thousands(value: float | None) -> str:
 
 
 def latex_table(metrics: dict, caption: str, label: str) -> str:
-    columns = [("risks", "Risks"), ("rq1_precision", "Correct"), ("rq1_recall", "Recall"),
-               ("rq2_exists", "Exists"), ("rq2_supported", "Supported"),
-               ("rq3_specific", "Specific"), ("rq3_quote_match", "Quote"),
-               ("rq4_input_tokens_mean", "In/req"), ("rq4_output_tokens_mean", "Out/req"),
-               ("rq4_tokens_per_good_risk", "Per risk")]
-    token_columns = {field for field, _ in columns[7:]}
-    lines = [
-        "\\begin{table}[t]", "\\centering", f"\\caption{{{caption}}}", f"\\label{{{label}}}",
-        "\\begin{tabular}{l" + "r" * len(columns) + "}", "\\hline",
-        " & & \\multicolumn{2}{c}{RQ1} & \\multicolumn{2}{c}{RQ2} & \\multicolumn{2}{c}{RQ3}"
-        " & \\multicolumn{3}{c}{RQ4 (tokens)} \\\\",
-        "Setup & " + " & ".join(name for _, name in columns) + " \\\\", "\\hline",
+    """One column per setup and one row per measure, so it fits a single IEEE column."""
+    groups = [
+        (None, [("risks", "Risks")]),
+        ("RQ1", [("rq1_precision", "Correct"), ("rq1_recall", "Recall")]),
+        ("RQ2", [("rq2_exists", "Exists"), ("rq2_supported", "Supported")]),
+        ("RQ3", [("rq3_specific", "Specific"), ("rq3_quote_match", "Quote")]),
+        ("RQ4", [("rq4_input_tokens_mean", "Input tokens"),
+                 ("rq4_output_tokens_mean", "Output tokens"),
+                 ("rq4_tokens_per_good_risk", "Tokens per supported risk")]),
     ]
-    for setup, values in metrics.items():
-        cells = [str(values["risks"])] + [
-            _thousands(values[field]) if field in token_columns else _percent(values[field])
-            for field, _ in columns[1:]]
-        lines.append(f"{SETUP_NAMES[setup]} & " + " & ".join(cells) + " \\\\")
+    setups = list(metrics)
+    lines = [
+        "\\begin{table}[t]", "\\centering", "\\footnotesize", "\\setlength{\\tabcolsep}{4pt}",
+        f"\\caption{{{caption}}}", f"\\label{{{label}}}",
+        "\\begin{tabular}{l" + "r" * len(setups) + "}", "\\hline",
+        "Measure & " + " & ".join(SETUP_NAMES[setup] for setup in setups) + " \\\\", "\\hline",
+    ]
+    for group, rows in groups:
+        if group:
+            lines.append(f"\\multicolumn{{{len(setups) + 1}}}{{l}}{{\\textit{{{group}}}}} \\\\")
+        for field, name in rows:
+            if field == "risks":
+                cells = [str(metrics[setup]["risks"]) for setup in setups]
+            elif field.startswith("rq4"):
+                cells = [_thousands(metrics[setup][field]) for setup in setups]
+            else:
+                cells = [_percent(metrics[setup][field]) for setup in setups]
+            lines.append(("\\quad " if group else "") + f"{name} & " + " & ".join(cells) + " \\\\")
     lines += ["\\hline", "\\end{tabular}", "\\end{table}"]
     return "\n".join(lines)
 
@@ -227,7 +239,7 @@ def main() -> None:
         source = f"llm_{model}"
         judge = f"{model} (a score of {args.threshold} or more counts as yes)"
     elif human:
-        rows, source, judge = human, "human", "manual judgement"
+        rows, source, judge = human, "human", "hand"
     else:
         raise SystemExit("No judgements: run judging.py and fill in judging.csv, or pass --llm.")
 
@@ -275,7 +287,8 @@ def main() -> None:
                   f"over {values['risks']} risks".replace("\\", ""))
 
     table = latex_table(
-        metrics, f"Results per setup, judged by {judge}.".replace("_", "\\_"), "tab:results")
+        metrics, (f"Results per setup, judged by {judge}. Tokens are per requirement, "
+                  "except the last row.").replace("_", "\\_"), "tab:results")
     (args.results / f"metrics_{source}.json").write_text(json.dumps({
         "source": source, "threshold": args.threshold if args.llm else None,
         "setups": metrics, "pool_size": pool_size, "kg_routes": routes, "kg_one_off": one_off,

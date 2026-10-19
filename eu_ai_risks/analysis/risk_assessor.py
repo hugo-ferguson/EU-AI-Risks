@@ -24,7 +24,7 @@ from eu_ai_risks.db.graph import (
     get_requirement_concepts, list_categories, provision_label,
 )
 from eu_ai_risks.embeddings import embed_text
-from eu_ai_risks.llm import complete_json
+from eu_ai_risks.llm import complete_json, complete_json_cached
 
 # "graph" routes through the Act's article index, concepts and references.
 # The others are baselines for the evaluation, given nothing from the KGs:
@@ -48,8 +48,10 @@ CHUNK_PARAGRAPHS = 28
 MAX_RELATED_REQUIREMENTS = 5
 MAX_SHARED_ENTITIES = 3
 MAX_RELATED_TRIPLES = 4
-# Beyond this the rest of the SRS is left out and only related requirements are shown
-MAX_SRS_REQUIREMENTS = 80
+# Beyond this the rest of the SRS is left out and only related requirements are shown.
+# High enough for a 172-requirement SRS (about 5k tokens), so the baselines, which get
+# no related requirements, still see the whole SRS
+MAX_SRS_REQUIREMENTS = 200
 # Thinking counts towards this on models that always think, and a cut-off
 # answer is invalid JSON
 MAX_TOKENS = 16000
@@ -418,7 +420,12 @@ def _build_prompt(
     retrieval: _Retrieval,
     related_requirements: list[dict],
     system: SystemContext,
-) -> str:
+) -> tuple[str, str]:
+    """
+    The assessment prompt, as (cacheable prefix, rest). Only the full-Act
+    baseline has a prefix: its Act text is the same for every requirement, so
+    it goes first where a prompt cache can reuse it; the others keep one order.
+    """
     # The baselines get nothing derived from the KGs: no classification,
     # obligation types, scope, definitions or related requirements
     from_graph = retrieval.mode == "graph"
@@ -427,6 +434,7 @@ def _build_prompt(
         parts.append("\n## System this requirement belongs to\n")
         parts.extend(f"{line}\n" for line in _system_lines(system))
 
+    act_start = len(parts)
     parts.append("\n## Provisions from the EU AI Act\n")
     if retrieval.mode == "none":
         parts.append("None are supplied.\n")
@@ -448,6 +456,7 @@ def _build_prompt(
     for annex in retrieval.annexes:
         parts.append(f"### Annex {annex['id'].split(':')[1]}: {annex['title']} ({annex['id']})\n")
         parts.extend(_annex_lines(annex))
+    act_end = len(parts)
 
     if retrieval.definitions:
         parts.append("\n## Definitions (Article 3)\n")
@@ -479,7 +488,10 @@ def _build_prompt(
     parts.append("\nIdentify the compliance risks for this requirement based on "
                  + ("the EU AI Act." if retrieval.mode == "none" else "the provisions above."))
 
-    return "".join(parts)
+    if retrieval.mode == "full":
+        act = "".join(parts[act_start:act_end]).lstrip("\n")
+        return act, "".join(parts[:act_start] + parts[act_end:])
+    return "", "".join(parts)
 
 
 def _paragraph_lines(paragraph: dict, points: list[dict], show_type: bool = True) -> list[str]:
@@ -723,20 +735,22 @@ def assess_requirement(
         except (KeyError, ValueError):
             pass
 
-    prompt = _build_prompt(
+    act, prompt = _build_prompt(
         requirement_id, requirement_text, retrieval, related_requirements, system)
 
     try:
-        raw = complete_json(
-            prompt=prompt, system=_assessment_system_prompt(from_knowledge=mode == "none"),
-            max_tokens=MAX_TOKENS)
-    except ValueError:
+        # The system prompt, and the full-Act baseline's Act text, are cached across requirements
+        raw, _ = complete_json_cached(
+            prompt, _assessment_system_prompt(from_knowledge=mode == "none"),
+            shared=act, max_tokens=MAX_TOKENS)
+    except ValueError as error:
         assessment = _not_assessed(
             "Assessment failed: the model did not return valid JSON, "
             "so this requirement was not assessed.",
             retrieval,
         )
-        return assessment, {"retrieval": retrieval.record(), "fallback_used": True}
+        return assessment, {"retrieval": retrieval.record(), "fallback_used": True,
+                            "error": str(error)}
 
     assessment = _parse_assessment(raw)
     _remove_duplicate_risks(assessment)
