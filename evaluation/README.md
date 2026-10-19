@@ -79,6 +79,7 @@ requirement, SRS and output format, but differ in what they are given from the E
 | RQ2 | `rq2_supported` | Share of risks judged supported by their cited provision |
 | RQ3 | `rq3_specific` | Share of citations of a paragraph or point rather than a whole article |
 | RQ3 | `rq3_quote_match` | Share of risks whose quote appears in the cited provision's text |
+| RQ3 | `rq3_quote_match_loose` | The same, ignoring punctuation (needs a `key.csv` from `judging.py --key-only` or later) |
 | RQ4 | `rq4_input_tokens_mean`, `rq4_output_tokens_mean` | Mean tokens per requirement over every LLM call of the assessment (for the KG setup, its article selection too); cached input counts as input |
 | RQ4 | `rq4_tokens_per_good_risk` | All tokens the setup used, divided by its risks judged correct and supported |
 | RQ4 | KG one-off tokens | Building the requirements KG (`load_usage.json`) and classifying the system (`system.json`), once per SRS |
@@ -90,3 +91,13 @@ so compare setups run on the same model.
 
 `provisions_supplied_mean` is the mean number of provisions given to the LLM per requirement.
 Recall is relative to the pool, so a risk that no setup found is not counted.
+
+Precision and support are also given with 95% Wilson intervals (`rq1_precision_ci`,
+`rq2_supported_ci`), and the KG setup's difference in recall from each baseline with a 95% interval
+from 4,000 resamples of the requirements, drawn with replacement and a fixed seed
+(`recall_differences` in `metrics_<judge>.json`). An interval that excludes 0 means the difference
+is larger than chance.
+
+To add a new check to an SRS that has already been judged, rewrite only its key with
+`python -m evaluation.judging evaluation/results/<srs> --key-only`. It refuses to run if the rows
+no longer match the existing `judging.csv`.

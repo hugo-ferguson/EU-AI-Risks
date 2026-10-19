@@ -23,7 +23,8 @@ from eu_ai_risks.db.graph import get_article, get_provisions  # noqa: E402
 SHEET_FIELDS = ["row_id", "requirement_id", "requirement", "risk", "cited",
                 "provision_exists", "provision_text", "correct", "supported", "notes"]
 KEY_FIELDS = ["row_id", "setup", "run", "requirement_id", "risk_index", "provision_id",
-              "paragraph_id", "granularity", "exists", "quote_match", "supplied", "trace"]
+              "paragraph_id", "granularity", "exists", "quote_match", "quote_match_loose",
+              "supplied", "trace"]
 
 RE_POINT = re.compile(r"^(?:art:\d+:p\d+:[a-z]|annex:[IVX]+:\d+:[a-z])$")
 RE_PARAGRAPH = re.compile(r"^(?:art:\d+:p\d+|annex:[IVX]+:\d+)$")
@@ -104,10 +105,21 @@ def collect_risks(rows: list[dict]) -> list[dict]:
             "provision_text": provision_text,
             "quote": risk.get("quote", ""),
             "quote_match": _quote_matches(risk.get("quote", ""), provision_text),
+            "quote_match_loose": _quote_matches_loose(risk.get("quote", ""), provision_text),
             "supplied": risk["citation_supplied"],
             "trace": " | ".join(risk["trace"]),
         })
     return collected
+
+
+def _quote_matches_loose(quote: str, provision_text: str) -> bool:
+    """Like _quote_matches, but a quote that differs only in punctuation still matches."""
+    def words(text: str) -> str:
+        return re.sub(r"\s+", " ", re.sub(r"[^\w\s]", " ", text.lower())).strip()
+    parts = [words(part) for part in re.split(r"\.\.\.|\u2026", quote)]
+    parts = [part for part in parts if part]
+    text = words(provision_text)
+    return bool(parts) and all(part in text for part in parts)
 
 
 def main() -> None:
@@ -118,11 +130,13 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--force", action="store_true",
                         help="Overwrite an existing judging.csv, losing any judgements in it")
+    parser.add_argument("--key-only", action="store_true",
+                        help="Only rewrite key.csv (e.g. to add new checks), keeping judging.csv")
     args = parser.parse_args()
 
     sheet_path = args.results / "judging.csv"
     key_path = args.results / "key.csv"
-    if sheet_path.exists() and not args.force:
+    if sheet_path.exists() and not args.force and not args.key_only:
         raise SystemExit(f"{sheet_path} exists; pass --force to overwrite it.")
 
     rows = load_assessments(args.results, args.run)
@@ -150,12 +164,26 @@ def main() -> None:
         })
         key.append({"row_id": row_id, **{field: risk[field] for field in KEY_FIELDS[1:]}})
 
-    for path, fields, data in ((sheet_path, SHEET_FIELDS, sheet), (key_path, KEY_FIELDS, key)):
+    if args.key_only:
+        # Row ids follow from the seed and the assessments, so they must name the same risks as before
+        with key_path.open(newline="", encoding="utf-8") as file:
+            old = {row["row_id"]: (row["setup"], row["requirement_id"], row["risk_index"])
+                   for row in csv.DictReader(file)}
+        new = {row["row_id"]: (row["setup"], row["requirement_id"], str(row["risk_index"]))
+               for row in key}
+        if old != new:
+            raise SystemExit("The rows no longer match key.csv, so judging.csv would be "
+                             "misread; key.csv was not changed.")
+        outputs = ((key_path, KEY_FIELDS, key),)
+    else:
+        outputs = ((sheet_path, SHEET_FIELDS, sheet), (key_path, KEY_FIELDS, key))
+    for path, fields, data in outputs:
         with path.open("w", newline="", encoding="utf-8") as file:
             writer = csv.DictWriter(file, fieldnames=fields)
             writer.writeheader()
             writer.writerows(data)
-    print(f"Wrote {len(sheet)} risks to {sheet_path} (key: {key_path})")
+    print(f"Wrote {key_path}" if args.key_only else
+          f"Wrote {len(sheet)} risks to {sheet_path} (key: {key_path})")
 
 
 if __name__ == "__main__":
