@@ -1,0 +1,90 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Requirements KG construction" id="requirements-kg">
+    <mxGraphModel dx="584" dy="546" grid="1" gridSize="5" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="875" pageHeight="255" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="gedc" parent="1" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;rounded=0;fillColor=none;dashed=1;verticalAlign=top;align=left;spacingLeft=6;spacingTop=1;fontSize=10;fontStyle=1;" value="EDC" vertex="1">
+          <mxGeometry height="80" width="395" x="232" y="18" as="geometry" />
+        </mxCell>
+        <mxCell id="srs" parent="1" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;shape=document;boundedLbl=1;size=0.15;fillColor=#FFFFFF;fontSize=10;" value="SRS" vertex="1">
+          <mxGeometry height="50" width="75" x="7" y="40.5" as="geometry" />
+        </mxCell>
+        <mxCell id="r1" parent="1" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;rounded=0;fillColor=#FFFFFF;fontSize=10;" value="Requirement parsing" vertex="1">
+          <mxGeometry height="45" width="115" x="102" y="43" as="geometry" />
+        </mxCell>
+        <mxCell id="r2" parent="1" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;rounded=0;fillColor=#E6E6E6;fontSize=10;" value="Extract" vertex="1">
+          <mxGeometry height="45" width="115" x="242" y="43" as="geometry" />
+        </mxCell>
+        <mxCell id="r3" parent="1" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;rounded=0;fillColor=#E6E6E6;fontSize=10;" value="Define" vertex="1">
+          <mxGeometry height="45" width="115" x="372" y="43" as="geometry" />
+        </mxCell>
+        <mxCell id="r4" parent="1" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;rounded=0;fillColor=#E6E6E6;fontSize=10;" value="Canonicalise" vertex="1">
+          <mxGeometry height="45" width="115" x="502" y="43" as="geometry" />
+        </mxCell>
+        <mxCell id="r5" parent="1" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;rounded=0;fillColor=#E6E6E6;fontSize=10;" value="Concept alignment" vertex="1">
+          <mxGeometry height="45" width="115" x="645" y="43" as="geometry" />
+        </mxCell>
+        <mxCell id="reqkg" parent="1" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=7;fillColor=#FFFFFF;fontSize=10;" value="Requirements KG" vertex="1">
+          <mxGeometry height="60" width="80" x="787" y="35.5" as="geometry" />
+        </mxCell>
+        <mxCell id="actkg" parent="1" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=7;fillColor=#FFFFFF;fontSize=10;" value="EU AI Act KG" vertex="1">
+          <mxGeometry height="60" width="80" x="787" y="148" as="geometry" />
+        </mxCell>
+        <mxCell id="x1" parent="1" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;rounded=0;fillColor=#FFFFFF;dashed=1;dashPattern=1 2;fontSize=9;align=left;verticalAlign=top;spacing=4;" value="&quot;The system must validate training and evaluation datasets for missing values, duplicate records, and inconsistent labels before model training.&quot;" vertex="1">
+          <mxGeometry height="95" width="115" x="102" y="108" as="geometry" />
+        </mxCell>
+        <mxCell id="x2" parent="1" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;rounded=0;fillColor=#FFFFFF;dashed=1;dashPattern=1 2;fontSize=9;align=left;verticalAlign=top;spacing=4;" value="⟨system, validates, training dataset⟩&lt;br&gt;⟨system, validates, evaluation dataset⟩&lt;br&gt;⟨system, checks datasets for, missing values⟩" vertex="1">
+          <mxGeometry height="95" width="115" x="242" y="108" as="geometry" />
+        </mxCell>
+        <mxCell id="x3" parent="1" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;rounded=0;fillColor=#FFFFFF;dashed=1;dashPattern=1 2;fontSize=9;align=left;verticalAlign=top;spacing=4;" value="&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;&lt;i&gt;Training dataset&lt;/i&gt;: the set of data used to train a machine learning model.&lt;/span&gt;" vertex="1">
+          <mxGeometry height="95" width="115" x="372" y="108" as="geometry" />
+        </mxCell>
+        <mxCell id="x4" parent="1" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;rounded=0;fillColor=#FFFFFF;dashed=1;dashPattern=1 2;fontSize=9;align=left;verticalAlign=top;spacing=4;" value="&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;Search: five nearest terms by definition.&lt;br&gt;Result: no equivalent term; &#39;&lt;i&gt;training dataset&lt;/i&gt;&#39;&amp;nbsp;added.&lt;/span&gt;" vertex="1">
+          <mxGeometry height="95" width="115" x="502" y="108" as="geometry" />
+        </mxCell>
+        <mxCell id="x5" parent="1" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;rounded=0;fillColor=#FFFFFF;dashed=1;dashPattern=1 2;fontSize=9;align=left;verticalAlign=top;spacing=4;" value="&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;Create: (training dataset)&amp;nbsp;&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;color: rgb(12, 12, 12);&quot;&gt;-[INSTANCE_OF]-&amp;gt; (training data&lt;i&gt;)&lt;/i&gt; &lt;br&gt;&lt;br&gt;From: Article 3(29)&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="95" width="115" x="645" y="108" as="geometry" />
+        </mxCell>
+        <mxCell id="e0" edge="1" parent="1" source="srs" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;endSize=5;strokeColor=#000000;fontColor=#000000;fontFamily=Helvetica;fontSize=9;labelBackgroundColor=#FFFFFF;" target="r1" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="r1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;endSize=5;strokeColor=#000000;fontColor=#000000;fontFamily=Helvetica;fontSize=9;labelBackgroundColor=#FFFFFF;" target="r2" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="r2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;endSize=5;strokeColor=#000000;fontColor=#000000;fontFamily=Helvetica;fontSize=9;labelBackgroundColor=#FFFFFF;" target="r3" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="r3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;endSize=5;strokeColor=#000000;fontColor=#000000;fontFamily=Helvetica;fontSize=9;labelBackgroundColor=#FFFFFF;" target="r4" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="1" source="r4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;endSize=5;strokeColor=#000000;fontColor=#000000;fontFamily=Helvetica;fontSize=9;labelBackgroundColor=#FFFFFF;" target="r5" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_r5" edge="1" parent="1" source="r5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;endSize=5;strokeColor=#000000;fontColor=#000000;fontFamily=Helvetica;fontSize=9;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="reqkg" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_act" edge="1" parent="1" source="actkg" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;endSize=5;strokeColor=#000000;fontColor=#000000;fontFamily=Helvetica;fontSize=9;labelBackgroundColor=#FFFFFF;dashed=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.8;entryDx=0;entryDy=0;" target="r5" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="777" y="178" />
+              <mxPoint x="777" y="79" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend_llm" parent="1" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;rounded=0;fillColor=#E6E6E6;fontSize=10;" value="" vertex="1">
+          <mxGeometry height="10" width="16" x="242" y="223" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_llm_text" parent="1" style="text;html=1;fontColor=#000000;fontFamily=Helvetica;align=left;verticalAlign=middle;fontSize=9;" value="LLM step" vertex="1">
+          <mxGeometry height="18" width="60" x="262" y="219" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_box" parent="1" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;rounded=0;fillColor=#FFFFFF;fontSize=10;" value="" vertex="1">
+          <mxGeometry height="10" width="16" x="102" y="223" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_box_text" parent="1" style="text;html=1;fontColor=#000000;fontFamily=Helvetica;align=left;verticalAlign=middle;fontSize=9;" value="Deterministic step" vertex="1">
+          <mxGeometry height="18" width="90" x="122" y="219" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
