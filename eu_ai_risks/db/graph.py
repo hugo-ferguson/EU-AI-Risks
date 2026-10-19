@@ -222,6 +222,53 @@ def binding_paragraphs_for_articles(
     return [paragraph for article_id in article_ids for paragraph in by_article.get(article_id, [])]
 
 
+def get_all_paragraphs() -> list[dict]:
+    """
+    Return every paragraph of every article, in the Act's order.
+
+    :return: paragraph dicts in the same shape as find_paragraphs, without score.
+    """
+    with get_session() as session:
+        return session.run(
+            """
+			MATCH (a:Article)-[:HAS_PARAGRAPH]->(p:Paragraph)
+			RETURN p.id AS paragraph_id, p.num AS paragraph_num,
+			       p.text AS paragraph_text, p.obligation_type AS obligation_type,
+			       a.id AS article_id, a.num AS article_num,
+			       a.title AS article_title
+			ORDER BY a.num, p.num
+			"""
+        ).data()
+
+
+def get_annexes() -> list[dict]:
+    """
+    Return every annex with its points.
+
+    :return: list of dicts with keys: id, num, title, text, and points (each
+        with id and text, numbered points before their lettered points).
+    """
+    with get_session() as session:
+        rows = session.run(
+            """
+			MATCH (annex:Annex)
+			OPTIONAL MATCH (annex)-[:HAS_POINT*1..2]->(point:Point)
+			RETURN annex.id AS id, annex.num AS num, annex.title AS title,
+			       annex.text AS text,
+			       [p IN collect(point) WHERE p IS NOT NULL | {id: p.id, text: p.text}] AS points
+			ORDER BY annex.num
+			"""
+        ).data()
+
+    def point_order(point: dict) -> tuple:
+        # annex:I:10 sorts after annex:I:9, and annex:III:4 before annex:III:4:a
+        return tuple(int(part) if part.isdigit() else part for part in point["id"].split(":")[2:])
+
+    for row in rows:
+        row["points"].sort(key=point_order)
+    return rows
+
+
 def provision_label(node_id: str) -> str:
     """
     Format a provision node id the way the Act cites it.

@@ -1,0 +1,73 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="EU AI Act KG construction" id="regulation-kg">
+    <mxGraphModel dx="486" dy="454" grid="1" gridSize="5" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="380" pageHeight="560" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="pdf" parent="1" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;shape=document;boundedLbl=1;size=0.15;fillColor=#FFFFFF;fontSize=10;" value="EU AI Act (PDF)" vertex="1">
+          <mxGeometry height="45" width="95.25" x="142" y="65" as="geometry" />
+        </mxCell>
+        <mxCell id="p1" parent="1" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;rounded=0;fillColor=#FFFFFF;fontSize=10;" value="Structural parsing&lt;br&gt;&lt;font style=&quot;font-size: 8px;&quot;&gt;Chapters, sections, articles, paragraphs, points, and annexes&lt;/font&gt;" vertex="1">
+          <mxGeometry height="45" width="232.5" x="74" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="p2" parent="1" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;rounded=0;fillColor=#FFFFFF;fontSize=10;" value="Cross-reference extraction&lt;br&gt;&lt;font style=&quot;font-size: 8px;&quot;&gt;&lt;font face=&quot;Courier New&quot;&gt;REFERENCES&lt;/font&gt; edges&lt;/font&gt;" vertex="1">
+          <mxGeometry height="45" width="232.5" x="74" y="195" as="geometry" />
+        </mxCell>
+        <mxCell id="p3" parent="1" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;rounded=0;fillColor=#FFFFFF;fontSize=10;" value="Embedding" vertex="1">
+          <mxGeometry height="45" width="232.5" x="74" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="g4" parent="1" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;rounded=0;fillColor=none;dashed=1;verticalAlign=top;align=left;spacingLeft=6;spacingTop=1;fontSize=10;fontStyle=1;" value="Semantic enrichment" vertex="1">
+          <mxGeometry height="95" width="320" x="30" y="325" as="geometry" />
+        </mxCell>
+        <mxCell id="en1" parent="1" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;rounded=0;fillColor=#E6E6E6;fontSize=10;" value="Obligation types&lt;br&gt;&lt;font style=&quot;font-size: 8px;&quot;&gt;6 classes per&amp;nbsp;&lt;br&gt;paragraph&lt;/font&gt;" vertex="1">
+          <mxGeometry height="55" width="92" x="42" y="353" as="geometry" />
+        </mxCell>
+        <mxCell id="en2" parent="1" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;rounded=0;fillColor=#E6E6E6;fontSize=10;" value="Concepts&lt;br&gt;&lt;font style=&quot;font-size: 8px;&quot;&gt;Article 3 definitions; &lt;font face=&quot;Courier New&quot;&gt;DEFINES&lt;/font&gt;, &lt;font face=&quot;Courier New&quot;&gt;USES&lt;/font&gt;&lt;/font&gt;" vertex="1">
+          <mxGeometry height="55" width="92" x="144" y="353" as="geometry" />
+        </mxCell>
+        <mxCell id="en3" parent="1" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;rounded=0;fillColor=#FFFFFF;fontSize=10;" value="Dimensions&lt;br&gt;&lt;font style=&quot;font-size: 8px;&quot;&gt;parties, categories,&amp;nbsp;&lt;br&gt;and risk tiers&lt;/font&gt;" vertex="1">
+          <mxGeometry height="55" width="92" x="246" y="353" as="geometry" />
+        </mxCell>
+        <mxCell id="kg" parent="1" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=7;fillColor=#FFFFFF;fontSize=10;" value="EU AI Act KG" vertex="1">
+          <mxGeometry height="55" width="80" x="150.25" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="e0" edge="1" parent="1" source="pdf" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;endSize=5;strokeColor=#000000;fontColor=#000000;fontFamily=Helvetica;fontSize=9;labelBackgroundColor=#FFFFFF;" target="p1" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="p1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;endSize=5;strokeColor=#000000;fontColor=#000000;fontFamily=Helvetica;fontSize=9;labelBackgroundColor=#FFFFFF;" target="p2" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="p2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;endSize=5;strokeColor=#000000;fontColor=#000000;fontFamily=Helvetica;fontSize=9;labelBackgroundColor=#FFFFFF;" target="p3" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="p3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;endSize=5;strokeColor=#000000;fontColor=#000000;fontFamily=Helvetica;fontSize=9;labelBackgroundColor=#FFFFFF;" target="g4" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="1" source="g4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;endSize=5;strokeColor=#000000;fontColor=#000000;fontFamily=Helvetica;fontSize=9;labelBackgroundColor=#FFFFFF;" target="kg" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="QBxQZPCZO-YFpGQZ1e0A-5" connectable="0" parent="1" style="group" value="" vertex="1">
+          <mxGeometry height="37" width="110" x="30" y="449" as="geometry" />
+        </mxCell>
+        <mxCell id="QBxQZPCZO-YFpGQZ1e0A-2" connectable="0" parent="QBxQZPCZO-YFpGQZ1e0A-5" style="group" value="" vertex="1">
+          <mxGeometry height="18" width="80" y="19" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_llm" parent="QBxQZPCZO-YFpGQZ1e0A-2" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;rounded=0;fillColor=#E6E6E6;fontSize=10;" value="" vertex="1">
+          <mxGeometry height="10" width="16" y="4" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_llm_text" parent="QBxQZPCZO-YFpGQZ1e0A-2" style="text;html=1;fontColor=#000000;fontFamily=Helvetica;align=left;verticalAlign=middle;fontSize=9;" value="LLM step" vertex="1">
+          <mxGeometry height="18" width="60" x="20" as="geometry" />
+        </mxCell>
+        <mxCell id="QBxQZPCZO-YFpGQZ1e0A-3" connectable="0" parent="QBxQZPCZO-YFpGQZ1e0A-5" style="group" value="" vertex="1">
+          <mxGeometry height="18" width="110" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_box" parent="QBxQZPCZO-YFpGQZ1e0A-3" style="whiteSpace=wrap;html=1;fontColor=#000000;strokeColor=#000000;fontFamily=Helvetica;rounded=0;fillColor=#FFFFFF;fontSize=10;" value="" vertex="1">
+          <mxGeometry height="10" width="16" y="4" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_box_text" parent="QBxQZPCZO-YFpGQZ1e0A-3" style="text;html=1;fontColor=#000000;fontFamily=Helvetica;align=left;verticalAlign=middle;fontSize=9;" value="Deterministic step" vertex="1">
+          <mxGeometry height="18" width="90" x="20" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

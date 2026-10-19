@@ -61,8 +61,7 @@ graph text.
 # contains JSON braces, so fill it with str.replace rather than str.format
 RISK_ASSESSMENT_PROMPT = """\
 You are an EU AI Act compliance analyst. Given a software requirement and \
-EU AI Act provisions from the knowledge graph, identify requirement-level \
-compliance risks. Be concise. No essays.
+provisions of the EU AI Act, identify requirement-level compliance risks. Be concise. No essays.
 
 Rules:
 - Assess the exact requirement, not the whole SRS.
@@ -101,11 +100,7 @@ is substantively there.
   Do not default to medium: decide each risk against these anchors.
 - If no provisions support a requirement-level gap, return empty risks and \
 risk_level "low".
-- Only use provisions supplied in the prompt. Do not fabricate articles.
-- Each provision is listed with its graph id in square brackets, e.g. \
-[art:10:p2]. Set provision_id to the most specific id that supports the risk: \
-the paragraph id, or the paragraph id plus a point letter (e.g. art:10:p2:f) \
-when one lettered point is meant. Only cite ids of listed provisions.
+{citation_rules}
 - Definitions from Article 3 are listed to give the Act's meaning of terms \
 used in the provisions; rely on them when interpreting a provision.
 - Some provisions only apply to particular systems (e.g. "high-risk AI \
@@ -125,7 +120,9 @@ Respond with ONLY a JSON object:
 {"summary":"What the requirement misses and why it matters.",\
 "risks":[{"description":"Specific gap","severity":"medium",\
 "article_id":"art:14","paragraph_num":1,"provision":"Article 14(1)",\
-"provision_id":"art:14:p1","obligation_category":"human_oversight",\
+"provision_id":"art:14:p1",\
+"quote":"Exact words of the provision that impose the obligation",\
+"obligation_category":"human_oversight",\
 "engineering_action":"Add reviewer training and escalation criteria.",\
 "addressed_by":[{"id":"FR-6","covers":"override of the output (14(4)(d))"}],\
 "gap_scope":"requirement"}],\
@@ -136,8 +133,10 @@ Schema:
 - summary: 1-2 sentences. Name the gap and consequence.
 - Maximum 5 risks. Prioritise the most severe.
 - Each risk: description (one sentence), severity (high/medium/low), \
-article_id, paragraph_num, provision, provision_id, obligation_category, \
-engineering_action, addressed_by, gap_scope.
+article_id, paragraph_num, provision, provision_id, quote, \
+obligation_category, engineering_action, addressed_by, gap_scope.
+- quote: the words of the cited provision that impose the obligation, copied \
+exactly from the provision, not paraphrased.
 - risk_level: highest severity among risks.
 - recommendations: one actionable fix per risk.
 - If no risks: summary says why, risks is [], risk_level is "low".
@@ -145,6 +144,23 @@ engineering_action, addressed_by, gap_scope.
 they concern different obligations in it; never raise two risks for the same gap.
 
 /no_think"""
+
+
+# Filled into {citation_rules}: the evaluation's LLM-only baseline is given no
+# provisions, so it cites from what it knows of the Act in the same id format
+CITE_SUPPLIED_RULES = """\
+- Only use provisions supplied in the prompt. Do not fabricate articles.
+- Each provision is listed with its id in square brackets, e.g. [art:10:p2]. \
+Set provision_id to the most specific id that supports the risk: the \
+paragraph id, or the paragraph id plus a point letter (e.g. art:10:p2:f) \
+when one lettered point is meant. Only cite ids of listed provisions."""
+
+CITE_FROM_KNOWLEDGE_RULES = """\
+- No provisions are supplied: cite the provisions of the Act that support \
+each risk from your own knowledge of it. Do not fabricate articles.
+- Set provision_id to the most specific id that supports the risk: \
+art:N:pM for Article N(M), or art:N:pM:x for its point (x) (e.g. art:10:p2:f \
+for Article 10(2)(f))."""
 
 
 SYSTEM_CLASSIFICATION_PROMPT = """\

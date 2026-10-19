@@ -2,6 +2,7 @@
 research/
 .DS_Store
 .claude/
+evaluation/results/
 
 # Default ignored files
 /shelf/

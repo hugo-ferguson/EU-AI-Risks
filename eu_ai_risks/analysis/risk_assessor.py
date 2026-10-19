@@ -13,19 +13,24 @@ from pydantic import ValidationError
 
 from eu_ai_risks.analysis.models import RequirementRisk, RiskItem
 from eu_ai_risks.analysis.prompts import (
-    ARTICLE_ROUTING_PROMPT, RISK_ASSESSMENT_PROMPT, SYSTEM_CLASSIFICATION_PROMPT,
+    ARTICLE_ROUTING_PROMPT, CITE_FROM_KNOWLEDGE_RULES, CITE_SUPPLIED_RULES,
+    RISK_ASSESSMENT_PROMPT, SYSTEM_CLASSIFICATION_PROMPT,
 )
 from eu_ai_risks.db.graph import (
-    binding_paragraphs_for_articles, find_paragraphs, get_annex_iii_points,
+    binding_paragraphs_for_articles, find_paragraphs, get_all_paragraphs,
+    get_annexes, get_annex_iii_points,
     get_article_index, get_articles_using_concepts, get_concepts,
     get_points, get_provisions, get_referenced_provisions, get_related_requirements,
     get_requirement_concepts, list_categories, provision_label,
 )
 from eu_ai_risks.embeddings import embed_text
-from eu_ai_risks.llm import complete_json
+from eu_ai_risks.llm import complete_json, complete_json_cached
 
-# "graph" routes through the Act's article index, concepts and references;
-# "vector" is plain paragraph vector search, kept as a baseline to compare
+# "graph" routes through the Act's article index, concepts and references.
+# The others are baselines for the evaluation, given nothing from the KGs:
+# "chunk" (paragraphs most similar to the requirement), "full" (the whole Act)
+# and "none" (only what the LLM already knows of the Act)
+RETRIEVAL_MODES = ("graph", "chunk", "full", "none")
 RETRIEVAL_MODE = os.environ.get("EU_AI_RISKS_RETRIEVAL", "graph").strip().lower()
 
 ROUTED_ARTICLES = 5
@@ -37,19 +42,26 @@ REFERENCED_PARAGRAPHS = 3
 MAX_DEFINITIONS = 8
 VECTOR_PARAGRAPHS = 3
 VECTOR_CANDIDATES = 15
+# About as many as the graph routes supply on average, so the chunk baseline
+# isn't judged on less context
+CHUNK_PARAGRAPHS = 28
 MAX_RELATED_REQUIREMENTS = 5
 MAX_SHARED_ENTITIES = 3
 MAX_RELATED_TRIPLES = 4
-# Beyond this the rest of the SRS is left out and only related requirements are shown
-MAX_SRS_REQUIREMENTS = 80
-# Coverage notes on each risk make the output longer than the old 2048 allowed safely
-MAX_TOKENS = 4096
+# Beyond this the rest of the SRS is left out and only related requirements are shown.
+# High enough for a 172-requirement SRS (about 5k tokens), so the baselines, which get
+# no related requirements, still see the whole SRS
+MAX_SRS_REQUIREMENTS = 200
+# Thinking counts towards this on models that always think, and a cut-off
+# answer is invalid JSON
+MAX_TOKENS = 16000
 ROUTING_MAX_TOKENS = 300
 CLASSIFICATION_MAX_TOKENS = 400
 BINDING_OBLIGATION_TYPES = {"requirement", "prohibition"}
 RISK_LEVELS = ("high", "medium", "low")
 
-RE_PROVISION_ID = re.compile(r"art:\d+:p\d+(?::[a-z])?")
+# Annex points are only supplied to the full-Act baseline, but any model may cite one
+RE_PROVISION_ID = re.compile(r"art:\d+:p\d+(?::[a-z])?|annex:[IVX]+:\d+(?::[a-z])?")
 
 
 @dataclass
@@ -64,6 +76,9 @@ class _Retrieval:
     requirement_concepts: dict[str, str] = field(default_factory=dict)
     routed_articles: list[str] = field(default_factory=list)
     annex_iii_points: list[str] = field(default_factory=list)
+    mode: str = "graph"
+    # Only the full-Act baseline is given the annexes
+    annexes: list[dict] = field(default_factory=list)
 
     def add(self, paragraph: dict, via: str) -> bool:
         """Add a paragraph (or another route to it); return True if it is new."""
@@ -79,7 +94,7 @@ class _Retrieval:
     def record(self) -> dict:
         """Recorded alongside the model output so each assessment is traceable."""
         return {
-            "mode": RETRIEVAL_MODE,
+            "mode": self.mode,
             "routed_articles": self.routed_articles,
             "annex_iii_points": self.annex_iii_points,
             "provisions": dict(self.via),
@@ -168,12 +183,15 @@ def _concepts_in(text: str, article_id: str | None = None) -> list[str]:
     ]
 
 
-@lru_cache(maxsize=1)
-def _assessment_system_prompt() -> str:
+@lru_cache(maxsize=None)
+def _assessment_system_prompt(from_knowledge: bool = False) -> str:
     categories = "\n".join(
         f"- {category['key']} ({', '.join(category['article_ids'])})"
         for category in list_categories())
-    return RISK_ASSESSMENT_PROMPT.replace("{categories}", categories)
+    return (RISK_ASSESSMENT_PROMPT
+            .replace("{categories}", categories)
+            .replace("{citation_rules}",
+                     CITE_FROM_KNOWLEDGE_RULES if from_knowledge else CITE_SUPPLIED_RULES))
 
 
 def _complete_json_dict(prompt: str, system: str, max_tokens: int) -> dict | None:
@@ -362,13 +380,23 @@ def _select_definitions(
     }
 
 
-def _retrieve(requirement_id: str, requirement_text: str, system: SystemContext) -> _Retrieval:
+def _retrieve(
+    requirement_id: str, requirement_text: str, system: SystemContext, mode: str = "graph",
+) -> _Retrieval:
     """Collect the provisions for a requirement, recording how each was reached."""
-    embedding = embed_text(requirement_text)
-    retrieval = _Retrieval(annex_iii_points=list(system.annex_iii_points))
+    retrieval = _Retrieval(annex_iii_points=list(system.annex_iii_points), mode=mode)
 
-    if RETRIEVAL_MODE == "vector":
-        for paragraph in find_paragraphs(embedding, top_k=VECTOR_PARAGRAPHS):
+    if mode == "none":
+        return retrieval
+    if mode == "full":
+        for paragraph in get_all_paragraphs():
+            retrieval.add(paragraph, "full text of the Act")
+        retrieval.annexes = get_annexes()
+        return retrieval
+
+    embedding = embed_text(requirement_text)
+    if mode == "chunk":
+        for paragraph in find_paragraphs(embedding, top_k=CHUNK_PARAGRAPHS):
             retrieval.add(paragraph, "vector similarity to the requirement")
         return retrieval
 
@@ -392,15 +420,24 @@ def _build_prompt(
     retrieval: _Retrieval,
     related_requirements: list[dict],
     system: SystemContext,
-) -> str:
-    parts = [
-        f"## Requirement {requirement_id}\n",
-        f"{requirement_text}\n",
-        "\n## System this requirement belongs to\n",
-        *(f"{line}\n" for line in _system_lines(system)),
-    ]
+) -> tuple[str, str]:
+    """
+    The assessment prompt, as (cacheable prefix, rest). Only the full-Act
+    baseline has a prefix: its Act text is the same for every requirement, so
+    it goes first where a prompt cache can reuse it; the others keep one order.
+    """
+    # The baselines get nothing derived from the KGs: no classification,
+    # obligation types, scope, definitions or related requirements
+    from_graph = retrieval.mode == "graph"
+    parts = [f"## Requirement {requirement_id}\n", f"{requirement_text}\n"]
+    if from_graph:
+        parts.append("\n## System this requirement belongs to\n")
+        parts.extend(f"{line}\n" for line in _system_lines(system))
 
-    parts.append("\n## Provisions from the EU AI Act graph\n")
+    act_start = len(parts)
+    parts.append("\n## Provisions from the EU AI Act\n")
+    if retrieval.mode == "none":
+        parts.append("None are supplied.\n")
     points = get_points(list(retrieval.paragraphs))
     by_article: dict[str, list[dict]] = {}
     for paragraph in retrieval.paragraphs.values():
@@ -410,10 +447,16 @@ def _build_prompt(
         parts.append(
             f"### Article {first['article_num']}: {first['article_title']} ({article_id})\n")
         for paragraph in sorted(article_paragraphs, key=lambda p: p["paragraph_num"] or 0):
-            parts.extend(_paragraph_lines(paragraph, points.get(paragraph["paragraph_id"], [])))
+            parts.extend(_paragraph_lines(
+                paragraph, points.get(paragraph["paragraph_id"], []), show_type=from_graph))
             scope = retrieval.scope.get(paragraph["paragraph_id"])
             if scope:
                 parts.append(f"  Scope: refers to {_labels(scope)}\n")
+
+    for annex in retrieval.annexes:
+        parts.append(f"### Annex {annex['id'].split(':')[1]}: {annex['title']} ({annex['id']})\n")
+        parts.extend(_annex_lines(annex))
+    act_end = len(parts)
 
     if retrieval.definitions:
         parts.append("\n## Definitions (Article 3)\n")
@@ -442,19 +485,22 @@ def _build_prompt(
         parts.append("\n## Rest of the SRS\n")
         parts.extend(f"- **{other_id}**: {text}\n" for other_id, text in rest)
 
-    parts.append("\nIdentify the compliance risks for this requirement "
-                 "based on the provisions above.")
+    parts.append("\nIdentify the compliance risks for this requirement based on "
+                 + ("the EU AI Act." if retrieval.mode == "none" else "the provisions above."))
 
-    return "".join(parts)
+    if retrieval.mode == "full":
+        act = "".join(parts[act_start:act_end]).lstrip("\n")
+        return act, "".join(parts[:act_start] + parts[act_end:])
+    return "", "".join(parts)
 
 
-def _paragraph_lines(paragraph: dict, points: list[dict]) -> list[str]:
+def _paragraph_lines(paragraph: dict, points: list[dict], show_type: bool = True) -> list[str]:
     """
     A paragraph with each lettered point on its own line under its graph id,
     so the model can cite e.g. art:10:p2:f rather than infer the id.
     """
-    head = (f"- [{paragraph['paragraph_id']}] paragraph {paragraph['paragraph_num']} "
-            f"[{paragraph['obligation_type']}]: ")
+    head = f"- [{paragraph['paragraph_id']}] paragraph {paragraph['paragraph_num']}"
+    head += f" [{paragraph['obligation_type']}]: " if show_type else ": "
     text = paragraph["paragraph_text"] or ""
     first = text.find(points[0]["text"][:40]) if points else -1
     if first <= 0:
@@ -468,6 +514,25 @@ def _paragraph_lines(paragraph: dict, points: list[dict]) -> list[str]:
         lines.append(f"  {tail}\n")
     return lines
 
+
+
+def _annex_lines(annex: dict) -> list[str]:
+    """An annex's opening text, then each point under its id so it can be cited."""
+    text = annex["text"] or ""
+    points = annex["points"]
+    if not points:
+        return [f"{text}\n"]
+    first = text.find(points[0]["text"][:40])
+    lines = [f"{text[:first].strip()}\n"] if first > 0 else []
+    for point in points:
+        point_text = point["text"] or ""
+        # A numbered point's text repeats its lettered points, which follow it
+        child = next((other for other in points if other["id"].startswith(f"{point['id']}:")), None)
+        if child:
+            cut = point_text.find(child["text"][:40])
+            point_text = point_text[:cut].strip() if cut > 0 else point_text
+        lines.append(f"- [{point['id']}] {point_text}\n")
+    return lines
 
 def _labels(node_ids: list[str]) -> str:
     return ", ".join(provision_label(node_id) for node_id in node_ids)
@@ -557,7 +622,8 @@ def _trace_citations(assessment: RequirementRisk, retrieval: _Retrieval) -> None
     provisions = get_provisions(sorted(cited | {_paragraph_of(node_id) for node_id in cited}))
     definitions_by_id = {
         concept["definition_id"]: name for name, concept in retrieval.definitions.items()}
-    supplied = set(retrieval.paragraphs) | set(definitions_by_id)
+    supplied = (set(retrieval.paragraphs) | set(definitions_by_id)
+                | {point["id"] for annex in retrieval.annexes for point in annex["points"]})
     concepts = _concepts()
 
     for risk in assessment.risks:
@@ -571,7 +637,8 @@ def _trace_citations(assessment: RequirementRisk, retrieval: _Retrieval) -> None
         if risk.provision_id not in provisions and paragraph_id in provisions:
             risk.provision_id = paragraph_id
         node = provisions.get(risk.provision_id)
-        if node:
+        # Annex points have no article
+        if node and node["article_id"]:
             risk.article_id = node["article_id"]
             risk.paragraph_num = node["paragraph_num"]
             risk.provision = provision_label(risk.provision_id)
@@ -630,20 +697,28 @@ def assess_requirement(
     requirement_id: str,
     requirement_text: str,
     system: SystemContext | None = None,
+    mode: str | None = None,
 ) -> tuple[RequirementRisk, dict]:
     """
     Assess a single requirement against the EU AI Act graph.
 
     :param system: from classify_system over the whole SRS; without it the
         requirement is classified, and assessed, on its own.
+    :param mode: one of RETRIEVAL_MODES, defaulting to EU_AI_RISKS_RETRIEVAL.
+        Only "graph" uses the system's classification.
     :return: (assessment, raw model output plus the retrieval record).
     """
-    system = system or classify_system([(requirement_id, requirement_text)])
-    retrieval = _retrieve(requirement_id, requirement_text, system)
+    mode = mode or RETRIEVAL_MODE
+    if mode not in RETRIEVAL_MODES:
+        raise ValueError(f"Unknown retrieval mode '{mode}'; expected one of {RETRIEVAL_MODES}")
+    if not system:
+        system = (classify_system([(requirement_id, requirement_text)]) if mode == "graph"
+                  else SystemContext(requirements=((requirement_id, requirement_text),)))
+    retrieval = _retrieve(requirement_id, requirement_text, system, mode)
 
     # With nothing retrieved the model can only say "no gap"; report that as
     # not assessed so a broken or unenriched graph can't pass as low risk
-    if not retrieval.paragraphs:
+    if not retrieval.paragraphs and mode != "none":
         assessment = _not_assessed(
             "Not assessed: no EU AI Act provisions were retrieved from the graph for "
             "this requirement. Check that the graph is built and enriched "
@@ -652,24 +727,30 @@ def assess_requirement(
         )
         return assessment, {"retrieval": retrieval.record(), "not_assessed": True}
 
-    try:
-        related_requirements = get_related_requirements(
-            requirement_id, limit=MAX_RELATED_REQUIREMENTS)
-    except (KeyError, ValueError):
-        related_requirements = []
+    related_requirements = []
+    if mode == "graph":
+        try:
+            related_requirements = get_related_requirements(
+                requirement_id, limit=MAX_RELATED_REQUIREMENTS)
+        except (KeyError, ValueError):
+            pass
 
-    prompt = _build_prompt(
+    act, prompt = _build_prompt(
         requirement_id, requirement_text, retrieval, related_requirements, system)
 
     try:
-        raw = complete_json(prompt=prompt, system=_assessment_system_prompt(), max_tokens=MAX_TOKENS)
-    except ValueError:
+        # The system prompt, and the full-Act baseline's Act text, are cached across requirements
+        raw, _ = complete_json_cached(
+            prompt, _assessment_system_prompt(from_knowledge=mode == "none"),
+            shared=act, max_tokens=MAX_TOKENS)
+    except ValueError as error:
         assessment = _not_assessed(
             "Assessment failed: the model did not return valid JSON, "
             "so this requirement was not assessed.",
             retrieval,
         )
-        return assessment, {"retrieval": retrieval.record(), "fallback_used": True}
+        return assessment, {"retrieval": retrieval.record(), "fallback_used": True,
+                            "error": str(error)}
 
     assessment = _parse_assessment(raw)
     _remove_duplicate_risks(assessment)
