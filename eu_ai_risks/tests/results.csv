@@ -1,0 +1,12 @@
+scenario,risk_level,precision,recall,f1,tp,fp,fn
+001_provider_retail,prohibited,0.836,0.677,0.748,5 50 99,2 3 4 12 15 19 26,10 16 27
+002_deployer_adult-entertainment,prohibited,0.925,0.660,0.770,5 10 26 50,9 12 13 14 15,6 86 99
+003_provider_public-spaces,prohibited,0.966,0.343,0.506,5 9 10 13 14 15 19 50 86,12 26,6 8 16 17 18 20 21 27 40 41 43 44 47 48 49 71 72 73 74 77 79 82 99
+004_provider_access-to-and-enjoyment-of-essential-pri,high,0.804,0.321,0.459,9 10 13 14 15 17 19 72 86,11 12 26 50,6 8 16 18 20 21 27 43 44 47 48 49 71 73 annex_3
+005_deployer_migration-asylum-and-border-control-mana,high,0.614,0.283,0.388,10 13 14 15 26 86,9 11 12 17 19,6 27 49 50 71 77 79 annex_3
+006_deployer_access-to-and-enjoyment-of-essential-pri,high,0.732,0.400,0.517,10 13 14 15 26 86,9 12 19 50,5 6 27 71 annex_3
+007_provider_agriculture,limited,0.024,0.027,0.026,2 6,4 9 10 13 15 50 72 95,3 57 99
+008_provider_urban-mobility,limited,0.168,0.271,0.207,2 4 6,9 10 13 14 15 17 25 50 72 95,3 5
+009_provider_travel,minimal,0.407,0.220,0.286,4 50,10 13 14 15 25 53 95,2 3 5
+010_deployer_home-improvement,minimal,0.752,0.390,0.514,4 6 50 95,2 13 14 15,
+011_military_use,prohibited,0.847,0.567,0.679,2 5,9 10 12 13 14 15 19 26 50 72 86,99

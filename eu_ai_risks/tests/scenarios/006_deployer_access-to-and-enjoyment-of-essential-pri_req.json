@@ -1,0 +1,607 @@
+[
+    {
+        "id": "FR-01",
+        "text": "The system shall allow an authenticated applicant to submit a child benefit application containing household details, including the applicant\u2019s identity, each child\u2019s date of birth and relationship to the applicant, and each adult household member\u2019s details.",
+        "source": "eu_ai_risks\\tests\\scenarios\\006_deployer_access-to-and-enjoyment-of-essential-pri.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "authenticated applicant",
+                "submits",
+                "child benefit application"
+            ],
+            [
+                "child benefit application",
+                "contains",
+                "household details"
+            ],
+            [
+                "household details",
+                "contains",
+                "applicant's identity"
+            ],
+            [
+                "household details",
+                "contains",
+                "child's date of birth"
+            ],
+            [
+                "household details",
+                "contains",
+                "child's relationship to applicant"
+            ],
+            [
+                "household details",
+                "contains",
+                "adult household member's details"
+            ],
+            [
+                "system",
+                "allows",
+                "authenticated applicant"
+            ]
+        ]
+    },
+    {
+        "id": "FR-02",
+        "text": "The system shall collect and validate income data for all relevant household members, including income source, amount, and assessment period, and shall reject or flag incomplete, inconsistent, or out-of-range values before processing.",
+        "source": "eu_ai_risks\\tests\\scenarios\\006_deployer_access-to-and-enjoyment-of-essential-pri.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "collects",
+                "income data"
+            ],
+            [
+                "system",
+                "validates",
+                "income data"
+            ],
+            [
+                "income data",
+                "belongsTo",
+                "household members"
+            ],
+            [
+                "income data",
+                "contains",
+                "income source"
+            ],
+            [
+                "income data",
+                "contains",
+                "amount"
+            ],
+            [
+                "income data",
+                "contains",
+                "assessment period"
+            ],
+            [
+                "system",
+                "rejects",
+                "incomplete values"
+            ],
+            [
+                "system",
+                "rejects",
+                "inconsistent values"
+            ],
+            [
+                "system",
+                "rejects",
+                "out-of-range values"
+            ],
+            [
+                "system",
+                "flags",
+                "incomplete values"
+            ],
+            [
+                "system",
+                "flags",
+                "inconsistent values"
+            ],
+            [
+                "system",
+                "flags",
+                "out-of-range values"
+            ],
+            [
+                "system",
+                "rejects or flags values",
+                "before processing"
+            ]
+        ]
+    },
+    {
+        "id": "FR-03",
+        "text": "The system shall verify submitted identity, income, and family composition information against authorised external records (e.g., tax authority, civil registry, employer records) where available, and shall flag discrepancies for review.",
+        "source": "eu_ai_risks\\tests\\scenarios\\006_deployer_access-to-and-enjoyment-of-essential-pri.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "verifies",
+                "submitted identity information"
+            ],
+            [
+                "system",
+                "verifies",
+                "submitted income information"
+            ],
+            [
+                "system",
+                "verifies",
+                "submitted family composition information"
+            ],
+            [
+                "system",
+                "verifies information against",
+                "authorised external records"
+            ],
+            [
+                "authorised external records",
+                "contains",
+                "tax authority"
+            ],
+            [
+                "authorised external records",
+                "contains",
+                "civil registry"
+            ],
+            [
+                "authorised external records",
+                "contains",
+                "employer records"
+            ],
+            [
+                "system",
+                "flags",
+                "discrepancies"
+            ],
+            [
+                "system",
+                "flags discrepancies for",
+                "review"
+            ]
+        ]
+    },
+    {
+        "id": "FR-04",
+        "text": "The system shall determine family composition eligibility by applying configurable rules, including child age limits, dependency status, custody or residency arrangements, and the number of eligible children.",
+        "source": "eu_ai_risks\\tests\\scenarios\\006_deployer_access-to-and-enjoyment-of-essential-pri.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "determines",
+                "family composition eligibility"
+            ],
+            [
+                "system",
+                "applies",
+                "configurable rules"
+            ],
+            [
+                "configurable rules",
+                "contains",
+                "child age limits"
+            ],
+            [
+                "configurable rules",
+                "contains",
+                "dependency status"
+            ],
+            [
+                "configurable rules",
+                "contains",
+                "custody arrangements"
+            ],
+            [
+                "configurable rules",
+                "contains",
+                "residency arrangements"
+            ],
+            [
+                "configurable rules",
+                "contains",
+                "number of eligible children"
+            ]
+        ]
+    },
+    {
+        "id": "FR-05",
+        "text": "The system shall use an AI model, in combination with configurable policy rules, to calculate whether the household meets the income-based eligibility criteria and to compute the benefit amount payable per child and in total, adjusting for income thresholds, tapering, and family size.",
+        "source": "eu_ai_risks\\tests\\scenarios\\006_deployer_access-to-and-enjoyment-of-essential-pri.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "uses",
+                "AI model"
+            ],
+            [
+                "system",
+                "uses",
+                "policy rules"
+            ],
+            [
+                "policy rules",
+                "are",
+                "configurable"
+            ],
+            [
+                "AI model",
+                "determines",
+                "household eligibility"
+            ],
+            [
+                "household eligibility",
+                "depends on",
+                "income-based eligibility criteria"
+            ],
+            [
+                "system",
+                "computes",
+                "benefit amount per child"
+            ],
+            [
+                "system",
+                "computes",
+                "total benefit amount"
+            ],
+            [
+                "system",
+                "adjusts for",
+                "income thresholds"
+            ],
+            [
+                "system",
+                "adjusts for",
+                "tapering"
+            ],
+            [
+                "system",
+                "adjusts for",
+                "family size"
+            ]
+        ]
+    },
+    {
+        "id": "FR-06",
+        "text": "The system shall provide an explanation for every eligibility decision and payment calculation, listing the input data, rules, and factors that influenced the outcome, in language understandable to the applicant.",
+        "source": "eu_ai_risks\\tests\\scenarios\\006_deployer_access-to-and-enjoyment-of-essential-pri.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "provides",
+                "explanation"
+            ],
+            [
+                "explanation",
+                "covers",
+                "eligibility decision"
+            ],
+            [
+                "explanation",
+                "covers",
+                "payment calculation"
+            ],
+            [
+                "explanation",
+                "lists",
+                "input data"
+            ],
+            [
+                "explanation",
+                "lists",
+                "rules"
+            ],
+            [
+                "explanation",
+                "lists",
+                "influencing factors"
+            ],
+            [
+                "input data",
+                "influences",
+                "outcome"
+            ],
+            [
+                "rules",
+                "influences",
+                "outcome"
+            ],
+            [
+                "influencing factors",
+                "influences",
+                "outcome"
+            ],
+            [
+                "explanation",
+                "uses",
+                "understandable language"
+            ],
+            [
+                "applicant",
+                "understands",
+                "explanation"
+            ]
+        ]
+    },
+    {
+        "id": "FR-07",
+        "text": "The system shall automatically route applications to a human caseworker for review when the AI\u2019s confidence is below a configurable threshold, when data discrepancies are detected, or when the applicant requests a manual review, and shall allow caseworkers to confirm, amend, or override AI decisions with a recorded justification.",
+        "source": "eu_ai_risks\\tests\\scenarios\\006_deployer_access-to-and-enjoyment-of-essential-pri.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "routes applications to",
+                "human caseworker"
+            ],
+            [
+                "system",
+                "routes applications when",
+                "AI confidence below threshold"
+            ],
+            [
+                "AI confidence threshold",
+                "isA",
+                "configurable threshold"
+            ],
+            [
+                "system",
+                "routes applications when",
+                "data discrepancies detected"
+            ],
+            [
+                "system",
+                "routes applications when",
+                "applicant requests manual review"
+            ],
+            [
+                "human caseworker",
+                "reviews",
+                "applications"
+            ],
+            [
+                "system",
+                "allows",
+                "human caseworker"
+            ],
+            [
+                "human caseworker",
+                "confirms",
+                "AI decision"
+            ],
+            [
+                "human caseworker",
+                "amends",
+                "AI decision"
+            ],
+            [
+                "human caseworker",
+                "overrides",
+                "AI decision"
+            ],
+            [
+                "human caseworker",
+                "records",
+                "justification"
+            ]
+        ]
+    },
+    {
+        "id": "FR-08",
+        "text": "The system shall notify applicants of the decision outcome, the calculated benefit amount, and the right to appeal, and shall allow applicants to submit appeals or updated information that triggers recalculation.",
+        "source": "eu_ai_risks\\tests\\scenarios\\006_deployer_access-to-and-enjoyment-of-essential-pri.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "notifies",
+                "applicant"
+            ],
+            [
+                "system",
+                "notifies",
+                "outcome"
+            ],
+            [
+                "system",
+                "notifies",
+                "calculated benefit amount"
+            ],
+            [
+                "system",
+                "notifies",
+                "right to appeal"
+            ],
+            [
+                "system",
+                "allows applicant to submit",
+                "appeal"
+            ],
+            [
+                "system",
+                "allows applicant to submit",
+                "updated information"
+            ],
+            [
+                "applicant",
+                "submits",
+                "appeal"
+            ],
+            [
+                "applicant",
+                "submits",
+                "updated information"
+            ],
+            [
+                "updated information",
+                "triggers",
+                "recalculation"
+            ],
+            [
+                "appeal",
+                "triggers",
+                "recalculation"
+            ]
+        ]
+    },
+    {
+        "id": "FR-09",
+        "text": "The system shall recalculate eligibility and payment amounts when household circumstances change (e.g., income change, birth of a child, child reaching the age limit) or when policy thresholds are updated by an authorised administrator.",
+        "source": "eu_ai_risks\\tests\\scenarios\\006_deployer_access-to-and-enjoyment-of-essential-pri.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "recalculates",
+                "household eligibility"
+            ],
+            [
+                "system",
+                "recalculates",
+                "payment amounts"
+            ],
+            [
+                "household circumstances change",
+                "triggers",
+                "recalculation"
+            ],
+            [
+                "income change",
+                "isA",
+                "household circumstances change"
+            ],
+            [
+                "birth of a child",
+                "isA",
+                "household circumstances change"
+            ],
+            [
+                "child reaching age limit",
+                "isA",
+                "household circumstances change"
+            ],
+            [
+                "authorised administrator",
+                "updates",
+                "policy thresholds"
+            ],
+            [
+                "policy threshold update",
+                "triggers",
+                "recalculation"
+            ]
+        ]
+    },
+    {
+        "id": "FR-10",
+        "text": "The system shall maintain an immutable audit log of all applications, data inputs, AI outputs, rule versions, human overrides, and decisions, and shall restrict access to personal and financial data to authorised users in compliance with applicable data protection regulations.",
+        "source": "eu_ai_risks\\tests\\scenarios\\006_deployer_access-to-and-enjoyment-of-essential-pri.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "maintains",
+                "audit log"
+            ],
+            [
+                "audit log",
+                "isA",
+                "immutable"
+            ],
+            [
+                "audit log",
+                "records",
+                "applications"
+            ],
+            [
+                "audit log",
+                "records",
+                "input data"
+            ],
+            [
+                "audit log",
+                "records",
+                "AI outputs"
+            ],
+            [
+                "audit log",
+                "records",
+                "rule versions"
+            ],
+            [
+                "audit log",
+                "records",
+                "human overrides"
+            ],
+            [
+                "audit log",
+                "records",
+                "decisions"
+            ],
+            [
+                "system",
+                "restricts access to",
+                "personal data"
+            ],
+            [
+                "system",
+                "restricts access to",
+                "financial data"
+            ],
+            [
+                "authorised users",
+                "access",
+                "personal data"
+            ],
+            [
+                "authorised users",
+                "access",
+                "financial data"
+            ],
+            [
+                "system",
+                "complies with",
+                "data protection regulations"
+            ]
+        ]
+    }
+]

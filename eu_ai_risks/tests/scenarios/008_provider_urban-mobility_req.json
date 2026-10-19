@@ -1,0 +1,511 @@
+[
+    {
+        "id": "FR-01",
+        "text": "The system shall ingest historical and real-time station data, including bike availability, dock availability, and trip start/end events, from the bike-sharing operator\u2019s data feeds at a configurable interval of no more than 5 minutes.",
+        "source": "eu_ai_risks\\tests\\scenarios\\008_provider_urban-mobility.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "ingests",
+                "historical station data"
+            ],
+            [
+                "system",
+                "ingests",
+                "real-time station data"
+            ],
+            [
+                "station data",
+                "includes",
+                "bike availability"
+            ],
+            [
+                "station data",
+                "includes",
+                "dock availability"
+            ],
+            [
+                "station data",
+                "includes",
+                "trip start events"
+            ],
+            [
+                "station data",
+                "includes",
+                "trip end events"
+            ],
+            [
+                "system",
+                "ingests data from",
+                "operator's data feeds"
+            ],
+            [
+                "bike-sharing operator",
+                "provides",
+                "operator's data feeds"
+            ],
+            [
+                "system",
+                "ingests data at",
+                "configurable interval"
+            ],
+            [
+                "configurable interval",
+                "hasMaximum",
+                "5 minutes"
+            ]
+        ]
+    },
+    {
+        "id": "FR-02",
+        "text": "The system shall collect and integrate external contextual data that influences demand, including weather conditions and forecasts, time of day, day of week, public holidays, and scheduled local events.",
+        "source": "eu_ai_risks\\tests\\scenarios\\008_provider_urban-mobility.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "collects",
+                "external contextual data"
+            ],
+            [
+                "system",
+                "integrates",
+                "external contextual data"
+            ],
+            [
+                "external contextual data",
+                "influences",
+                "demand"
+            ],
+            [
+                "external contextual data",
+                "includes",
+                "weather conditions"
+            ],
+            [
+                "external contextual data",
+                "includes",
+                "weather forecasts"
+            ],
+            [
+                "external contextual data",
+                "includes",
+                "time of day"
+            ],
+            [
+                "external contextual data",
+                "includes",
+                "day of week"
+            ],
+            [
+                "external contextual data",
+                "includes",
+                "public holidays"
+            ],
+            [
+                "external contextual data",
+                "includes",
+                "scheduled local events"
+            ]
+        ]
+    },
+    {
+        "id": "FR-03",
+        "text": "The system shall validate and preprocess incoming data by detecting missing, duplicate, or anomalous records and applying defined cleaning or imputation rules before the data is used for prediction.",
+        "source": "eu_ai_risks\\tests\\scenarios\\008_provider_urban-mobility.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "validates",
+                "incoming data"
+            ],
+            [
+                "system",
+                "preprocesses",
+                "incoming data"
+            ],
+            [
+                "system",
+                "detects",
+                "missing records"
+            ],
+            [
+                "system",
+                "detects",
+                "duplicate records"
+            ],
+            [
+                "system",
+                "detects",
+                "anomalous records"
+            ],
+            [
+                "system",
+                "applies",
+                "cleaning rules"
+            ],
+            [
+                "system",
+                "applies",
+                "imputation rules"
+            ],
+            [
+                "incoming data",
+                "isUsedFor",
+                "prediction"
+            ]
+        ]
+    },
+    {
+        "id": "FR-04",
+        "text": "The system shall generate short-term demand predictions for each station, forecasting the expected number of bike pickups and returns for upcoming horizons (e.g., the next 15, 30, and 60 minutes).",
+        "source": "eu_ai_risks\\tests\\scenarios\\008_provider_urban-mobility.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "generates",
+                "short-term demand predictions"
+            ],
+            [
+                "short-term demand predictions",
+                "cover",
+                "each station"
+            ],
+            [
+                "system",
+                "forecasts",
+                "expected bike pickups"
+            ],
+            [
+                "system",
+                "forecasts",
+                "expected bike returns"
+            ],
+            [
+                "expected bike pickups",
+                "cover",
+                "upcoming horizons"
+            ],
+            [
+                "expected bike returns",
+                "cover",
+                "upcoming horizons"
+            ],
+            [
+                "upcoming horizons",
+                "includes",
+                "next 15 minutes"
+            ],
+            [
+                "upcoming horizons",
+                "includes",
+                "next 30 minutes"
+            ],
+            [
+                "upcoming horizons",
+                "includes",
+                "next 60 minutes"
+            ]
+        ]
+    },
+    {
+        "id": "FR-05",
+        "text": "The system shall train, retrain, and update its prediction models automatically on a configurable schedule using the latest historical data, and shall maintain versioned models so that a previous version can be restored if needed.",
+        "source": "eu_ai_risks\\tests\\scenarios\\008_provider_urban-mobility.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "trains",
+                "prediction models"
+            ],
+            [
+                "system",
+                "retrains",
+                "prediction models"
+            ],
+            [
+                "system",
+                "updates",
+                "prediction models"
+            ],
+            [
+                "system",
+                "uses",
+                "latest historical data"
+            ],
+            [
+                "system",
+                "runs on",
+                "configurable schedule"
+            ],
+            [
+                "system",
+                "maintains",
+                "versioned models"
+            ],
+            [
+                "system",
+                "restores",
+                "previous version"
+            ],
+            [
+                "versioned models",
+                "enable",
+                "restoring previous version"
+            ]
+        ]
+    },
+    {
+        "id": "FR-06",
+        "text": "The system shall evaluate prediction accuracy by comparing forecasts against actual observed demand, compute error metrics (e.g., MAE, RMSE), and flag stations or time periods where accuracy falls below a configurable threshold.",
+        "source": "eu_ai_risks\\tests\\scenarios\\008_provider_urban-mobility.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "evaluates",
+                "prediction accuracy"
+            ],
+            [
+                "system",
+                "compares",
+                "forecasts"
+            ],
+            [
+                "system",
+                "compares forecasts against",
+                "observed demand"
+            ],
+            [
+                "system",
+                "computes",
+                "error metrics"
+            ],
+            [
+                "error metrics",
+                "includes",
+                "MAE"
+            ],
+            [
+                "error metrics",
+                "includes",
+                "RMSE"
+            ],
+            [
+                "system",
+                "flags",
+                "stations"
+            ],
+            [
+                "system",
+                "flags",
+                "time periods"
+            ],
+            [
+                "stations",
+                "hasCondition",
+                "accuracy below threshold"
+            ],
+            [
+                "time periods",
+                "hasCondition",
+                "accuracy below threshold"
+            ],
+            [
+                "threshold",
+                "isA",
+                "configurable"
+            ]
+        ]
+    },
+    {
+        "id": "FR-07",
+        "text": "The system shall generate alerts when a station is predicted to run out of bikes or docks within a forecast horizon, and shall deliver these alerts to operators via the dashboard and configurable notification channels.",
+        "source": "eu_ai_risks\\tests\\scenarios\\008_provider_urban-mobility.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "generates",
+                "alerts"
+            ],
+            [
+                "alerts",
+                "warn about",
+                "station running out of bikes"
+            ],
+            [
+                "alerts",
+                "warn about",
+                "station running out of docks"
+            ],
+            [
+                "station",
+                "has",
+                "forecast horizon"
+            ],
+            [
+                "system",
+                "delivers",
+                "alerts"
+            ],
+            [
+                "system",
+                "delivers alerts to",
+                "operators"
+            ],
+            [
+                "system",
+                "delivers alerts via",
+                "dashboard"
+            ],
+            [
+                "system",
+                "delivers alerts via",
+                "notification channels"
+            ],
+            [
+                "notification channels",
+                "are",
+                "configurable"
+            ]
+        ]
+    },
+    {
+        "id": "FR-08",
+        "text": "The system shall provide an operator dashboard displaying current station status, demand forecasts, and predicted shortages or surpluses on a map and in tabular form, with filtering by station, area, and time horizon.",
+        "source": "eu_ai_risks\\tests\\scenarios\\008_provider_urban-mobility.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "provides",
+                "dashboard"
+            ],
+            [
+                "dashboard",
+                "displays",
+                "real-time station data"
+            ],
+            [
+                "dashboard",
+                "displays",
+                "forecasts"
+            ],
+            [
+                "dashboard",
+                "displays",
+                "predicted shortages"
+            ],
+            [
+                "dashboard",
+                "displays",
+                "predicted surpluses"
+            ],
+            [
+                "dashboard",
+                "displays data on",
+                "map"
+            ],
+            [
+                "dashboard",
+                "displays data in",
+                "tabular form"
+            ],
+            [
+                "dashboard",
+                "filters by",
+                "station"
+            ],
+            [
+                "dashboard",
+                "filters by",
+                "area"
+            ],
+            [
+                "dashboard",
+                "filters by",
+                "time horizon"
+            ]
+        ]
+    },
+    {
+        "id": "FR-09",
+        "text": "The system shall expose forecasts through a secured API so that other systems, such as rebalancing/dispatch tools and rider-facing applications, can retrieve station-level predictions programmatically.",
+        "source": "eu_ai_risks\\tests\\scenarios\\008_provider_urban-mobility.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "exposes",
+                "forecasts"
+            ],
+            [
+                "system",
+                "uses",
+                "secured API"
+            ],
+            [
+                "secured API",
+                "provides",
+                "forecasts"
+            ],
+            [
+                "other systems",
+                "retrieve",
+                "station-level predictions"
+            ],
+            [
+                "other systems",
+                "retrieve predictions through",
+                "secured API"
+            ],
+            [
+                "rebalancing/dispatch tools",
+                "isExampleOf",
+                "other systems"
+            ],
+            [
+                "rider-facing applications",
+                "isExampleOf",
+                "other systems"
+            ],
+            [
+                "other systems",
+                "retrieve predictions",
+                "programmatically"
+            ]
+        ]
+    }
+]

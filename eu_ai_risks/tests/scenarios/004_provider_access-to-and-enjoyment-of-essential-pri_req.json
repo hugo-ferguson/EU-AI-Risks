@@ -1,0 +1,562 @@
+[
+    {
+        "id": "FR-01",
+        "text": "The system shall collect and ingest applicant data from authorized sources, including application forms, credit bureau records, bank transaction histories, income and employment verification, and existing debt obligations.",
+        "source": "eu_ai_risks\\tests\\scenarios\\004_provider_access-to-and-enjoyment-of-essential-pri.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "collects",
+                "applicant data"
+            ],
+            [
+                "system",
+                "ingests",
+                "applicant data"
+            ],
+            [
+                "applicant data",
+                "comes from",
+                "authorized sources"
+            ],
+            [
+                "authorized sources",
+                "include",
+                "application forms"
+            ],
+            [
+                "authorized sources",
+                "include",
+                "credit bureau records"
+            ],
+            [
+                "authorized sources",
+                "include",
+                "bank transaction histories"
+            ],
+            [
+                "authorized sources",
+                "include",
+                "income verification"
+            ],
+            [
+                "authorized sources",
+                "include",
+                "employment verification"
+            ],
+            [
+                "authorized sources",
+                "include",
+                "existing debt obligations"
+            ]
+        ]
+    },
+    {
+        "id": "FR-02",
+        "text": "The system shall validate, clean, and standardize all ingested applicant data, flagging missing, inconsistent, or anomalous values for correction or manual review before scoring.",
+        "source": "eu_ai_risks\\tests\\scenarios\\004_provider_access-to-and-enjoyment-of-essential-pri.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "validates",
+                "applicant data"
+            ],
+            [
+                "system",
+                "cleans",
+                "applicant data"
+            ],
+            [
+                "system",
+                "standardizes",
+                "applicant data"
+            ],
+            [
+                "system",
+                "flags",
+                "missing values"
+            ],
+            [
+                "system",
+                "flags",
+                "inconsistent values"
+            ],
+            [
+                "system",
+                "flags",
+                "anomalous values"
+            ],
+            [
+                "flagged values",
+                "undergo",
+                "correction"
+            ],
+            [
+                "flagged values",
+                "undergo",
+                "manual review"
+            ],
+            [
+                "system",
+                "validates data before",
+                "scoring"
+            ]
+        ]
+    },
+    {
+        "id": "FR-03",
+        "text": "The system shall use a trained AI model to calculate a numeric credit score for each applicant, along with a risk category (e.g., low, medium, high), based on the processed applicant data.",
+        "source": "eu_ai_risks\\tests\\scenarios\\004_provider_access-to-and-enjoyment-of-essential-pri.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "uses",
+                "AI model"
+            ],
+            [
+                "AI model",
+                "isA",
+                "AI model"
+            ],
+            [
+                "AI model",
+                "calculates",
+                "credit score"
+            ],
+            [
+                "credit score",
+                "isA",
+                "numeric score"
+            ],
+            [
+                "credit score",
+                "belongsTo",
+                "applicant"
+            ],
+            [
+                "AI model",
+                "calculates",
+                "risk category"
+            ],
+            [
+                "risk category",
+                "belongsTo",
+                "applicant"
+            ],
+            [
+                "risk category",
+                "hasValue",
+                "low"
+            ],
+            [
+                "risk category",
+                "hasValue",
+                "medium"
+            ],
+            [
+                "risk category",
+                "hasValue",
+                "high"
+            ],
+            [
+                "AI model",
+                "uses",
+                "processed applicant data"
+            ],
+            [
+                "credit score",
+                "isBasedOn",
+                "processed applicant data"
+            ],
+            [
+                "risk category",
+                "isBasedOn",
+                "processed applicant data"
+            ]
+        ]
+    },
+    {
+        "id": "FR-04",
+        "text": "The system shall provide an explanation for each credit score, identifying the key factors and their relative influence on the result, in a form understandable to loan officers and applicants.",
+        "source": "eu_ai_risks\\tests\\scenarios\\004_provider_access-to-and-enjoyment-of-essential-pri.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "provides",
+                "explanation"
+            ],
+            [
+                "explanation",
+                "explains",
+                "credit score"
+            ],
+            [
+                "explanation",
+                "identifies",
+                "key factors"
+            ],
+            [
+                "explanation",
+                "identifies",
+                "relative influence"
+            ],
+            [
+                "key factors",
+                "have",
+                "relative influence"
+            ],
+            [
+                "relative influence",
+                "affects",
+                "credit score"
+            ],
+            [
+                "explanation",
+                "is understandable to",
+                "loan officers"
+            ],
+            [
+                "explanation",
+                "is understandable to",
+                "applicant"
+            ]
+        ]
+    },
+    {
+        "id": "FR-05",
+        "text": "The system shall generate a creditworthiness recommendation (approve, decline, or refer for manual review) by comparing the credit score and risk category against configurable lending policy thresholds.",
+        "source": "eu_ai_risks\\tests\\scenarios\\004_provider_access-to-and-enjoyment-of-essential-pri.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "generates",
+                "creditworthiness recommendation"
+            ],
+            [
+                "creditworthiness recommendation",
+                "hasOption",
+                "approve"
+            ],
+            [
+                "creditworthiness recommendation",
+                "hasOption",
+                "decline"
+            ],
+            [
+                "creditworthiness recommendation",
+                "hasOption",
+                "refer for manual review"
+            ],
+            [
+                "system",
+                "compares",
+                "credit score"
+            ],
+            [
+                "system",
+                "compares",
+                "risk category"
+            ],
+            [
+                "credit score",
+                "isComparedAgainst",
+                "lending policy thresholds"
+            ],
+            [
+                "risk category",
+                "isComparedAgainst",
+                "lending policy thresholds"
+            ],
+            [
+                "lending policy thresholds",
+                "isProperty",
+                "configurable"
+            ]
+        ]
+    },
+    {
+        "id": "FR-06",
+        "text": "The system shall allow authorized loan officers to review, override, or escalate AI-generated recommendations, requiring a documented justification for every override.",
+        "source": "eu_ai_risks\\tests\\scenarios\\004_provider_access-to-and-enjoyment-of-essential-pri.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "authorized loan officer",
+                "reviews",
+                "AI-generated recommendation"
+            ],
+            [
+                "authorized loan officer",
+                "overrides",
+                "AI-generated recommendation"
+            ],
+            [
+                "authorized loan officer",
+                "escalates",
+                "AI-generated recommendation"
+            ],
+            [
+                "override",
+                "requires",
+                "documented justification"
+            ],
+            [
+                "system",
+                "allows",
+                "authorized loan officer"
+            ]
+        ]
+    },
+    {
+        "id": "FR-07",
+        "text": "The system shall monitor the model for bias and fairness by evaluating outcomes across protected demographic groups, excluding protected attributes (e.g., race, gender, religion) as scoring inputs, and alerting administrators when disparities exceed defined limits.",
+        "source": "eu_ai_risks\\tests\\scenarios\\004_provider_access-to-and-enjoyment-of-essential-pri.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "monitors",
+                "AI model"
+            ],
+            [
+                "system",
+                "evaluates",
+                "outcomes"
+            ],
+            [
+                "outcomes",
+                "span",
+                "protected demographic groups"
+            ],
+            [
+                "system",
+                "excludes",
+                "protected attributes"
+            ],
+            [
+                "protected attributes",
+                "include",
+                "race"
+            ],
+            [
+                "protected attributes",
+                "include",
+                "gender"
+            ],
+            [
+                "protected attributes",
+                "include",
+                "religion"
+            ],
+            [
+                "protected attributes",
+                "are excluded as",
+                "scoring inputs"
+            ],
+            [
+                "system",
+                "alerts",
+                "administrators"
+            ],
+            [
+                "system",
+                "alerts when",
+                "disparities exceed defined limits"
+            ]
+        ]
+    },
+    {
+        "id": "FR-08",
+        "text": "The system shall maintain an immutable audit log of all inputs, model versions, scores, explanations, recommendations, and human overrides to support regulatory compliance and dispute resolution.",
+        "source": "eu_ai_risks\\tests\\scenarios\\004_provider_access-to-and-enjoyment-of-essential-pri.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "maintains",
+                "audit log"
+            ],
+            [
+                "audit log",
+                "isA",
+                "immutable"
+            ],
+            [
+                "audit log",
+                "records",
+                "inputs"
+            ],
+            [
+                "audit log",
+                "records",
+                "model versions"
+            ],
+            [
+                "audit log",
+                "records",
+                "scores"
+            ],
+            [
+                "audit log",
+                "records",
+                "explanation"
+            ],
+            [
+                "audit log",
+                "records",
+                "AI-generated recommendation"
+            ],
+            [
+                "audit log",
+                "records",
+                "override"
+            ],
+            [
+                "audit log",
+                "supports",
+                "regulatory compliance"
+            ],
+            [
+                "audit log",
+                "supports",
+                "dispute resolution"
+            ]
+        ]
+    },
+    {
+        "id": "FR-09",
+        "text": "The system shall enable applicants to access the data used in their assessment, request corrections, and contest decisions, and shall generate adverse action notices stating the principal reasons for any declined application.",
+        "source": "eu_ai_risks\\tests\\scenarios\\004_provider_access-to-and-enjoyment-of-essential-pri.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "allows",
+                "applicant"
+            ],
+            [
+                "applicant",
+                "access",
+                "assessment data"
+            ],
+            [
+                "applicant",
+                "request",
+                "corrections"
+            ],
+            [
+                "applicant",
+                "contest",
+                "decisions"
+            ],
+            [
+                "system",
+                "generates",
+                "adverse action notices"
+            ],
+            [
+                "adverse action notices",
+                "state",
+                "principal reasons"
+            ],
+            [
+                "principal reasons",
+                "explains",
+                "declined application"
+            ]
+        ]
+    },
+    {
+        "id": "FR-10",
+        "text": "The system shall track model performance over time (e.g., accuracy, drift, default prediction rates) and support controlled retraining, versioning, and rollback of models by authorized administrators.",
+        "source": "eu_ai_risks\\tests\\scenarios\\004_provider_access-to-and-enjoyment-of-essential-pri.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "tracks",
+                "model performance"
+            ],
+            [
+                "model performance",
+                "includes",
+                "accuracy"
+            ],
+            [
+                "model performance",
+                "includes",
+                "drift"
+            ],
+            [
+                "model performance",
+                "includes",
+                "default prediction rates"
+            ],
+            [
+                "system",
+                "supports",
+                "controlled retraining"
+            ],
+            [
+                "system",
+                "supports",
+                "model versioning"
+            ],
+            [
+                "system",
+                "supports",
+                "model rollback"
+            ],
+            [
+                "authorized administrators",
+                "perform",
+                "controlled retraining"
+            ],
+            [
+                "authorized administrators",
+                "perform",
+                "model versioning"
+            ],
+            [
+                "authorized administrators",
+                "perform",
+                "model rollback"
+            ]
+        ]
+    }
+]

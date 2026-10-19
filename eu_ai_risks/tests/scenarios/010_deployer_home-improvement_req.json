@@ -1,0 +1,335 @@
+[
+    {
+        "id": "FR-01",
+        "text": "The system shall present the user with a predefined set of selectable moods (e.g., relaxed, focused, energetic, sleepy, social, romantic).",
+        "source": "eu_ai_risks\\tests\\scenarios\\010_deployer_home-improvement.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "presents",
+                "predefined set of moods"
+            ],
+            [
+                "user",
+                "selects",
+                "mood"
+            ],
+            [
+                "predefined set of moods",
+                "includes",
+                "relaxed"
+            ],
+            [
+                "predefined set of moods",
+                "includes",
+                "focused"
+            ],
+            [
+                "predefined set of moods",
+                "includes",
+                "energetic"
+            ],
+            [
+                "predefined set of moods",
+                "includes",
+                "sleepy"
+            ],
+            [
+                "predefined set of moods",
+                "includes",
+                "social"
+            ],
+            [
+                "predefined set of moods",
+                "includes",
+                "romantic"
+            ]
+        ]
+    },
+    {
+        "id": "FR-02",
+        "text": "The system shall allow the user to select exactly one mood at a time as the input for generating a lighting suggestion.",
+        "source": "eu_ai_risks\\tests\\scenarios\\010_deployer_home-improvement.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "user",
+                "selects",
+                "mood"
+            ],
+            [
+                "user",
+                "selects",
+                "one mood at a time"
+            ],
+            [
+                "mood",
+                "isInputFor",
+                "lighting suggestion"
+            ],
+            [
+                "system",
+                "generates",
+                "lighting suggestion"
+            ]
+        ]
+    },
+    {
+        "id": "FR-03",
+        "text": "The system shall use an AI model to map the selected mood to a recommended indoor lighting colour temperature value expressed in Kelvin (K) within the range 2000K to 6500K.",
+        "source": "eu_ai_risks\\tests\\scenarios\\010_deployer_home-improvement.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "uses",
+                "AI model"
+            ],
+            [
+                "AI model",
+                "maps",
+                "selected mood"
+            ],
+            [
+                "AI model",
+                "recommends",
+                "indoor lighting colour temperature"
+            ],
+            [
+                "indoor lighting colour temperature",
+                "expressedIn",
+                "Kelvin"
+            ],
+            [
+                "indoor lighting colour temperature",
+                "hasMinimumValue",
+                "2000K"
+            ],
+            [
+                "indoor lighting colour temperature",
+                "hasMaximumValue",
+                "6500K"
+            ]
+        ]
+    },
+    {
+        "id": "FR-04",
+        "text": "The system shall display the recommended colour temperature to the user as both a numeric Kelvin value and a descriptive label (e.g., \u201cWarm White\u201d, \u201cNeutral White\u201d, \u201cCool White\u201d).",
+        "source": "eu_ai_risks\\tests\\scenarios\\010_deployer_home-improvement.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "presents",
+                "indoor lighting colour temperature"
+            ],
+            [
+                "system",
+                "displays recommended colour temperature to",
+                "user"
+            ],
+            [
+                "indoor lighting colour temperature",
+                "isDisplayedAs",
+                "numeric Kelvin value"
+            ],
+            [
+                "indoor lighting colour temperature",
+                "isDisplayedAs",
+                "descriptive label"
+            ],
+            [
+                "descriptive label",
+                "hasExample",
+                "Warm White"
+            ],
+            [
+                "descriptive label",
+                "hasExample",
+                "Neutral White"
+            ],
+            [
+                "descriptive label",
+                "hasExample",
+                "Cool White"
+            ]
+        ]
+    },
+    {
+        "id": "FR-05",
+        "text": "The system shall provide a visual preview of the recommended colour temperature on the user interface so the user can see the suggested lighting tone before applying it.",
+        "source": "eu_ai_risks\\tests\\scenarios\\010_deployer_home-improvement.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "presents",
+                "visual preview"
+            ],
+            [
+                "visual preview",
+                "presents",
+                "indoor lighting colour temperature"
+            ],
+            [
+                "visual preview",
+                "appears on",
+                "user interface"
+            ],
+            [
+                "user",
+                "sees",
+                "suggested lighting tone"
+            ],
+            [
+                "user",
+                "applies",
+                "suggested lighting tone"
+            ],
+            [
+                "user",
+                "sees tone before",
+                "applying"
+            ]
+        ]
+    },
+    {
+        "id": "FR-06",
+        "text": "The system shall allow the user to accept the suggestion, reject it, or manually adjust the suggested value within the permitted range.",
+        "source": "eu_ai_risks\\tests\\scenarios\\010_deployer_home-improvement.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "user",
+                "accepts",
+                "suggestion"
+            ],
+            [
+                "user",
+                "rejects",
+                "suggestion"
+            ],
+            [
+                "user",
+                "adjusts manually",
+                "suggested value"
+            ],
+            [
+                "suggested value",
+                "hasLimit",
+                "permitted range"
+            ]
+        ]
+    },
+    {
+        "id": "FR-07",
+        "text": "The system shall generate a new suggestion each time the user selects a different mood, with the updated recommendation displayed within 2 seconds of selection.",
+        "source": "eu_ai_risks\\tests\\scenarios\\010_deployer_home-improvement.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "generates",
+                "new suggestion"
+            ],
+            [
+                "user",
+                "selects",
+                "different mood"
+            ],
+            [
+                "system",
+                "presents",
+                "new suggestion"
+            ],
+            [
+                "new suggestion",
+                "appears within",
+                "2 seconds"
+            ],
+            [
+                "new suggestion",
+                "triggers on",
+                "mood selection"
+            ]
+        ]
+    },
+    {
+        "id": "FR-08",
+        "text": "The system shall store the user\u2019s accepted or manually adjusted settings for each mood and use this feedback to refine future suggestions for that user.",
+        "source": "eu_ai_risks\\tests\\scenarios\\010_deployer_home-improvement.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "stores",
+                "accepted settings"
+            ],
+            [
+                "system",
+                "stores",
+                "manually adjusted settings"
+            ],
+            [
+                "accepted settings",
+                "belongsTo",
+                "user"
+            ],
+            [
+                "manually adjusted settings",
+                "belongsTo",
+                "user"
+            ],
+            [
+                "accepted settings",
+                "applyTo",
+                "mood"
+            ],
+            [
+                "manually adjusted settings",
+                "applyTo",
+                "mood"
+            ],
+            [
+                "system",
+                "uses",
+                "feedback"
+            ],
+            [
+                "feedback",
+                "refines",
+                "future suggestions"
+            ],
+            [
+                "future suggestions",
+                "applyTo",
+                "user"
+            ]
+        ]
+    }
+]

@@ -1,0 +1,466 @@
+[
+    {
+        "id": "FR-01",
+        "text": "The system shall store, categorize, and manage a library of audio assets (masked or low-volume voice messages, tones, and embedded suggestion tracks), each linked to specific product categories or campaigns.",
+        "source": "eu_ai_risks\\tests\\scenarios\\001_provider_retail.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "stores",
+                "audio assets"
+            ],
+            [
+                "system",
+                "categorizes",
+                "audio assets"
+            ],
+            [
+                "system",
+                "manages",
+                "audio assets"
+            ],
+            [
+                "audio assets",
+                "includes",
+                "masked voice messages"
+            ],
+            [
+                "audio assets",
+                "includes",
+                "low-volume voice messages"
+            ],
+            [
+                "audio assets",
+                "includes",
+                "tones"
+            ],
+            [
+                "audio assets",
+                "includes",
+                "embedded suggestion tracks"
+            ],
+            [
+                "audio assets",
+                "linkedTo",
+                "product categories"
+            ],
+            [
+                "audio assets",
+                "linkedTo",
+                "campaigns"
+            ]
+        ]
+    },
+    {
+        "id": "FR-02",
+        "text": "The system shall let authorized operators import and maintain product catalogs with margin data, stock levels, and store locations, and designate high-margin products as promotion targets.",
+        "source": "eu_ai_risks\\tests\\scenarios\\001_provider_retail.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "authorized operator",
+                "imports",
+                "product catalog"
+            ],
+            [
+                "authorized operator",
+                "maintains",
+                "product catalog"
+            ],
+            [
+                "product catalog",
+                "includes",
+                "margin data"
+            ],
+            [
+                "product catalog",
+                "includes",
+                "stock level"
+            ],
+            [
+                "product catalog",
+                "includes",
+                "store location"
+            ],
+            [
+                "authorized operator",
+                "designates",
+                "high-margin product"
+            ],
+            [
+                "high-margin product",
+                "serves as",
+                "promotion target"
+            ]
+        ]
+    },
+    {
+        "id": "FR-03",
+        "text": "The system shall embed target messages into background audio (e.g., in-store music) at levels below conscious perception, by masking, layering, or frequency manipulation.",
+        "source": "eu_ai_risks\\tests\\scenarios\\001_provider_retail.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "embeds",
+                "target messages"
+            ],
+            [
+                "system",
+                "embeds",
+                "background audio"
+            ],
+            [
+                "in-store music",
+                "exemplifies",
+                "background audio"
+            ],
+            [
+                "system",
+                "embeds messages at",
+                "levels below conscious perception"
+            ],
+            [
+                "system",
+                "uses",
+                "masking"
+            ],
+            [
+                "system",
+                "uses",
+                "layering"
+            ],
+            [
+                "system",
+                "uses",
+                "frequency manipulation"
+            ]
+        ]
+    },
+    {
+        "id": "FR-04",
+        "text": "The system shall deliver audio through store speaker infrastructure, with independent control of content, volume, and timing for each store zone or aisle.",
+        "source": "eu_ai_risks\\tests\\scenarios\\001_provider_retail.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "delivers",
+                "audio"
+            ],
+            [
+                "system",
+                "uses",
+                "store speaker infrastructure"
+            ],
+            [
+                "system",
+                "controls independently",
+                "content"
+            ],
+            [
+                "system",
+                "controls independently",
+                "volume"
+            ],
+            [
+                "system",
+                "controls independently",
+                "timing"
+            ],
+            [
+                "content",
+                "applies to",
+                "store zone"
+            ],
+            [
+                "content",
+                "applies to",
+                "aisle"
+            ],
+            [
+                "volume",
+                "applies to",
+                "store zone"
+            ],
+            [
+                "volume",
+                "applies to",
+                "aisle"
+            ],
+            [
+                "timing",
+                "applies to",
+                "store zone"
+            ],
+            [
+                "timing",
+                "applies to",
+                "aisle"
+            ]
+        ]
+    },
+    {
+        "id": "FR-05",
+        "text": "The system shall use in-store sensors (e.g., occupancy counters, footfall sensors, point-of-sale feeds) to estimate shopper presence, density, and dwell time in each zone.",
+        "source": "eu_ai_risks\\tests\\scenarios\\001_provider_retail.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "uses",
+                "in-store sensors"
+            ],
+            [
+                "occupancy counters",
+                "exemplifies",
+                "in-store sensors"
+            ],
+            [
+                "footfall sensors",
+                "exemplifies",
+                "in-store sensors"
+            ],
+            [
+                "point-of-sale feeds",
+                "exemplifies",
+                "in-store sensors"
+            ],
+            [
+                "system",
+                "estimates",
+                "shopper presence"
+            ],
+            [
+                "system",
+                "estimates",
+                "shopper density"
+            ],
+            [
+                "system",
+                "estimates",
+                "dwell time"
+            ],
+            [
+                "shopper presence",
+                "isMeasuredIn",
+                "each zone"
+            ],
+            [
+                "shopper density",
+                "isMeasuredIn",
+                "each zone"
+            ],
+            [
+                "dwell time",
+                "isMeasuredIn",
+                "each zone"
+            ]
+        ]
+    },
+    {
+        "id": "FR-06",
+        "text": "The system shall let operators schedule campaigns by time, day, zone, and shopper traffic conditions, and shall automatically select the audio asset that matches the targeted product and context.",
+        "source": "eu_ai_risks\\tests\\scenarios\\001_provider_retail.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "operator",
+                "schedules",
+                "campaigns"
+            ],
+            [
+                "operator",
+                "schedules campaign by",
+                "time"
+            ],
+            [
+                "operator",
+                "schedules campaign by",
+                "day"
+            ],
+            [
+                "operator",
+                "schedules campaign by",
+                "store zone"
+            ],
+            [
+                "operator",
+                "schedules campaign by",
+                "shopper traffic condition"
+            ],
+            [
+                "system",
+                "selects automatically",
+                "audio assets"
+            ],
+            [
+                "audio assets",
+                "matches",
+                "promotion target"
+            ],
+            [
+                "audio assets",
+                "matches",
+                "context"
+            ]
+        ]
+    },
+    {
+        "id": "FR-07",
+        "text": "The system shall correlate audio playback events with sales data to report conversion uplift, margin impact, and per-campaign performance.",
+        "source": "eu_ai_risks\\tests\\scenarios\\001_provider_retail.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "correlates",
+                "audio playback events"
+            ],
+            [
+                "system",
+                "correlates",
+                "sales data"
+            ],
+            [
+                "system",
+                "reports",
+                "conversion uplift"
+            ],
+            [
+                "system",
+                "reports",
+                "margin impact"
+            ],
+            [
+                "system",
+                "reports",
+                "per-campaign performance"
+            ]
+        ]
+    },
+    {
+        "id": "FR-08",
+        "text": "The system shall adjust message selection, timing, and frequency based on measured effectiveness and shall support A/B testing of audio variants.",
+        "source": "eu_ai_risks\\tests\\scenarios\\001_provider_retail.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "adjusts",
+                "message selection"
+            ],
+            [
+                "system",
+                "adjusts",
+                "message timing"
+            ],
+            [
+                "system",
+                "adjusts",
+                "message frequency"
+            ],
+            [
+                "message selection",
+                "dependsOn",
+                "measured effectiveness"
+            ],
+            [
+                "message timing",
+                "dependsOn",
+                "measured effectiveness"
+            ],
+            [
+                "message frequency",
+                "dependsOn",
+                "measured effectiveness"
+            ],
+            [
+                "system",
+                "supports",
+                "A/B testing"
+            ],
+            [
+                "A/B testing",
+                "appliesTo",
+                "audio variants"
+            ]
+        ]
+    },
+    {
+        "id": "FR-09",
+        "text": "The system shall provide a secure operator dashboard with role-based access, remote multi-store management, audit logging of all playback and configuration changes, and system health monitoring.",
+        "source": "eu_ai_risks\\tests\\scenarios\\001_provider_retail.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "provides",
+                "operator dashboard"
+            ],
+            [
+                "operator dashboard",
+                "hasProperty",
+                "security"
+            ],
+            [
+                "operator dashboard",
+                "supports",
+                "role-based access"
+            ],
+            [
+                "operator dashboard",
+                "supports",
+                "remote multi-store management"
+            ],
+            [
+                "operator dashboard",
+                "supports",
+                "audit logging"
+            ],
+            [
+                "audit logging",
+                "records",
+                "playback changes"
+            ],
+            [
+                "audit logging",
+                "records",
+                "configuration changes"
+            ],
+            [
+                "operator dashboard",
+                "supports",
+                "system health monitoring"
+            ]
+        ]
+    }
+]

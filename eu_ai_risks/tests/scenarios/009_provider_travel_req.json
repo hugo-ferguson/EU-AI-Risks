@@ -1,0 +1,426 @@
+[
+    {
+        "id": "FR-01",
+        "text": "The system shall allow the user to select a travel destination (country, city, or region) from a searchable list or by typing a destination name, with auto-suggestions for matching locations.",
+        "source": "eu_ai_risks\\tests\\scenarios\\009_provider_travel.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "user",
+                "selects",
+                "travel destination"
+            ],
+            [
+                "travel destination",
+                "hasType",
+                "country"
+            ],
+            [
+                "travel destination",
+                "hasType",
+                "city"
+            ],
+            [
+                "travel destination",
+                "hasType",
+                "region"
+            ],
+            [
+                "user",
+                "selects destination from",
+                "searchable list"
+            ],
+            [
+                "user",
+                "types",
+                "destination name"
+            ],
+            [
+                "system",
+                "provides",
+                "auto-suggestions"
+            ],
+            [
+                "auto-suggestions",
+                "match",
+                "locations"
+            ]
+        ]
+    },
+    {
+        "id": "FR-02",
+        "text": "The system shall validate the selected destination and prompt the user to correct or reselect it if the destination is not recognized or is ambiguous.",
+        "source": "eu_ai_risks\\tests\\scenarios\\009_provider_travel.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "validates",
+                "selected destination"
+            ],
+            [
+                "system",
+                "prompts",
+                "user"
+            ],
+            [
+                "user",
+                "corrects",
+                "selected destination"
+            ],
+            [
+                "user",
+                "reselects",
+                "selected destination"
+            ],
+            [
+                "selected destination",
+                "isNot",
+                "recognized"
+            ],
+            [
+                "selected destination",
+                "is",
+                "ambiguous"
+            ]
+        ]
+    },
+    {
+        "id": "FR-03",
+        "text": "The system shall retrieve relevant, up-to-date safety information for the selected destination from configured data sources, such as government travel advisories, crime statistics, health alerts, and weather or natural hazard reports.",
+        "source": "eu_ai_risks\\tests\\scenarios\\009_provider_travel.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "retrieves",
+                "safety information"
+            ],
+            [
+                "safety information",
+                "isRelevantTo",
+                "selected destination"
+            ],
+            [
+                "safety information",
+                "isTypeOf",
+                "up-to-date information"
+            ],
+            [
+                "system",
+                "retrieves information from",
+                "configured data sources"
+            ],
+            [
+                "configured data sources",
+                "include",
+                "government travel advisories"
+            ],
+            [
+                "configured data sources",
+                "include",
+                "crime statistics"
+            ],
+            [
+                "configured data sources",
+                "include",
+                "health alerts"
+            ],
+            [
+                "configured data sources",
+                "include",
+                "weather reports"
+            ],
+            [
+                "configured data sources",
+                "include",
+                "natural hazard reports"
+            ]
+        ]
+    },
+    {
+        "id": "FR-04",
+        "text": "The system shall use an AI model to generate short, clear travel safety tips (e.g., 3 to 7 tips, each no longer than two sentences) based on the retrieved safety information for the selected destination.",
+        "source": "eu_ai_risks\\tests\\scenarios\\009_provider_travel.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "uses",
+                "AI model"
+            ],
+            [
+                "AI model",
+                "generates",
+                "travel safety tips"
+            ],
+            [
+                "travel safety tips",
+                "hasLength",
+                "short"
+            ],
+            [
+                "travel safety tips",
+                "hasClarity",
+                "clear"
+            ],
+            [
+                "travel safety tips",
+                "hasQuantity",
+                "3 to 7 tips"
+            ],
+            [
+                "travel safety tip",
+                "hasMaximumLength",
+                "two sentences"
+            ],
+            [
+                "AI model",
+                "bases tips on",
+                "retrieved safety information"
+            ],
+            [
+                "retrieved safety information",
+                "isRelevantTo",
+                "selected destination"
+            ]
+        ]
+    },
+    {
+        "id": "FR-05",
+        "text": "The system shall categorize each generated tip by topic (e.g., personal safety, health, transportation, scams, local laws and customs, natural hazards) so users can quickly scan the results.",
+        "source": "eu_ai_risks\\tests\\scenarios\\009_provider_travel.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "categorizes",
+                "generated tip"
+            ],
+            [
+                "generated tip",
+                "hasCategory",
+                "topic"
+            ],
+            [
+                "topic",
+                "includesExample",
+                "personal safety"
+            ],
+            [
+                "topic",
+                "includesExample",
+                "health"
+            ],
+            [
+                "topic",
+                "includesExample",
+                "transportation"
+            ],
+            [
+                "topic",
+                "includesExample",
+                "scams"
+            ],
+            [
+                "topic",
+                "includesExample",
+                "local laws and customs"
+            ],
+            [
+                "topic",
+                "includesExample",
+                "natural hazards"
+            ],
+            [
+                "user",
+                "scans",
+                "result"
+            ]
+        ]
+    },
+    {
+        "id": "FR-06",
+        "text": "The system shall display the generated tips to the user in a readable format, along with the destination name, the information sources used, and the date the information was last updated.",
+        "source": "eu_ai_risks\\tests\\scenarios\\009_provider_travel.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "displays",
+                "generated tip"
+            ],
+            [
+                "system",
+                "displays tips to",
+                "user"
+            ],
+            [
+                "generated tip",
+                "hasFormat",
+                "readable format"
+            ],
+            [
+                "system",
+                "displays",
+                "destination name"
+            ],
+            [
+                "system",
+                "displays",
+                "information sources"
+            ],
+            [
+                "system",
+                "displays",
+                "last updated date"
+            ],
+            [
+                "last updated date",
+                "describes",
+                "information"
+            ]
+        ]
+    },
+    {
+        "id": "FR-07",
+        "text": "The system shall include a disclaimer with the tips stating that they are general guidance and not a substitute for official government travel advisories.",
+        "source": "eu_ai_risks\\tests\\scenarios\\009_provider_travel.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "include",
+                "disclaimer"
+            ],
+            [
+                "disclaimer",
+                "accompanies",
+                "travel safety tips"
+            ],
+            [
+                "disclaimer",
+                "states",
+                "tips are general guidance"
+            ],
+            [
+                "disclaimer",
+                "states",
+                "tips are not substitute for official government travel advisories"
+            ]
+        ]
+    },
+    {
+        "id": "FR-08",
+        "text": "The system shall allow the user to change the selected destination at any time and shall regenerate the tips for the new destination without requiring the user to restart the application.",
+        "source": "eu_ai_risks\\tests\\scenarios\\009_provider_travel.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "user",
+                "changes",
+                "selected destination"
+            ],
+            [
+                "system",
+                "allows",
+                "user"
+            ],
+            [
+                "system",
+                "regenerates",
+                "travel safety tips"
+            ],
+            [
+                "travel safety tips",
+                "targets",
+                "new destination"
+            ],
+            [
+                "system",
+                "regenerates tips without requiring",
+                "application restart"
+            ],
+            [
+                "user",
+                "restarts",
+                "system"
+            ]
+        ]
+    },
+    {
+        "id": "FR-09",
+        "text": "The system shall handle errors, such as unavailable data sources or AI generation failures, by displaying a clear message to the user and offering to retry or showing the most recent cached tips where available.",
+        "source": "eu_ai_risks\\tests\\scenarios\\009_provider_travel.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "handles",
+                "errors"
+            ],
+            [
+                "errors",
+                "include",
+                "unavailable data sources"
+            ],
+            [
+                "errors",
+                "include",
+                "AI generation failures"
+            ],
+            [
+                "system",
+                "displays",
+                "clear message"
+            ],
+            [
+                "clear message",
+                "informs",
+                "user"
+            ],
+            [
+                "system",
+                "offers",
+                "retry"
+            ],
+            [
+                "system",
+                "displays",
+                "recent cached tips"
+            ],
+            [
+                "recent cached tips",
+                "availableWhen",
+                "cached tips available"
+            ]
+        ]
+    }
+]

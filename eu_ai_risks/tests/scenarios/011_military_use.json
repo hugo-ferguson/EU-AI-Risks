@@ -1,0 +1,13 @@
+{
+    "role": "Deployer",
+    "intended_use": "An AI that is used by the military to detect and profile high-risk individuals or foreign agents",
+    "system_type": "",
+    "input_data": "",
+    "domain": "",
+    "related_articles": [
+        2
+    ],
+    "obligations": [
+    ],
+    "risk_level": "prohibited"
+}

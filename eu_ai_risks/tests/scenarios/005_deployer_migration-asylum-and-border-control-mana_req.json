@@ -1,0 +1,511 @@
+[
+    {
+        "id": "FR-01",
+        "text": "The system shall capture travel document data by scanning the passport\u2019s visual inspection zone (VIZ), machine-readable zone (MRZ), and embedded chip, and by accepting images taken under visible, infrared, and ultraviolet light.",
+        "source": "eu_ai_risks\\tests\\scenarios\\005_deployer_migration-asylum-and-border-control-mana.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "captures",
+                "travel document data"
+            ],
+            [
+                "system",
+                "scans",
+                "visual inspection zone"
+            ],
+            [
+                "system",
+                "scans",
+                "machine-readable zone"
+            ],
+            [
+                "system",
+                "scans",
+                "embedded chip"
+            ],
+            [
+                "visual inspection zone",
+                "isPartOf",
+                "passport"
+            ],
+            [
+                "machine-readable zone",
+                "isPartOf",
+                "passport"
+            ],
+            [
+                "embedded chip",
+                "isPartOf",
+                "passport"
+            ],
+            [
+                "system",
+                "accepts",
+                "visible light image"
+            ],
+            [
+                "system",
+                "accepts",
+                "infrared light image"
+            ],
+            [
+                "system",
+                "accepts",
+                "ultraviolet light image"
+            ]
+        ]
+    },
+    {
+        "id": "FR-02",
+        "text": "The system shall extract and cross-validate the data from the MRZ, VIZ, and RFID chip, including checking MRZ check digits and flagging any inconsistencies between the printed data and the electronically stored data.",
+        "source": "eu_ai_risks\\tests\\scenarios\\005_deployer_migration-asylum-and-border-control-mana.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "extracts",
+                "data from MRZ"
+            ],
+            [
+                "system",
+                "extracts",
+                "data from VIZ"
+            ],
+            [
+                "system",
+                "extracts",
+                "data from RFID chip"
+            ],
+            [
+                "system",
+                "cross-validates",
+                "data from MRZ"
+            ],
+            [
+                "system",
+                "cross-validates",
+                "data from VIZ"
+            ],
+            [
+                "system",
+                "cross-validates",
+                "data from RFID chip"
+            ],
+            [
+                "system",
+                "checks",
+                "MRZ check digits"
+            ],
+            [
+                "system",
+                "flags",
+                "inconsistencies"
+            ],
+            [
+                "inconsistencies",
+                "occurBetween",
+                "printed data"
+            ],
+            [
+                "inconsistencies",
+                "occurBetween",
+                "data from RFID chip"
+            ]
+        ]
+    },
+    {
+        "id": "FR-03",
+        "text": "The system shall verify the chip\u2019s digital signatures and certificate chain against trusted issuing-authority certificates (e.g., the ICAO Public Key Directory) to confirm that the chip data is genuine and has not been altered.",
+        "source": "eu_ai_risks\\tests\\scenarios\\005_deployer_migration-asylum-and-border-control-mana.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "checks",
+                "chip's digital signatures"
+            ],
+            [
+                "system",
+                "checks",
+                "certificate chain"
+            ],
+            [
+                "system",
+                "checks signatures against",
+                "trusted issuing-authority certificates"
+            ],
+            [
+                "system",
+                "checks certificate chain against",
+                "trusted issuing-authority certificates"
+            ],
+            [
+                "ICAO Public Key Directory",
+                "isExampleOf",
+                "trusted issuing-authority certificates"
+            ],
+            [
+                "system",
+                "confirms",
+                "chip data is genuine"
+            ],
+            [
+                "system",
+                "confirms",
+                "chip data is unaltered"
+            ]
+        ]
+    },
+    {
+        "id": "FR-04",
+        "text": "The system shall analyze the document\u2019s physical and visual security features, such as holograms, watermarks, microprinting, fonts, laminate integrity, and photo substitution, and use AI models to detect signs of forgery, tampering, or counterfeiting.",
+        "source": "eu_ai_risks\\tests\\scenarios\\005_deployer_migration-asylum-and-border-control-mana.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "analyzes",
+                "physical security features"
+            ],
+            [
+                "system",
+                "analyzes",
+                "visual security features"
+            ],
+            [
+                "document",
+                "hasFeature",
+                "physical security features"
+            ],
+            [
+                "document",
+                "hasFeature",
+                "visual security features"
+            ],
+            [
+                "security features",
+                "include",
+                "holograms"
+            ],
+            [
+                "security features",
+                "include",
+                "watermarks"
+            ],
+            [
+                "security features",
+                "include",
+                "microprinting"
+            ],
+            [
+                "security features",
+                "include",
+                "fonts"
+            ],
+            [
+                "security features",
+                "include",
+                "laminate integrity"
+            ],
+            [
+                "security features",
+                "include",
+                "photo substitution"
+            ],
+            [
+                "system",
+                "uses",
+                "AI models"
+            ],
+            [
+                "AI models",
+                "detect",
+                "forgery signs"
+            ],
+            [
+                "AI models",
+                "detect",
+                "tampering signs"
+            ],
+            [
+                "AI models",
+                "detect",
+                "counterfeiting signs"
+            ]
+        ]
+    },
+    {
+        "id": "FR-05",
+        "text": "The system shall compare the photograph in the document with the traveler\u2019s live-captured face image using facial recognition, and return a match confidence score.",
+        "source": "eu_ai_risks\\tests\\scenarios\\005_deployer_migration-asylum-and-border-control-mana.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "compares",
+                "photograph"
+            ],
+            [
+                "photograph",
+                "isPartOf",
+                "document"
+            ],
+            [
+                "system",
+                "compares",
+                "live-captured face image"
+            ],
+            [
+                "live-captured face image",
+                "isPartOf",
+                "traveler"
+            ],
+            [
+                "system",
+                "uses",
+                "facial recognition"
+            ],
+            [
+                "system",
+                "returns",
+                "match confidence score"
+            ]
+        ]
+    },
+    {
+        "id": "FR-06",
+        "text": "The system shall check document and traveler details against lost, stolen, and revoked document databases and watchlists (e.g., Interpol SLTD) in near real time.",
+        "source": "eu_ai_risks\\tests\\scenarios\\005_deployer_migration-asylum-and-border-control-mana.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "checks",
+                "document details"
+            ],
+            [
+                "system",
+                "checks",
+                "traveler details"
+            ],
+            [
+                "system",
+                "checks details against",
+                "lost document database"
+            ],
+            [
+                "system",
+                "checks details against",
+                "stolen document database"
+            ],
+            [
+                "system",
+                "checks details against",
+                "revoked document database"
+            ],
+            [
+                "system",
+                "checks details against",
+                "watchlist"
+            ],
+            [
+                "Interpol SLTD",
+                "isExampleOf",
+                "watchlist"
+            ],
+            [
+                "system",
+                "performs checks",
+                "near real time"
+            ]
+        ]
+    },
+    {
+        "id": "FR-07",
+        "text": "The system shall produce an authenticity assessment for each document, including an overall risk score, a classification (genuine, suspicious, or likely forged), and an explanation of the specific indicators behind the result, so officers can review the reasoning.",
+        "source": "eu_ai_risks\\tests\\scenarios\\005_deployer_migration-asylum-and-border-control-mana.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "returns",
+                "authenticity assessment"
+            ],
+            [
+                "authenticity assessment",
+                "isProducedFor",
+                "document"
+            ],
+            [
+                "authenticity assessment",
+                "include",
+                "overall risk score"
+            ],
+            [
+                "authenticity assessment",
+                "include",
+                "classification"
+            ],
+            [
+                "classification",
+                "hasValue",
+                "genuine"
+            ],
+            [
+                "classification",
+                "hasValue",
+                "suspicious"
+            ],
+            [
+                "classification",
+                "hasValue",
+                "likely forged"
+            ],
+            [
+                "authenticity assessment",
+                "include",
+                "explanation"
+            ],
+            [
+                "explanation",
+                "describes",
+                "specific indicators"
+            ],
+            [
+                "specific indicators",
+                "underlie",
+                "result"
+            ],
+            [
+                "officers",
+                "analyzes",
+                "explanation"
+            ]
+        ]
+    },
+    {
+        "id": "FR-08",
+        "text": "The system shall present results to immigration officers through an interface that highlights flagged areas on the document image, and shall allow officers to confirm, override, or escalate each decision, with their feedback recorded to improve model accuracy.",
+        "source": "eu_ai_risks\\tests\\scenarios\\005_deployer_migration-asylum-and-border-control-mana.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "presents results to",
+                "officers"
+            ],
+            [
+                "system",
+                "provides",
+                "interface"
+            ],
+            [
+                "interface",
+                "highlights",
+                "flagged areas"
+            ],
+            [
+                "flagged areas",
+                "appear on",
+                "document image"
+            ],
+            [
+                "officers",
+                "confirm",
+                "result"
+            ],
+            [
+                "officers",
+                "override",
+                "result"
+            ],
+            [
+                "officers",
+                "escalate",
+                "result"
+            ],
+            [
+                "system",
+                "records",
+                "officer feedback"
+            ],
+            [
+                "officer feedback",
+                "improves",
+                "model accuracy"
+            ]
+        ]
+    },
+    {
+        "id": "FR-09",
+        "text": "The system shall maintain secure, auditable logs of all verification transactions, enforce role-based access control, and encrypt stored and transmitted personal data in compliance with applicable data protection regulations.",
+        "source": "eu_ai_risks\\tests\\scenarios\\005_deployer_migration-asylum-and-border-control-mana.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "maintains",
+                "secure logs"
+            ],
+            [
+                "system",
+                "maintains",
+                "auditable logs"
+            ],
+            [
+                "logs",
+                "records",
+                "verification transactions"
+            ],
+            [
+                "system",
+                "enforces",
+                "role-based access control"
+            ],
+            [
+                "system",
+                "encrypts",
+                "stored personal data"
+            ],
+            [
+                "system",
+                "encrypts",
+                "transmitted personal data"
+            ],
+            [
+                "system",
+                "complies with",
+                "data protection regulations"
+            ]
+        ]
+    }
+]

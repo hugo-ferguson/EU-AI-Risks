@@ -1,0 +1,28 @@
+{
+    "role": "Provider",
+    "intended_use": "Deploy a hidden‑audio influence platform that subtly nudges shoppers to purchase high‑margin products without their conscious awareness",
+    "system_type": "Subconscious influence engine",
+    "input_data": "Audio streams, browsing history, purchase records, demographic profiles",
+    "domain": "Retail",
+    "related_articles": [
+        5,
+        10,
+        16,
+        27,
+        50,
+        99
+    ],
+    "obligations": [
+        "Immediately halt any deployment of the audio influence engine that uses subliminal techniques beyond users' consciousness, as this practice is prohibited under Article 5(a).",
+        "If the system is to be continued, redesign it to eliminate any subliminal or manipulative influence that could materially distort shopper behaviour without informed consent, ensuring compliance with Article 5.",
+        "Conduct a comprehensive data‑governance review of all training, validation and testing data (audio streams, browsing history, purchase records, demographic profiles) to verify they meet the quality, bias‑mitigation and special‑category safeguards set out in Article 10.",
+        "Document the data‑management processes, including data origin, preprocessing, bias‑assessment and mitigation measures, and retain these records for inspection as required by Article 10(2‑4).",
+        "Implement a quality‑management system, maintain technical documentation, keep system logs, and perform the appropriate conformity‑assessment procedure before placing the system on the market, in line with Article 16(a‑g).",
+        "Register the high‑risk AI system in the EU database and draw up an EU declaration of conformity, affixing the CE marking as mandated by Article 16(i‑h).",
+        "If the provider is a public‑law body or offers the system as a public service, carry out a fundamental‑rights impact assessment covering autonomy, privacy and discrimination risks, and notify the market‑surveillance authority of the results per Article 27.",
+        "Provide clear, conspicuous information to shoppers at the first point of interaction that they are being exposed to an AI‑driven audio influence system, as required by Article 50(1).",
+        "Ensure all personal data processing complies with the GDPR (Regulation EU 2016/679) – obtain a lawful basis or explicit consent, respect data‑subject rights, and apply pseudonymisation or encryption where appropriate.",
+        "Establish human‑oversight mechanisms that allow operators to monitor, intervene, or disable the influence engine in real‑time, and document these controls to demonstrate compliance with Articles 16 and 27."
+    ],
+    "risk_level": "prohibited"
+}

@@ -1,0 +1,592 @@
+[
+    {
+        "id": "FR-01",
+        "text": "The system shall ingest data from authorized military and intelligence sources, including surveillance feeds, signals intelligence, travel and border records, open-source information, and informant reports, and normalize it into a unified format for analysis.",
+        "source": "eu_ai_risks\\tests\\scenarios\\011_military_use.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "ingests data from",
+                "authorized military sources"
+            ],
+            [
+                "system",
+                "ingests data from",
+                "authorized intelligence sources"
+            ],
+            [
+                "system",
+                "ingests data from",
+                "surveillance feeds"
+            ],
+            [
+                "system",
+                "ingests data from",
+                "signals intelligence"
+            ],
+            [
+                "system",
+                "ingests data from",
+                "travel records"
+            ],
+            [
+                "system",
+                "ingests data from",
+                "border records"
+            ],
+            [
+                "system",
+                "ingests data from",
+                "open-source information"
+            ],
+            [
+                "system",
+                "ingests data from",
+                "informant reports"
+            ],
+            [
+                "system",
+                "normalizes",
+                "ingested data"
+            ],
+            [
+                "system",
+                "normalizes data into",
+                "unified format"
+            ],
+            [
+                "unified format",
+                "supports",
+                "analysis"
+            ]
+        ]
+    },
+    {
+        "id": "FR-02",
+        "text": "The system shall resolve and link records that refer to the same individual or entity across multiple data sources, maintaining a consolidated profile for each person of interest.",
+        "source": "eu_ai_risks\\tests\\scenarios\\011_military_use.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "resolves",
+                "records"
+            ],
+            [
+                "system",
+                "links",
+                "records"
+            ],
+            [
+                "records",
+                "refer to",
+                "same individual"
+            ],
+            [
+                "records",
+                "refer to",
+                "same entity"
+            ],
+            [
+                "records",
+                "come from",
+                "multiple data sources"
+            ],
+            [
+                "system",
+                "maintains",
+                "consolidated profile"
+            ],
+            [
+                "consolidated profile",
+                "belongs to",
+                "person of interest"
+            ]
+        ]
+    },
+    {
+        "id": "FR-03",
+        "text": "The system shall analyze each profile using configurable behavioral, relational, and movement-pattern indicators to detect anomalies and activities associated with hostile or foreign-agent behavior.",
+        "source": "eu_ai_risks\\tests\\scenarios\\011_military_use.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "analyzes",
+                "profile"
+            ],
+            [
+                "system",
+                "uses",
+                "behavioral indicators"
+            ],
+            [
+                "system",
+                "uses",
+                "relational indicators"
+            ],
+            [
+                "system",
+                "uses",
+                "movement-pattern indicators"
+            ],
+            [
+                "behavioral indicators",
+                "isType",
+                "configurable indicators"
+            ],
+            [
+                "relational indicators",
+                "isType",
+                "configurable indicators"
+            ],
+            [
+                "movement-pattern indicators",
+                "isType",
+                "configurable indicators"
+            ],
+            [
+                "system",
+                "detects",
+                "anomalies"
+            ],
+            [
+                "system",
+                "detects",
+                "hostile behavior"
+            ],
+            [
+                "system",
+                "detects",
+                "foreign-agent behavior"
+            ]
+        ]
+    },
+    {
+        "id": "FR-04",
+        "text": "The system shall assign each individual a risk score and risk category (e.g., low, moderate, high), along with a confidence level and a human-readable explanation of the factors that contributed to the assessment.",
+        "source": "eu_ai_risks\\tests\\scenarios\\011_military_use.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "assigns",
+                "risk score"
+            ],
+            [
+                "system",
+                "assigns",
+                "risk category"
+            ],
+            [
+                "system",
+                "assigns",
+                "confidence level"
+            ],
+            [
+                "system",
+                "assigns",
+                "explanation"
+            ],
+            [
+                "risk score",
+                "isAssignedTo",
+                "individual"
+            ],
+            [
+                "risk category",
+                "isAssignedTo",
+                "individual"
+            ],
+            [
+                "risk category",
+                "hasExample",
+                "low"
+            ],
+            [
+                "risk category",
+                "hasExample",
+                "moderate"
+            ],
+            [
+                "risk category",
+                "hasExample",
+                "high"
+            ],
+            [
+                "explanation",
+                "isReadableBy",
+                "human"
+            ],
+            [
+                "explanation",
+                "describes",
+                "contributing factors"
+            ],
+            [
+                "contributing factors",
+                "contributeTo",
+                "assessment"
+            ]
+        ]
+    },
+    {
+        "id": "FR-05",
+        "text": "The system shall generate real-time alerts to designated analysts and commanders when an individual\u2019s risk score crosses a defined threshold or when a high-priority pattern is detected.",
+        "source": "eu_ai_risks\\tests\\scenarios\\011_military_use.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "generates",
+                "real-time alerts"
+            ],
+            [
+                "real-time alerts",
+                "notify",
+                "designated analysts"
+            ],
+            [
+                "real-time alerts",
+                "notify",
+                "commanders"
+            ],
+            [
+                "real-time alerts",
+                "trigger when",
+                "risk score crosses threshold"
+            ],
+            [
+                "risk score",
+                "belongs to",
+                "individual"
+            ],
+            [
+                "threshold",
+                "is",
+                "defined"
+            ],
+            [
+                "real-time alerts",
+                "trigger when",
+                "high-priority pattern is detected"
+            ]
+        ]
+    },
+    {
+        "id": "FR-06",
+        "text": "The system shall require human analyst review and authorization before any high-risk designation is finalized or any operational action is recommended, and shall allow analysts to confirm, override, or dismiss AI-generated assessments with recorded justification.",
+        "source": "eu_ai_risks\\tests\\scenarios\\011_military_use.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "requires",
+                "human analyst review"
+            ],
+            [
+                "system",
+                "requires",
+                "analyst authorization"
+            ],
+            [
+                "human analyst review",
+                "precedes",
+                "high-risk designation finalization"
+            ],
+            [
+                "analyst authorization",
+                "precedes",
+                "high-risk designation finalization"
+            ],
+            [
+                "human analyst review",
+                "precedes",
+                "operational action recommendation"
+            ],
+            [
+                "analyst authorization",
+                "precedes",
+                "operational action recommendation"
+            ],
+            [
+                "system",
+                "allows",
+                "analysts"
+            ],
+            [
+                "analysts",
+                "confirm",
+                "AI-generated assessments"
+            ],
+            [
+                "analysts",
+                "override",
+                "AI-generated assessments"
+            ],
+            [
+                "analysts",
+                "dismiss",
+                "AI-generated assessments"
+            ],
+            [
+                "system",
+                "records",
+                "justification"
+            ],
+            [
+                "justification",
+                "supports",
+                "analyst decision"
+            ]
+        ]
+    },
+    {
+        "id": "FR-07",
+        "text": "The system shall provide analysts with a dashboard for searching, filtering, and visualizing profiles, relationship networks, geographic activity, and risk trends.",
+        "source": "eu_ai_risks\\tests\\scenarios\\011_military_use.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "provides",
+                "dashboard"
+            ],
+            [
+                "analysts",
+                "uses",
+                "dashboard"
+            ],
+            [
+                "dashboard",
+                "searches",
+                "profile"
+            ],
+            [
+                "dashboard",
+                "filters",
+                "profile"
+            ],
+            [
+                "dashboard",
+                "visualizes",
+                "profile"
+            ],
+            [
+                "dashboard",
+                "visualizes",
+                "relationship network"
+            ],
+            [
+                "dashboard",
+                "visualizes",
+                "geographic activity"
+            ],
+            [
+                "dashboard",
+                "visualizes",
+                "risk trend"
+            ],
+            [
+                "dashboard",
+                "searches",
+                "relationship network"
+            ],
+            [
+                "dashboard",
+                "searches",
+                "geographic activity"
+            ],
+            [
+                "dashboard",
+                "searches",
+                "risk trend"
+            ],
+            [
+                "dashboard",
+                "filters",
+                "relationship network"
+            ],
+            [
+                "dashboard",
+                "filters",
+                "geographic activity"
+            ],
+            [
+                "dashboard",
+                "filters",
+                "risk trend"
+            ]
+        ]
+    },
+    {
+        "id": "FR-08",
+        "text": "The system shall enforce role-based and clearance-based access control, ensuring users can view only the data and profiles permitted by their authorization level.",
+        "source": "eu_ai_risks\\tests\\scenarios\\011_military_use.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "enforces",
+                "role-based access control"
+            ],
+            [
+                "system",
+                "enforces",
+                "clearance-based access control"
+            ],
+            [
+                "user",
+                "views",
+                "permitted data"
+            ],
+            [
+                "user",
+                "views",
+                "permitted profiles"
+            ],
+            [
+                "authorization level",
+                "permits",
+                "data"
+            ],
+            [
+                "authorization level",
+                "permits",
+                "profiles"
+            ],
+            [
+                "system",
+                "restricts",
+                "user access"
+            ]
+        ]
+    },
+    {
+        "id": "FR-09",
+        "text": "The system shall maintain a tamper-proof audit log of all data access, risk assessments, analyst decisions, and system changes to support accountability and oversight.",
+        "source": "eu_ai_risks\\tests\\scenarios\\011_military_use.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "maintains",
+                "audit log"
+            ],
+            [
+                "audit log",
+                "is",
+                "tamper-proof"
+            ],
+            [
+                "audit log",
+                "records",
+                "data access"
+            ],
+            [
+                "audit log",
+                "records",
+                "risk assessments"
+            ],
+            [
+                "audit log",
+                "records",
+                "analyst decision"
+            ],
+            [
+                "audit log",
+                "records",
+                "system changes"
+            ],
+            [
+                "audit log",
+                "supports",
+                "accountability"
+            ],
+            [
+                "audit log",
+                "supports",
+                "oversight"
+            ]
+        ]
+    },
+    {
+        "id": "FR-10",
+        "text": "The system shall support feedback-driven model updates, allowing confirmed outcomes and analyst corrections to be used to retrain and evaluate the models, while monitoring for bias, false positives, and performance degradation.",
+        "source": "eu_ai_risks\\tests\\scenarios\\011_military_use.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "supports",
+                "feedback-driven model updates"
+            ],
+            [
+                "confirmed outcomes",
+                "retrain",
+                "models"
+            ],
+            [
+                "analyst corrections",
+                "retrain",
+                "models"
+            ],
+            [
+                "confirmed outcomes",
+                "evaluate",
+                "models"
+            ],
+            [
+                "analyst corrections",
+                "evaluate",
+                "models"
+            ],
+            [
+                "system",
+                "monitors",
+                "bias"
+            ],
+            [
+                "system",
+                "monitors",
+                "false positives"
+            ],
+            [
+                "system",
+                "monitors",
+                "performance degradation"
+            ]
+        ]
+    }
+]

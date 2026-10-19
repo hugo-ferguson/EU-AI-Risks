@@ -1,0 +1,37 @@
+{
+    "role": "Deployer",
+    "intended_use": "AI that assists immigration officers in verifying the authenticity of travel documents and detecting forged passports",
+    "system_type": "Travel‑document fraud detection AI",
+    "input_data": "Scanned passport images, security feature databases, biometric data",
+    "domain": "Migration, asylum and border‑control management",
+    "related_articles": [
+        6,
+        10,
+        13,
+        14,
+        15,
+        26,
+        27,
+        49,
+        50,
+        71,
+        77,
+        79,
+        86
+    ],
+    "obligations": [
+        "Determine whether the travel‑document fraud detection AI is high‑risk under Article 6, document the classification rationale and retain it for authorities (Art 6)",
+        "Register the AI system in the EU high‑risk AI database and, as a public authority, also register its intended use (Art 49)",
+        "Ensure the provider supplies complete instructions for use covering purpose, performance, limitations, input data specifications, human‑oversight measures and cybersecurity (Art 13)",
+        "Implement human‑oversight procedures for immigration officers: training, ability to monitor outputs, override or stop the system, and verification by at least two qualified officers for identification results (Art 14)",
+        "Conduct a fundamental‑rights impact assessment covering the processing of biometric data, risk of discrimination, and mitigation measures; submit the assessment to the market‑surveillance authority (Art 27)",
+        "Apply data‑governance measures to the passport image and biometric datasets: verify data quality, representativeness, bias detection, documentation of data provenance, and, where necessary, process special categories of personal data with safeguards (Art 10)",
+        "Define and publish accuracy, robustness and cybersecurity metrics for the system; perform regular testing, maintain technical redundancy, and document results in the instructions (Art 15)",
+        "Assign qualified immigration officers to oversee the system, ensure they have the competence, training and authority, and provide them with the necessary tools and support (Art 26)",
+        "Monitor the system’s operation against the instructions, keep automatically generated logs for at least six months, and report any serious incidents or risks to the provider and market‑surveillance authority (Art 26)",
+        "Inform travelers whose passports are scanned that an AI system processing biometric data is being used, in a clear and accessible manner at the point of first interaction (Art 50)",
+        "Be prepared to provide documentation to national fundamental‑rights authorities upon request and cooperate with any testing or corrective measures ordered by market‑surveillance authorities (Art 77, Art 79)",
+        "Establish a procedure to give affected persons a clear explanation of how the AI system contributed to a decision to refuse entry or flag a passport, in line with the right to explanation (Art 86)"
+    ],
+    "risk_level": "high-risk"
+}

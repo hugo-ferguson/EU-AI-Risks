@@ -1,0 +1,26 @@
+{
+    "role": "Provider",
+    "intended_use": "Tool that forecasts demand for seasonal agricultural equipment rentals",
+    "system_type": "Demand forecasting model",
+    "input_data": "Public agricultural activity statistics, weather forecasts, anonymised rental histories",
+    "domain": "Agriculture",
+    "related_articles": [
+        2,
+        3,
+        6,
+        57,
+        99
+    ],
+    "obligations": [
+        "Perform a high‑risk classification assessment of the demand‑forecasting model in line with Article 6 and document the rationale (Article 6)",
+        "If classified as non‑high‑risk, complete the mandatory registration under Article 49(2) and retain the registration evidence (Article 2)",
+        "Prepare full technical documentation covering intended purpose, data sources, risk analysis and mitigation measures as defined in Article 3 (Article 3)",
+        "Implement GDPR‑compatible data handling for the anonymised rental histories and ensure no personal data is processed without appropriate safeguards (Article 2)",
+        "Apply confidentiality and cybersecurity safeguards to protect source code, trade secrets and any data exchanged with authorities per Article 78 (Article 78)",
+        "If an SME, request priority access to an AI regulatory sandbox, submit a sandbox plan, conduct controlled testing and obtain an exit report as required by Articles 57 and 62 (Articles 57, 62)",
+        "Follow the Commission’s implementation guidelines (e.g., transparency, substantial modification) and monitor updates to stay compliant (Article 96)",
+        "Establish procedures to respond promptly to any market‑surveillance re‑classification under Article 80, including corrective actions and cooperation with authorities (Article 80)",
+        "Set up internal compliance monitoring and staff training to ensure ongoing adherence and avoid penalties under Article 99 (Article 99)"
+    ],
+    "risk_level": "limited"
+}

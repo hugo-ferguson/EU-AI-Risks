@@ -1,0 +1,566 @@
+[
+    {
+        "id": "FR-01",
+        "text": "The system shall ingest historical rental data, including equipment type, rental start and end dates, rental duration, location, rate charged, and customer segment, from uploaded files (CSV/Excel) or connected rental management systems.",
+        "source": "eu_ai_risks\\tests\\scenarios\\007_provider_agriculture.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "ingests",
+                "historical rental data"
+            ],
+            [
+                "historical rental data",
+                "includes",
+                "equipment type"
+            ],
+            [
+                "historical rental data",
+                "includes",
+                "rental start date"
+            ],
+            [
+                "historical rental data",
+                "includes",
+                "rental end date"
+            ],
+            [
+                "historical rental data",
+                "includes",
+                "rental duration"
+            ],
+            [
+                "historical rental data",
+                "includes",
+                "location"
+            ],
+            [
+                "historical rental data",
+                "includes",
+                "rate charged"
+            ],
+            [
+                "historical rental data",
+                "includes",
+                "customer segment"
+            ],
+            [
+                "system",
+                "ingests data from",
+                "uploaded files"
+            ],
+            [
+                "system",
+                "ingests data from",
+                "connected rental management systems"
+            ],
+            [
+                "uploaded files",
+                "hasFormat",
+                "CSV"
+            ],
+            [
+                "uploaded files",
+                "hasFormat",
+                "Excel"
+            ]
+        ]
+    },
+    {
+        "id": "FR-02",
+        "text": "The system shall integrate external data sources that influence agricultural demand, including weather data, planting and harvest calendars, crop type and acreage statistics, commodity prices, and regional holidays.",
+        "source": "eu_ai_risks\\tests\\scenarios\\007_provider_agriculture.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "ingests data from",
+                "external data sources"
+            ],
+            [
+                "external data sources",
+                "influence",
+                "agricultural demand"
+            ],
+            [
+                "external data sources",
+                "includes",
+                "weather data"
+            ],
+            [
+                "external data sources",
+                "includes",
+                "planting calendars"
+            ],
+            [
+                "external data sources",
+                "includes",
+                "harvest calendars"
+            ],
+            [
+                "external data sources",
+                "includes",
+                "crop type statistics"
+            ],
+            [
+                "external data sources",
+                "includes",
+                "acreage statistics"
+            ],
+            [
+                "external data sources",
+                "includes",
+                "commodity prices"
+            ],
+            [
+                "external data sources",
+                "includes",
+                "regional holidays"
+            ]
+        ]
+    },
+    {
+        "id": "FR-03",
+        "text": "The system shall clean and validate incoming data by detecting missing values, duplicates, and outliers, and shall flag or correct them according to configurable rules before use in forecasting.",
+        "source": "eu_ai_risks\\tests\\scenarios\\007_provider_agriculture.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "cleans",
+                "incoming data"
+            ],
+            [
+                "system",
+                "validates",
+                "incoming data"
+            ],
+            [
+                "system",
+                "detects",
+                "missing values"
+            ],
+            [
+                "system",
+                "detects",
+                "duplicates"
+            ],
+            [
+                "system",
+                "detects",
+                "outliers"
+            ],
+            [
+                "system",
+                "flags",
+                "missing values"
+            ],
+            [
+                "system",
+                "flags",
+                "duplicates"
+            ],
+            [
+                "system",
+                "flags",
+                "outliers"
+            ],
+            [
+                "system",
+                "corrects",
+                "missing values"
+            ],
+            [
+                "system",
+                "corrects",
+                "duplicates"
+            ],
+            [
+                "system",
+                "corrects",
+                "outliers"
+            ],
+            [
+                "system",
+                "applies",
+                "configurable rules"
+            ],
+            [
+                "incoming data",
+                "isUsedIn",
+                "forecasting"
+            ]
+        ]
+    },
+    {
+        "id": "FR-04",
+        "text": "The system shall generate demand forecasts for each equipment category (e.g., tractors, harvesters, balers, sprayers) at daily, weekly, and monthly granularity over a user-selected horizon of up to 24 months.",
+        "source": "eu_ai_risks\\tests\\scenarios\\007_provider_agriculture.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "generates",
+                "demand forecasts"
+            ],
+            [
+                "demand forecasts",
+                "cover",
+                "equipment category"
+            ],
+            [
+                "equipment category",
+                "includes",
+                "tractors"
+            ],
+            [
+                "equipment category",
+                "includes",
+                "harvesters"
+            ],
+            [
+                "equipment category",
+                "includes",
+                "balers"
+            ],
+            [
+                "equipment category",
+                "includes",
+                "sprayers"
+            ],
+            [
+                "demand forecasts",
+                "haveGranularity",
+                "daily"
+            ],
+            [
+                "demand forecasts",
+                "haveGranularity",
+                "weekly"
+            ],
+            [
+                "demand forecasts",
+                "haveGranularity",
+                "monthly"
+            ],
+            [
+                "demand forecasts",
+                "spans",
+                "user-selected horizon"
+            ],
+            [
+                "user-selected horizon",
+                "hasMaximumLength",
+                "24 months"
+            ]
+        ]
+    },
+    {
+        "id": "FR-05",
+        "text": "The system shall model seasonality, trends, and external drivers, and shall allow users to run what-if scenarios by adjusting inputs such as weather conditions, rental pricing, or fleet size.",
+        "source": "eu_ai_risks\\tests\\scenarios\\007_provider_agriculture.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "models",
+                "seasonality"
+            ],
+            [
+                "system",
+                "models",
+                "trends"
+            ],
+            [
+                "system",
+                "models",
+                "external drivers"
+            ],
+            [
+                "user",
+                "runs",
+                "what-if scenarios"
+            ],
+            [
+                "system",
+                "allows",
+                "user"
+            ],
+            [
+                "user",
+                "adjusts",
+                "inputs"
+            ],
+            [
+                "inputs",
+                "includes",
+                "weather conditions"
+            ],
+            [
+                "inputs",
+                "includes",
+                "rental pricing"
+            ],
+            [
+                "inputs",
+                "includes",
+                "fleet size"
+            ]
+        ]
+    },
+    {
+        "id": "FR-06",
+        "text": "The system shall display forecasts with confidence intervals on an interactive dashboard that supports filtering by equipment type, location, and time period, and comparison of forecasts against actual rentals.",
+        "source": "eu_ai_risks\\tests\\scenarios\\007_provider_agriculture.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "displays",
+                "demand forecasts"
+            ],
+            [
+                "demand forecasts",
+                "includes",
+                "confidence intervals"
+            ],
+            [
+                "system",
+                "provides",
+                "interactive dashboard"
+            ],
+            [
+                "interactive dashboard",
+                "displays",
+                "demand forecasts"
+            ],
+            [
+                "interactive dashboard",
+                "supports filtering by",
+                "equipment type"
+            ],
+            [
+                "interactive dashboard",
+                "supports filtering by",
+                "location"
+            ],
+            [
+                "interactive dashboard",
+                "supports filtering by",
+                "time period"
+            ],
+            [
+                "interactive dashboard",
+                "supports comparison of",
+                "demand forecasts"
+            ],
+            [
+                "interactive dashboard",
+                "compares forecasts against",
+                "actual rentals"
+            ]
+        ]
+    },
+    {
+        "id": "FR-07",
+        "text": "The system shall measure forecast accuracy using metrics such as MAPE and RMSE, and shall retrain or recalibrate models automatically as new rental data becomes available.",
+        "source": "eu_ai_risks\\tests\\scenarios\\007_provider_agriculture.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "measures",
+                "forecast accuracy"
+            ],
+            [
+                "system",
+                "uses",
+                "MAPE"
+            ],
+            [
+                "system",
+                "uses",
+                "RMSE"
+            ],
+            [
+                "MAPE",
+                "measures",
+                "forecast accuracy"
+            ],
+            [
+                "RMSE",
+                "measures",
+                "forecast accuracy"
+            ],
+            [
+                "system",
+                "retrains",
+                "models"
+            ],
+            [
+                "system",
+                "recalibrates",
+                "models"
+            ],
+            [
+                "system",
+                "updates models automatically on",
+                "new rental data"
+            ]
+        ]
+    },
+    {
+        "id": "FR-08",
+        "text": "The system shall provide fleet and inventory recommendations, such as identifying expected shortages or surpluses by season and location, and shall alert users when forecasted demand exceeds available fleet capacity.",
+        "source": "eu_ai_risks\\tests\\scenarios\\007_provider_agriculture.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "provides",
+                "fleet recommendations"
+            ],
+            [
+                "system",
+                "provides",
+                "inventory recommendations"
+            ],
+            [
+                "system",
+                "identifies",
+                "expected shortages"
+            ],
+            [
+                "system",
+                "identifies",
+                "expected surpluses"
+            ],
+            [
+                "expected shortages",
+                "areIdentifiedBy",
+                "season"
+            ],
+            [
+                "expected shortages",
+                "areIdentifiedBy",
+                "location"
+            ],
+            [
+                "expected surpluses",
+                "areIdentifiedBy",
+                "season"
+            ],
+            [
+                "expected surpluses",
+                "areIdentifiedBy",
+                "location"
+            ],
+            [
+                "system",
+                "alerts",
+                "user"
+            ],
+            [
+                "demand forecasts",
+                "exceeds",
+                "available fleet capacity"
+            ],
+            [
+                "system",
+                "alerts users when",
+                "forecasted demand exceeds available fleet capacity"
+            ]
+        ]
+    },
+    {
+        "id": "FR-09",
+        "text": "The system shall export forecasts and reports in common formats (CSV, Excel, PDF) and shall provide an API for integration with other business systems, with role-based access control restricting data and features by user role.",
+        "source": "eu_ai_risks\\tests\\scenarios\\007_provider_agriculture.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "exports",
+                "demand forecasts"
+            ],
+            [
+                "system",
+                "exports",
+                "reports"
+            ],
+            [
+                "system",
+                "exports in format",
+                "CSV"
+            ],
+            [
+                "system",
+                "exports in format",
+                "Excel"
+            ],
+            [
+                "system",
+                "exports in format",
+                "PDF"
+            ],
+            [
+                "system",
+                "provides",
+                "API"
+            ],
+            [
+                "API",
+                "integrates with",
+                "business systems"
+            ],
+            [
+                "system",
+                "enforces",
+                "role-based access control"
+            ],
+            [
+                "role-based access control",
+                "restricts",
+                "data"
+            ],
+            [
+                "role-based access control",
+                "restricts",
+                "features"
+            ],
+            [
+                "role-based access control",
+                "restricts by",
+                "user role"
+            ]
+        ]
+    }
+]

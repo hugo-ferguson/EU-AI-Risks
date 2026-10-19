@@ -1,0 +1,33 @@
+{
+    "role": "Deployer",
+    "intended_use": "AI that calculates eligibility for child benefit payments based on family income and composition",
+    "system_type": "Child benefit eligibility AI",
+    "input_data": "Household income, number of dependents, tax records",
+    "domain": "Access to and enjoyment of essential private services and essential public services and benefits",
+    "related_articles": [
+        5,
+        6,
+        10,
+        13,
+        14,
+        15,
+        26,
+        27,
+        71,
+        86,
+        47
+    ],
+    "obligations": [
+        "Determine whether the child‑benefit eligibility AI is a high‑risk system under Annex III, document the classification and conduct the required conformity assessment (Article 6)",
+        "Register the system in the EU high‑risk AI database before placing it into service, providing the required information (Article 71)",
+        "Carry out a fundamental‑rights impact assessment covering discrimination, profiling and impact on vulnerable groups, and notify the market‑surveillance authority (Article 27)",
+        "Ensure the system does not employ any prohibited practices such as social scoring, exploitation of vulnerabilities or discriminatory profiling (Article 5)",
+        "Apply data‑governance rules to household‑income and tax‑record datasets: verify data quality, representativeness, bias detection and, where necessary, implement safeguards for special categories of personal data (Article 10)",
+        "Provide clear, complete user instructions that include the system’s purpose, accuracy, limitations, required input data and human‑oversight procedures (Article 13)",
+        "Implement human‑oversight measures that enable qualified staff to monitor, interpret and, when necessary, override or stop the AI’s decisions (Article 14)",
+        "Verify and document the system’s accuracy, robustness and cybersecurity levels, publish the relevant metrics in the user manual and put in place measures against data‑poisoning, adversarial attacks, etc. (Article 15)",
+        "Adopt technical and organisational measures to use the AI in line with the instructions, assign competent overseers, monitor performance, report serious incidents to the provider and market‑surveillance authority, and retain logs for at least six months (Article 26)",
+        "Inform each citizen whose benefit eligibility is assessed that an AI system is used, and be prepared to give a clear, meaningful explanation of how the AI contributed to the decision upon request (Article 86)"
+    ],
+    "risk_level": "high-risk"
+}

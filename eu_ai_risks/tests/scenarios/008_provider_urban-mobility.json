@@ -1,0 +1,26 @@
+{
+    "role": "Provider",
+    "intended_use": "System that predicts short‑term demand for public bike‑sharing stations",
+    "system_type": "Demand forecasting algorithm",
+    "input_data": "Public bike‑share usage data, weather forecasts, event calendars",
+    "domain": "Urban Mobility",
+    "related_articles": [
+        2,
+        3,
+        4,
+        5,
+        6
+    ],
+    "obligations": [
+        "Conduct a classification assessment to determine whether the demand‑forecasting algorithm is a high‑risk AI system under Article 6 and document the rationale for the classification (Article 6, Article 80)",
+        "If classified as non‑high‑risk, register the system in the EU AI database as required for non‑high‑risk systems (Article 6(4), Article 80)",
+        "Provide AI‑literacy training for all staff involved in development, deployment and maintenance of the system, tailored to its technical aspects and urban‑mobility context (Article 4)",
+        "Verify that the system does not employ any of the prohibited AI practices listed in Article 5 (e.g., no subliminal manipulation, no exploitation of vulnerabilities, no social‑scoring)",
+        "Implement a post‑market monitoring plan to collect and review performance and usage data, and be prepared to cooperate with national market‑surveillance authorities in case of risk evaluation (Article 79)",
+        "If the provider is an SME or start‑up, apply for priority access to AI regulatory sandboxes and benefit from reduced conformity‑assessment fees (Article 62)",
+        "If the provider qualifies as a micro‑enterprise, adopt the simplified quality‑management procedures allowed under Article 63",
+        "Prepare and maintain the required technical documentation (risk assessment, user instructions, data‑governance measures) to be supplied to notified bodies or authorities upon request (Article 2, Article 79)",
+        "Ensure transparency for users (e.g., public bike‑share operators) by providing clear information on the system’s intended purpose, data sources, limitations and any human‑oversight mechanisms (Article 2, Article 4)"
+    ],
+    "risk_level": "limited"
+}

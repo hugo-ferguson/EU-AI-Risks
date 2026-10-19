@@ -1,0 +1,401 @@
+[
+    {
+        "id": "FR-01",
+        "text": "The system shall capture a user\u2019s facial video or image input through the device camera while the user browses adult-content material on the platform.",
+        "source": "eu_ai_risks\\tests\\scenarios\\002_deployer_adult-entertainment.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "captures",
+                "user's facial video"
+            ],
+            [
+                "system",
+                "captures",
+                "user's facial image input"
+            ],
+            [
+                "system",
+                "uses",
+                "device camera"
+            ],
+            [
+                "user",
+                "browses",
+                "adult-content material"
+            ],
+            [
+                "adult-content material",
+                "isHostedOn",
+                "platform"
+            ]
+        ]
+    },
+    {
+        "id": "FR-02",
+        "text": "The system shall detect and extract facial features and expressions (e.g., micro-expressions, gaze direction, pupil dilation, and emotional valence) from the captured input in real time.",
+        "source": "eu_ai_risks\\tests\\scenarios\\002_deployer_adult-entertainment.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "detects",
+                "facial features"
+            ],
+            [
+                "system",
+                "detects",
+                "facial expressions"
+            ],
+            [
+                "system",
+                "extracts",
+                "facial features"
+            ],
+            [
+                "system",
+                "extracts",
+                "facial expressions"
+            ],
+            [
+                "facial expressions",
+                "includes",
+                "micro-expressions"
+            ],
+            [
+                "facial expressions",
+                "includes",
+                "gaze direction"
+            ],
+            [
+                "facial expressions",
+                "includes",
+                "pupil dilation"
+            ],
+            [
+                "facial expressions",
+                "includes",
+                "emotional valence"
+            ],
+            [
+                "system",
+                "processes",
+                "captured input"
+            ],
+            [
+                "system",
+                "operates",
+                "in real time"
+            ]
+        ]
+    },
+    {
+        "id": "FR-03",
+        "text": "The system shall use a trained machine-learning model to map the extracted facial-expression data to inferred sexual preference categories for each user.",
+        "source": "eu_ai_risks\\tests\\scenarios\\002_deployer_adult-entertainment.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "uses",
+                "machine-learning model"
+            ],
+            [
+                "machine-learning model",
+                "has state",
+                "trained"
+            ],
+            [
+                "machine-learning model",
+                "maps",
+                "facial-expression data"
+            ],
+            [
+                "facial-expression data",
+                "maps to",
+                "sexual preference categories"
+            ],
+            [
+                "sexual preference categories",
+                "are inferred for",
+                "user"
+            ]
+        ]
+    },
+    {
+        "id": "FR-04",
+        "text": "The system shall maintain a user preference profile that is updated continuously as new facial-expression data is analyzed across sessions.",
+        "source": "eu_ai_risks\\tests\\scenarios\\002_deployer_adult-entertainment.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "maintains",
+                "user preference profile"
+            ],
+            [
+                "system",
+                "updates",
+                "user preference profile"
+            ],
+            [
+                "system",
+                "processes",
+                "facial-expression data"
+            ],
+            [
+                "user preference profile",
+                "updatedBy",
+                "facial-expression data"
+            ],
+            [
+                "facial-expression data",
+                "spans",
+                "sessions"
+            ]
+        ]
+    },
+    {
+        "id": "FR-05",
+        "text": "The system shall match each user\u2019s inferred preference profile against a catalogue of tagged adult-content items and generate a ranked list of personalized recommendations.",
+        "source": "eu_ai_risks\\tests\\scenarios\\002_deployer_adult-entertainment.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "matches",
+                "inferred preference profile"
+            ],
+            [
+                "inferred preference profile",
+                "belongsTo",
+                "user"
+            ],
+            [
+                "system",
+                "matches against",
+                "catalogue"
+            ],
+            [
+                "catalogue",
+                "includes",
+                "tagged adult-content items"
+            ],
+            [
+                "system",
+                "generates",
+                "ranked list"
+            ],
+            [
+                "ranked list",
+                "includes",
+                "personalized recommendations"
+            ]
+        ]
+    },
+    {
+        "id": "FR-06",
+        "text": "The system shall display the ranked recommendations to the user through the platform interface and refresh them dynamically as the user\u2019s inferred preferences change.",
+        "source": "eu_ai_risks\\tests\\scenarios\\002_deployer_adult-entertainment.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "displays",
+                "ranked recommendations"
+            ],
+            [
+                "system",
+                "displays recommendations to",
+                "user"
+            ],
+            [
+                "system",
+                "uses",
+                "platform interface"
+            ],
+            [
+                "system",
+                "updates",
+                "ranked recommendations"
+            ],
+            [
+                "system",
+                "refreshes recommendations dynamically when",
+                "inferred preferences change"
+            ],
+            [
+                "inferred preferences",
+                "belongsTo",
+                "user"
+            ]
+        ]
+    },
+    {
+        "id": "FR-07",
+        "text": "The system shall store captured facial data, inferred preference profiles, and recommendation history in encrypted, access-controlled storage.",
+        "source": "eu_ai_risks\\tests\\scenarios\\002_deployer_adult-entertainment.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "stores",
+                "captured input"
+            ],
+            [
+                "system",
+                "stores",
+                "inferred preference profile"
+            ],
+            [
+                "system",
+                "stores",
+                "recommendation history"
+            ],
+            [
+                "captured input",
+                "isStoredIn",
+                "encrypted storage"
+            ],
+            [
+                "captured input",
+                "isStoredIn",
+                "access-controlled storage"
+            ],
+            [
+                "inferred preference profile",
+                "isStoredIn",
+                "encrypted storage"
+            ],
+            [
+                "inferred preference profile",
+                "isStoredIn",
+                "access-controlled storage"
+            ],
+            [
+                "recommendation history",
+                "isStoredIn",
+                "encrypted storage"
+            ],
+            [
+                "recommendation history",
+                "isStoredIn",
+                "access-controlled storage"
+            ]
+        ]
+    },
+    {
+        "id": "FR-08",
+        "text": "The system shall verify that users are adults through an age-verification mechanism before enabling camera capture or any recommendation features.",
+        "source": "eu_ai_risks\\tests\\scenarios\\002_deployer_adult-entertainment.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "verifies",
+                "user adulthood"
+            ],
+            [
+                "system",
+                "uses",
+                "age-verification mechanism"
+            ],
+            [
+                "system",
+                "enables",
+                "camera capture"
+            ],
+            [
+                "system",
+                "enables",
+                "recommendation features"
+            ],
+            [
+                "age-verification mechanism",
+                "precedes",
+                "camera capture"
+            ],
+            [
+                "age-verification mechanism",
+                "precedes",
+                "recommendation features"
+            ]
+        ]
+    },
+    {
+        "id": "FR-09",
+        "text": "The system shall present users with an explicit consent request before camera capture begins, and shall allow users to withdraw consent, disable analysis, and delete their stored facial data and inferred profiles at any time.",
+        "source": "eu_ai_risks\\tests\\scenarios\\002_deployer_adult-entertainment.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "presents",
+                "consent request"
+            ],
+            [
+                "consent request",
+                "isPresentedTo",
+                "user"
+            ],
+            [
+                "consent request",
+                "precedes",
+                "camera capture"
+            ],
+            [
+                "user",
+                "withdraw",
+                "consent"
+            ],
+            [
+                "user",
+                "disable",
+                "analysis"
+            ],
+            [
+                "user",
+                "delete",
+                "stored facial data"
+            ],
+            [
+                "user",
+                "delete",
+                "inferred profiles"
+            ],
+            [
+                "system",
+                "allows",
+                "user"
+            ]
+        ]
+    }
+]

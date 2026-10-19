@@ -1,0 +1,441 @@
+[
+    {
+        "id": "FR-01",
+        "text": "The system shall continuously capture live video from cameras installed across designated public squares and process the streams in real time.",
+        "source": "eu_ai_risks\\tests\\scenarios\\003_provider_public-spaces.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "captures",
+                "live video"
+            ],
+            [
+                "cameras",
+                "are installed across",
+                "public squares"
+            ],
+            [
+                "live video",
+                "comes from",
+                "cameras"
+            ],
+            [
+                "system",
+                "processes",
+                "video streams"
+            ],
+            [
+                "system",
+                "processes streams in",
+                "real time"
+            ]
+        ]
+    },
+    {
+        "id": "FR-02",
+        "text": "The system shall detect all human faces appearing in each video frame and extract a facial feature template for each detected face.",
+        "source": "eu_ai_risks\\tests\\scenarios\\003_provider_public-spaces.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "detects",
+                "human faces"
+            ],
+            [
+                "human faces",
+                "appear in",
+                "video frame"
+            ],
+            [
+                "system",
+                "extracts",
+                "facial feature template"
+            ],
+            [
+                "facial feature template",
+                "comes from",
+                "detected face"
+            ]
+        ]
+    },
+    {
+        "id": "FR-03",
+        "text": "The system shall match each extracted template against a database of known identities and, where no match exists, create a new unique profile for the individual.",
+        "source": "eu_ai_risks\\tests\\scenarios\\003_provider_public-spaces.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "matches",
+                "extracted template"
+            ],
+            [
+                "system",
+                "matches",
+                "identity database"
+            ],
+            [
+                "identity database",
+                "contains",
+                "known identities"
+            ],
+            [
+                "system",
+                "creates",
+                "new unique profile"
+            ],
+            [
+                "new unique profile",
+                "represents",
+                "individual"
+            ],
+            [
+                "system",
+                "creates profile when",
+                "no match exists"
+            ]
+        ]
+    },
+    {
+        "id": "FR-04",
+        "text": "The system shall track each identified individual across frames and across multiple camera views, maintaining a continuous movement path within and between monitored areas.",
+        "source": "eu_ai_risks\\tests\\scenarios\\003_provider_public-spaces.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "tracks",
+                "identified individual"
+            ],
+            [
+                "system",
+                "tracks individual across",
+                "video frame"
+            ],
+            [
+                "system",
+                "tracks individual across",
+                "camera views"
+            ],
+            [
+                "system",
+                "maintains",
+                "continuous movement path"
+            ],
+            [
+                "continuous movement path",
+                "spans",
+                "monitored areas"
+            ],
+            [
+                "continuous movement path",
+                "connects",
+                "monitored areas"
+            ]
+        ]
+    },
+    {
+        "id": "FR-05",
+        "text": "The system shall build and update a profile for each individual from observed data such as visit frequency, dwell time, locations visited, and movement patterns.",
+        "source": "eu_ai_risks\\tests\\scenarios\\003_provider_public-spaces.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "creates",
+                "profile"
+            ],
+            [
+                "system",
+                "updates",
+                "profile"
+            ],
+            [
+                "profile",
+                "represents",
+                "individual"
+            ],
+            [
+                "system",
+                "observes",
+                "visit frequency"
+            ],
+            [
+                "system",
+                "observes",
+                "dwell time"
+            ],
+            [
+                "system",
+                "observes",
+                "locations visited"
+            ],
+            [
+                "system",
+                "observes",
+                "movement patterns"
+            ],
+            [
+                "profile",
+                "derives from",
+                "visit frequency"
+            ],
+            [
+                "profile",
+                "derives from",
+                "dwell time"
+            ],
+            [
+                "profile",
+                "derives from",
+                "locations visited"
+            ],
+            [
+                "profile",
+                "derives from",
+                "movement patterns"
+            ]
+        ]
+    },
+    {
+        "id": "FR-06",
+        "text": "The system shall derive commercial attributes for each profile, such as estimated demographics, interests, and behavioral segments, and make them available for marketing and analytics purposes.",
+        "source": "eu_ai_risks\\tests\\scenarios\\003_provider_public-spaces.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "derives",
+                "commercial attributes"
+            ],
+            [
+                "commercial attributes",
+                "describe",
+                "profile"
+            ],
+            [
+                "commercial attributes",
+                "include",
+                "estimated demographics"
+            ],
+            [
+                "commercial attributes",
+                "include",
+                "interests"
+            ],
+            [
+                "commercial attributes",
+                "include",
+                "behavioral segments"
+            ],
+            [
+                "system",
+                "makes available",
+                "commercial attributes"
+            ],
+            [
+                "commercial attributes",
+                "support",
+                "marketing purposes"
+            ],
+            [
+                "commercial attributes",
+                "support",
+                "analytics purposes"
+            ]
+        ]
+    },
+    {
+        "id": "FR-07",
+        "text": "The system shall provide an authorized-user dashboard that displays live crowd density, individual tracking, and aggregated and per-profile analytics, with search, filtering, and report export.",
+        "source": "eu_ai_risks\\tests\\scenarios\\003_provider_public-spaces.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "provides",
+                "dashboard"
+            ],
+            [
+                "dashboard",
+                "isUsedBy",
+                "authorized user"
+            ],
+            [
+                "dashboard",
+                "displays",
+                "live crowd density"
+            ],
+            [
+                "dashboard",
+                "displays",
+                "individual tracking"
+            ],
+            [
+                "dashboard",
+                "displays",
+                "aggregated analytics"
+            ],
+            [
+                "dashboard",
+                "displays",
+                "per-profile analytics"
+            ],
+            [
+                "dashboard",
+                "provides",
+                "search"
+            ],
+            [
+                "dashboard",
+                "provides",
+                "filtering"
+            ],
+            [
+                "dashboard",
+                "provides",
+                "report export"
+            ]
+        ]
+    },
+    {
+        "id": "FR-08",
+        "text": "The system shall securely store biometric templates, profiles, and tracking history, enforce role-based access control and audit logging, and apply configurable data retention and deletion policies.",
+        "source": "eu_ai_risks\\tests\\scenarios\\003_provider_public-spaces.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "stores",
+                "biometric templates"
+            ],
+            [
+                "system",
+                "stores",
+                "profile"
+            ],
+            [
+                "system",
+                "stores",
+                "tracking history"
+            ],
+            [
+                "system",
+                "stores data",
+                "securely"
+            ],
+            [
+                "system",
+                "enforces",
+                "role-based access control"
+            ],
+            [
+                "system",
+                "enforces",
+                "audit logging"
+            ],
+            [
+                "system",
+                "enforces",
+                "data retention policies"
+            ],
+            [
+                "system",
+                "enforces",
+                "data deletion policies"
+            ],
+            [
+                "data retention policies",
+                "isConfigurable",
+                "true"
+            ],
+            [
+                "data deletion policies",
+                "isConfigurable",
+                "true"
+            ]
+        ]
+    },
+    {
+        "id": "FR-09",
+        "text": "The system shall support compliance with applicable privacy and biometric data laws, including public notice signage, consent or opt-out mechanisms where legally required, and individual data access and deletion requests.",
+        "source": "eu_ai_risks\\tests\\scenarios\\003_provider_public-spaces.md",
+        "section": null,
+        "title": null,
+        "page": null,
+        "metadata": {},
+        "triples": [
+            [
+                "system",
+                "provides",
+                "compliance with privacy laws"
+            ],
+            [
+                "system",
+                "provides",
+                "compliance with biometric data laws"
+            ],
+            [
+                "compliance",
+                "include",
+                "public notice signage"
+            ],
+            [
+                "compliance",
+                "include",
+                "consent mechanisms"
+            ],
+            [
+                "compliance",
+                "include",
+                "opt-out mechanisms"
+            ],
+            [
+                "consent mechanisms",
+                "apply where",
+                "legally required"
+            ],
+            [
+                "opt-out mechanisms",
+                "apply where",
+                "legally required"
+            ],
+            [
+                "compliance",
+                "include",
+                "individual data access requests"
+            ],
+            [
+                "compliance",
+                "include",
+                "individual data deletion requests"
+            ]
+        ]
+    }
+]

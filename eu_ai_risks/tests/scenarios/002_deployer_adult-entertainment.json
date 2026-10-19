@@ -1,0 +1,25 @@
+{
+    "role": "Deployer",
+    "intended_use": "Deploy an AI that analyses facial expressions to deduce users’ sex life preferences for targeted adult‑content recommendations",
+    "system_type": "Sexual preference profiling system",
+    "input_data": "User video streams, facial micro‑expressions, browsing history, age",
+    "domain": "Adult entertainment",
+    "related_articles": [
+        5,
+        6,
+        10,
+        26,
+        50,
+        86
+    ],
+    "obligations": [
+        "Stop the deployment because the system categorises individuals’ sex life, which is prohibited under Article 5 (Article 5)",
+        "Classify the system as high‑risk according to Article 6, register it in the EU AI database and prepare the required conformity assessment documentation (Article 6)",
+        "Perform a data‑governance review per Article 10: obtain explicit consent for processing video and sexual‑preference data, apply pseudonymisation, document bias mitigation and keep processing records (Article 10)",
+        "Implement Article 26 obligations: assign qualified human overseers, continuously monitor the AI, ensure input data relevance, retain system logs for at least six months, and report any serious incident to the provider and market‑surveillance authority (Article 26)",
+        "Provide clear pre‑interaction notice to users that facial‑expression analysis is performed by AI to infer sexual preferences, as required by Article 50, and give an easy opt‑out option (Article 50)",
+        "Set up a mechanism to give users a clear and meaningful explanation of how the AI influenced each content recommendation, in line with Article 86 (Article 86)",
+        "Conduct a fundamental‑rights impact assessment and document it to demonstrate compliance with data‑governance and prohibition rules (Articles 5 and 10)"
+    ],
+    "risk_level": "prohibited"
+}
