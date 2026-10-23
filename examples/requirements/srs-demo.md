@@ -1,0 +1,1 @@
+FR-1. The system can rank job candidates’ applicability based on their job application
