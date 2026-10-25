@@ -1,0 +1,12 @@
+{
+  "intended_purpose": "An AI-powered health and wellbeing companion app for older adults that supports medication management, symptom tracking and urgency triage, health monitoring, mood and loneliness detection, personalised recommendations, emergency assistance and caregiver/clinician sharing.",
+  "annex_iii_points": [],
+  "model": "anthropic/claude-sonnet-5-5",
+  "usage": {
+    "calls": 1,
+    "input": 7730,
+    "output": 107,
+    "cache_read": 0,
+    "cache_write": 0
+  }
+}
