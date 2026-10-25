@@ -1,0 +1,250 @@
+row_id,setup,run,requirement_id,risk_index,provision_id,paragraph_id,granularity,exists,quote_match,quote_match_loose,supplied,trace
+R0001,chunk-rag,0,FR-1.5,0,art:14:p1,art:14:p1,paragraph,True,True,True,True,vector similarity to the requirement
+R0002,llm-only,0,FR-1.5,0,art:14:p4,art:14:p4,paragraph,True,False,False,False,
+R0003,llm-only,0,FR-1.5,1,art:4,art:4,article,True,True,True,False,
+R0004,chunk-rag,0,FR-1.5,1,art:4:p1,art:4:p1,paragraph,True,True,True,True,vector similarity to the requirement
+R0005,llm-only,0,FR-10.4,1,art:50:p3,art:50:p3,paragraph,True,True,True,False,
+R0006,llm-only,0,FR-10.4,0,art:9:p2:a,art:9:p2,point,True,True,True,False,
+R0007,full-act,0,FR-11.1,1,art:10:p2:f,art:10:p2,point,True,True,True,True,full text of the Act
+R0008,llm-only,0,FR-11.1,1,art:10:p2:f,art:10:p2,point,True,True,True,False,
+R0009,chunk-rag,0,FR-11.1,2,art:10:p2:g,art:10:p2,point,True,True,True,True,vector similarity to the requirement
+R0010,llm-only,0,FR-11.1,3,art:13:p1,art:13:p1,paragraph,True,True,True,False,
+R0011,llm-only,0,FR-11.1,0,art:15:p1,art:15:p1,paragraph,True,False,True,False,
+R0012,full-act,0,FR-11.1,0,art:15:p3,art:15:p3,paragraph,True,True,True,True,full text of the Act
+R0013,kg,0,FR-11.1,0,art:50:p1,art:50:p1,paragraph,True,True,True,True,selected from the Act's index: ch:IV TRANSPARENCY OBLIGATIONS FOR PROVIDERS AND DEPLOYERS OF CERTAIN AI SYSTEMS > Article 50 Transparency obligations for providers and deployers of certain AI systems
+R0014,full-act,0,FR-11.1,3,art:6:p1,art:6:p1,paragraph,True,True,True,True,full text of the Act
+R0015,chunk-rag,0,FR-11.1,0,art:9:p2:a,art:9:p2,point,True,True,True,True,vector similarity to the requirement
+R0016,llm-only,0,FR-11.1,2,art:9:p2:a,art:9:p2,point,True,True,True,False,
+R0017,full-act,0,FR-11.1,2,art:9:p9,art:9:p9,paragraph,True,True,True,True,full text of the Act
+R0018,chunk-rag,0,FR-11.1,1,art:9:p9,art:9:p9,paragraph,True,True,True,True,vector similarity to the requirement
+R0019,llm-only,0,FR-12.2,0,art:15:p1,art:15:p1,paragraph,True,False,True,False,
+R0020,llm-only,0,FR-12.5,1,art:14:p4:a,art:14:p4,point,True,False,False,False,
+R0021,llm-only,0,FR-12.5,0,art:15:p1,art:15:p1,paragraph,True,False,True,False,
+R0022,llm-only,0,FR-13.5,2,art:13:p1,art:13:p1,paragraph,True,True,True,False,
+R0023,full-act,0,FR-13.5,2,art:13:p3:b,art:13:p3,point,True,True,True,True,full text of the Act
+R0024,kg,0,FR-13.5,1,art:14:p4:b,art:14:p4,point,True,True,True,True,selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 14 Human oversight (closest match: Article 14(4)(c))
+R0025,kg,0,FR-13.5,0,art:15:p1,art:15:p1,paragraph,True,True,True,True,"selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 15 Accuracy, robustness and cybersecurity"
+R0026,full-act,0,FR-13.5,0,art:15:p1,art:15:p1,paragraph,True,True,True,True,full text of the Act
+R0027,llm-only,0,FR-13.5,0,art:15:p1,art:15:p1,paragraph,True,False,True,False,
+R0028,chunk-rag,0,FR-13.5,0,art:72:p1,art:72:p1,paragraph,True,True,True,True,vector similarity to the requirement
+R0029,llm-only,0,FR-13.5,1,art:9:p2,art:9:p2,paragraph,True,True,True,False,
+R0030,full-act,0,FR-13.5,1,art:9:p2:b,art:9:p2,point,True,True,True,True,full text of the Act
+R0031,full-act,0,FR-14.1,0,art:72:p2,art:72:p2,paragraph,True,True,True,True,full text of the Act
+R0032,kg,0,FR-14.1,0,art:72:p2,art:72:p2,paragraph,True,True,True,True,"selected from the Act's index: ch:IX POST-MARKET MONITORING, INFORMATION SHARING AND MARKET SURVEILLANCE / Post-market monitoring > Article 72 Post-market monitoring by providers and post-market monitoring plan for high-risk AI systems"
+R0033,llm-only,0,FR-14.1,0,art:72:p2,art:72:p2,paragraph,True,True,True,False,
+R0034,llm-only,0,FR-14.1,2,art:73:p1,art:73:p1,paragraph,True,True,True,False,
+R0035,llm-only,0,FR-14.1,1,art:9:p2:c,art:9:p2,point,True,True,True,False,
+R0036,chunk-rag,0,FR-14.2,2,art:15:p4,art:15:p4,paragraph,True,True,True,True,vector similarity to the requirement
+R0037,chunk-rag,0,FR-14.2,0,art:20:p1,art:20:p1,paragraph,True,True,True,True,vector similarity to the requirement
+R0038,kg,0,FR-14.2,2,art:20:p2,art:20:p2,paragraph,True,True,True,True,selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Obligations of providers and deployers of high-risk AI systems and other parties > Article 20 Corrective actions and duty of information
+R0039,llm-only,0,FR-14.2,0,art:72:p2,art:72:p2,paragraph,True,True,True,False,
+R0040,kg,0,FR-14.2,0,art:72:p2,art:72:p2,paragraph,True,True,True,True,"selected from the Act's index: ch:IX POST-MARKET MONITORING, INFORMATION SHARING AND MARKET SURVEILLANCE / Post-market monitoring > Article 72 Post-market monitoring by providers and post-market monitoring plan for high-risk AI systems"
+R0041,kg,0,FR-14.2,3,art:72:p2,art:72:p2,paragraph,True,True,True,True,"selected from the Act's index: ch:IX POST-MARKET MONITORING, INFORMATION SHARING AND MARKET SURVEILLANCE / Post-market monitoring > Article 72 Post-market monitoring by providers and post-market monitoring plan for high-risk AI systems"
+R0042,full-act,0,FR-14.2,0,art:72:p2,art:72:p2,paragraph,True,True,True,True,full text of the Act
+R0043,llm-only,0,FR-14.2,1,art:73:p1,art:73:p1,paragraph,True,True,True,False,
+R0044,chunk-rag,0,FR-14.2,1,art:73:p1,art:73:p1,paragraph,True,True,True,True,vector similarity to the requirement
+R0045,kg,0,FR-14.2,1,art:73:p2,art:73:p2,paragraph,True,True,True,True,"selected from the Act's index: ch:IX POST-MARKET MONITORING, INFORMATION SHARING AND MARKET SURVEILLANCE / Sharing of information on serious incidents > Article 73 Reporting of serious incidents"
+R0046,full-act,0,FR-14.2,1,art:73:p2,art:73:p2,paragraph,True,True,True,True,full text of the Act
+R0047,llm-only,0,FR-14.2,2,art:9:p2:c,art:9:p2,point,True,True,True,False,
+R0048,llm-only,0,FR-2.3,0,art:10:p2,art:10:p2,paragraph,True,False,False,False,
+R0049,llm-only,0,FR-3.1,1,art:15:p3,art:15:p3,paragraph,True,True,True,False,
+R0050,llm-only,0,FR-3.1,0,art:50:p1,art:50:p1,paragraph,True,True,True,False,
+R0051,kg,0,FR-3.1,0,art:50:p1,art:50:p1,paragraph,True,True,True,True,selected from the Act's index: ch:IV TRANSPARENCY OBLIGATIONS FOR PROVIDERS AND DEPLOYERS OF CERTAIN AI SYSTEMS > Article 50 Transparency obligations for providers and deployers of certain AI systems
+R0052,full-act,0,FR-3.1,1,art:50:p1,art:50:p1,paragraph,True,True,True,True,full text of the Act
+R0053,chunk-rag,0,FR-3.1,0,art:50:p1,art:50:p1,paragraph,True,True,True,True,vector similarity to the requirement
+R0054,chunk-rag,0,FR-3.1,1,art:50:p2,art:50:p2,paragraph,True,True,True,True,vector similarity to the requirement
+R0055,full-act,0,FR-3.1,0,art:50:p2,art:50:p2,paragraph,True,True,True,True,full text of the Act
+R0056,llm-only,0,FR-3.3,3,art:10:p2:f,art:10:p2,point,True,True,True,False,
+R0057,full-act,0,FR-3.3,2,art:10:p2:f,art:10:p2,point,True,True,True,True,full text of the Act
+R0058,chunk-rag,0,FR-3.3,2,art:10:p2:f,art:10:p2,point,True,True,True,True,vector similarity to the requirement
+R0059,kg,0,FR-3.3,2,art:10:p3,art:10:p3,paragraph,True,True,True,True,"requirement term 'profile information' is an instance of the defined term 'personal data' (Article 3(50)), which Article 10 uses"
+R0060,llm-only,0,FR-3.3,2,art:13:p3:b,art:13:p3,point,True,False,False,False,
+R0061,chunk-rag,0,FR-3.3,3,art:13:p3:b,art:13:p3,point,True,True,True,True,vector similarity to the requirement
+R0062,chunk-rag,0,FR-3.3,4,art:14:p1,art:14:p1,paragraph,True,True,True,True,vector similarity to the requirement
+R0063,full-act,0,FR-3.3,3,art:14:p4:b,art:14:p4,point,True,True,True,True,full text of the Act
+R0064,full-act,0,FR-3.3,1,art:15:p3,art:15:p3,paragraph,True,True,True,True,full text of the Act
+R0065,kg,0,FR-3.3,0,art:15:p3,art:15:p3,paragraph,True,True,True,True,"selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 15 Accuracy, robustness and cybersecurity"
+R0066,llm-only,0,FR-3.3,0,art:15:p3,art:15:p3,paragraph,True,True,True,False,
+R0067,full-act,0,FR-3.3,0,art:9:p2,art:9:p2,paragraph,True,True,True,True,full text of the Act
+R0068,llm-only,0,FR-3.3,1,art:9:p2,art:9:p2,paragraph,True,True,True,False,
+R0069,chunk-rag,0,FR-3.3,0,art:9:p2:a,art:9:p2,point,True,True,True,True,vector similarity to the requirement
+R0070,kg,0,FR-3.3,1,art:9:p2:a,art:9:p2,point,True,True,True,True,selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 9 Risk management system
+R0071,chunk-rag,0,FR-3.3,1,art:9:p9,art:9:p9,paragraph,True,True,True,True,vector similarity to the requirement
+R0072,llm-only,0,FR-4.1,0,art:10:p2:f,art:10:p2,point,True,True,True,False,
+R0073,chunk-rag,0,FR-4.1,0,art:12:p2,art:12:p2,paragraph,True,True,True,True,vector similarity to the requirement
+R0074,full-act,0,FR-4.2,2,art:12:p1,art:12:p1,paragraph,True,True,True,True,full text of the Act
+R0075,llm-only,0,FR-4.2,2,art:14:p4:d,art:14:p4,point,True,True,True,False,
+R0076,llm-only,0,FR-4.2,0,art:15:p1,art:15:p1,paragraph,True,False,True,False,
+R0077,full-act,0,FR-4.2,1,art:15:p3,art:15:p3,paragraph,True,True,True,True,full text of the Act
+R0078,kg,0,FR-4.2,0,art:50:p1,art:50:p1,paragraph,True,True,True,True,selected from the Act's index: ch:IV TRANSPARENCY OBLIGATIONS FOR PROVIDERS AND DEPLOYERS OF CERTAIN AI SYSTEMS > Article 50 Transparency obligations for providers and deployers of certain AI systems
+R0079,llm-only,0,FR-4.2,1,art:50:p1,art:50:p1,paragraph,True,True,True,False,
+R0080,full-act,0,FR-4.2,0,art:9:p9,art:9:p9,paragraph,True,True,True,True,full text of the Act
+R0081,llm-only,0,FR-8.4,0,art:50:p2,art:50:p2,paragraph,True,True,True,False,
+R0082,llm-only,0,FR-8.6,0,art:12:p1,art:12:p1,paragraph,True,True,True,False,
+R0083,chunk-rag,0,FR-8.6,0,art:12:p2,art:12:p2,paragraph,True,True,True,True,vector similarity to the requirement
+R0084,full-act,0,FR-8.6,0,art:12:p2,art:12:p2,paragraph,True,True,True,True,full text of the Act
+R0085,chunk-rag,0,FR-8.6,1,art:19:p1,art:19:p1,paragraph,True,True,True,True,vector similarity to the requirement
+R0086,full-act,0,FR-8.6,1,art:19:p1,art:19:p1,paragraph,True,True,True,True,full text of the Act
+R0087,llm-only,0,NFR-1.1,0,art:13:p1,art:13:p1,paragraph,True,True,True,False,
+R0088,llm-only,0,NFR-1.6,0,art:13:p3,art:13:p3,paragraph,True,True,True,False,
+R0089,kg,0,NFR-1.6,1,art:4:p1,art:4:p1,paragraph,True,True,True,True,selected from the Act's index: ch:I GENERAL PROVISIONS > Article 4 AI literacy
+R0090,kg,0,NFR-1.6,0,art:50:p5,art:50:p5,paragraph,True,True,True,True,selected from the Act's index: ch:IV TRANSPARENCY OBLIGATIONS FOR PROVIDERS AND DEPLOYERS OF CERTAIN AI SYSTEMS > Article 50 Transparency obligations for providers and deployers of certain AI systems
+R0091,chunk-rag,0,NFR-1.6,0,art:50:p5,art:50:p5,paragraph,True,True,True,True,vector similarity to the requirement
+R0092,llm-only,0,NFR-10.1,0,art:15:p1,art:15:p1,paragraph,True,False,True,False,
+R0093,kg,0,NFR-10.1,0,art:15:p1,art:15:p1,paragraph,True,True,True,True,"selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 15 Accuracy, robustness and cybersecurity"
+R0094,kg,0,NFR-10.2,0,art:15:p1,art:15:p1,paragraph,True,True,True,True,"selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 15 Accuracy, robustness and cybersecurity"
+R0095,llm-only,0,NFR-10.2,0,art:15:p4,art:15:p4,paragraph,True,False,False,False,
+R0096,chunk-rag,0,NFR-11.1,0,art:10:p2:b,art:10:p2,point,True,True,True,True,vector similarity to the requirement
+R0097,chunk-rag,0,NFR-11.1,1,art:10:p4,art:10:p4,paragraph,True,True,True,True,vector similarity to the requirement
+R0098,full-act,0,NFR-11.1,2,art:13:p3:b,art:13:p3,point,True,True,True,True,full text of the Act
+R0099,full-act,0,NFR-11.1,0,art:15:p4,art:15:p4,paragraph,True,True,True,True,full text of the Act
+R0100,full-act,0,NFR-11.1,1,art:15:p5,art:15:p5,paragraph,True,True,True,True,full text of the Act
+R0101,kg,0,NFR-11.1,0,art:15:p5,art:15:p5,paragraph,True,True,True,True,"selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 15 Accuracy, robustness and cybersecurity"
+R0102,llm-only,0,NFR-12.2,1,art:13:p1,art:13:p1,paragraph,True,True,True,False,
+R0103,chunk-rag,0,NFR-12.2,0,art:14:p3,art:14:p3,paragraph,True,True,True,True,vector similarity to the requirement
+R0104,llm-only,0,NFR-12.2,0,art:14:p4,art:14:p4,paragraph,True,True,True,False,
+R0105,full-act,0,NFR-12.2,0,art:14:p4:b,art:14:p4,point,True,True,True,True,full text of the Act
+R0106,full-act,0,NFR-12.2,1,art:14:p4:d,art:14:p4,point,True,True,True,True,full text of the Act
+R0107,kg,0,NFR-12.2,0,art:14:p4:d,art:14:p4,point,True,True,True,True,selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 14 Human oversight
+R0108,chunk-rag,0,NFR-12.3,0,art:50:p1,art:50:p1,paragraph,True,True,True,True,vector similarity to the requirement
+R0109,llm-only,0,NFR-12.3,0,art:50:p1,art:50:p1,paragraph,True,True,True,False,
+R0110,kg,0,NFR-12.3,0,art:50:p5,art:50:p5,paragraph,True,True,True,True,selected from the Act's index: ch:IV TRANSPARENCY OBLIGATIONS FOR PROVIDERS AND DEPLOYERS OF CERTAIN AI SYSTEMS > Article 50 Transparency obligations for providers and deployers of certain AI systems
+R0111,full-act,0,NFR-12.3,0,art:50:p5,art:50:p5,paragraph,True,True,True,True,full text of the Act
+R0112,full-act,0,NFR-12.5,0,art:14:p1,art:14:p1,paragraph,True,True,True,True,full text of the Act
+R0113,llm-only,0,NFR-12.5,0,art:14:p4,art:14:p4,paragraph,True,True,True,False,
+R0114,kg,0,NFR-12.5,0,art:14:p4:b,art:14:p4,point,True,True,True,True,selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 14 Human oversight (closest match: Article 14(4)(e))
+R0115,kg,0,NFR-12.5,1,art:9:p9,art:9:p9,paragraph,True,True,True,True,selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 9 Risk management system
+R0116,kg,0,NFR-13.3,0,art:12:p2,art:12:p2,paragraph,True,True,True,True,selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 12 Record-keeping (closest match: Article 12(2)(c))
+R0117,full-act,0,NFR-13.3,0,art:12:p2,art:12:p2,paragraph,True,True,True,True,full text of the Act
+R0118,llm-only,0,NFR-13.3,0,art:12:p2,art:12:p2,paragraph,True,False,False,False,
+R0119,chunk-rag,0,NFR-13.3,0,art:12:p2,art:12:p2,paragraph,True,True,True,True,vector similarity to the requirement
+R0120,llm-only,0,NFR-13.3,2,art:18:p1,art:18:p1,paragraph,True,True,True,False,
+R0121,full-act,0,NFR-13.3,1,art:19:p1,art:19:p1,paragraph,True,True,True,True,full text of the Act
+R0122,llm-only,0,NFR-13.3,1,art:19:p1,art:19:p1,paragraph,True,True,True,False,
+R0123,kg,0,NFR-13.3,1,art:19:p1,art:19:p1,paragraph,True,True,True,True,selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Obligations of providers and deployers of high-risk AI systems and other parties > Article 19 Automatically generated logs
+R0124,chunk-rag,0,NFR-13.3,1,art:19:p1,art:19:p1,paragraph,True,True,True,True,vector similarity to the requirement
+R0125,llm-only,0,NFR-14.1,0,art:15:p4,art:15:p4,paragraph,True,True,True,False,
+R0126,kg,0,NFR-14.1,0,art:15:p4,art:15:p4,paragraph,True,True,True,True,"selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 15 Accuracy, robustness and cybersecurity"
+R0127,llm-only,0,NFR-14.2,1,art:12:p1,art:12:p1,paragraph,True,True,True,False,
+R0128,chunk-rag,0,NFR-14.2,1,art:12:p1,art:12:p1,paragraph,True,True,True,True,vector similarity to the requirement
+R0129,kg,0,NFR-14.2,1,art:15:p1,art:15:p1,paragraph,True,True,True,True,"selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 15 Accuracy, robustness and cybersecurity"
+R0130,chunk-rag,0,NFR-14.2,0,art:15:p4,art:15:p4,paragraph,True,True,True,True,vector similarity to the requirement
+R0131,llm-only,0,NFR-14.2,0,art:15:p4,art:15:p4,paragraph,True,True,True,False,
+R0132,full-act,0,NFR-14.2,0,art:15:p4,art:15:p4,paragraph,True,True,True,True,full text of the Act
+R0133,kg,0,NFR-14.2,0,art:15:p4,art:15:p4,paragraph,True,True,True,True,"selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 15 Accuracy, robustness and cybersecurity"
+R0134,full-act,0,NFR-14.2,1,art:19:p1,art:19:p1,paragraph,True,True,True,True,full text of the Act
+R0135,llm-only,0,NFR-15.1,1,art:12:p1,art:12:p1,paragraph,True,True,True,False,
+R0136,full-act,0,NFR-15.1,0,art:13:p1,art:13:p1,paragraph,True,True,True,True,full text of the Act
+R0137,llm-only,0,NFR-15.1,0,art:13:p1,art:13:p1,paragraph,True,True,True,False,
+R0138,kg,0,NFR-15.1,0,art:13:p1,art:13:p1,paragraph,True,True,True,True,selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 13 Transparency and provision of information to deployers
+R0139,chunk-rag,0,NFR-15.1,1,art:13:p2,art:13:p2,paragraph,True,True,True,True,vector similarity to the requirement
+R0140,full-act,0,NFR-15.1,1,art:14:p4:c,art:14:p4,point,True,True,True,True,full text of the Act
+R0141,llm-only,0,NFR-15.1,2,art:14:p4:c,art:14:p4,point,True,True,True,False,
+R0142,chunk-rag,0,NFR-15.1,0,art:14:p4:c,art:14:p4,point,True,True,True,True,vector similarity to the requirement
+R0143,llm-only,0,NFR-15.5,1,art:13:p3:b,art:13:p3,point,True,False,False,False,
+R0144,full-act,0,NFR-15.5,2,art:14:p4:b,art:14:p4,point,True,True,True,True,full text of the Act
+R0145,kg,0,NFR-15.5,1,art:15:p1,art:15:p1,paragraph,True,True,True,True,"selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 15 Accuracy, robustness and cybersecurity"
+R0146,llm-only,0,NFR-15.5,0,art:15:p1,art:15:p1,paragraph,True,False,True,False,
+R0147,full-act,0,NFR-15.5,1,art:15:p3,art:15:p3,paragraph,True,True,True,True,full text of the Act
+R0148,llm-only,0,NFR-15.5,2,art:9:p2:a,art:9:p2,point,True,True,True,False,
+R0149,kg,0,NFR-15.5,0,art:9:p8,art:9:p8,paragraph,True,True,True,True,selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 9 Risk management system
+R0150,full-act,0,NFR-15.5,0,art:9:p8,art:9:p8,paragraph,True,True,True,True,full text of the Act
+R0151,kg,0,NFR-2.1,0,art:16:p1:l,art:16:p1,point,True,True,True,True,selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Obligations of providers and deployers of high-risk AI systems and other parties > Article 16 Obligations of providers of high-risk AI systems (closest match: Article 16(1)(l))
+R0152,full-act,0,NFR-2.1,0,art:16:p1:l,art:16:p1,point,True,True,True,True,full text of the Act
+R0153,chunk-rag,0,NFR-2.1,0,art:16:p1:l,art:16:p1,point,True,True,True,True,vector similarity to the requirement
+R0154,llm-only,0,NFR-2.1,0,art:16:pl,art:16:pl,article,True,True,True,False,
+R0155,full-act,0,NFR-2.1,1,art:50:p5,art:50:p5,paragraph,True,True,True,True,full text of the Act
+R0156,chunk-rag,0,NFR-2.1,1,art:50:p5,art:50:p5,paragraph,True,True,True,True,vector similarity to the requirement
+R0157,full-act,0,NFR-3.2,2,art:12:p2,art:12:p2,paragraph,True,True,True,True,full text of the Act
+R0158,llm-only,0,NFR-3.2,2,art:14:p4,art:14:p4,paragraph,True,False,False,False,
+R0159,full-act,0,NFR-3.2,0,art:15:p1,art:15:p1,paragraph,True,True,True,True,full text of the Act
+R0160,llm-only,0,NFR-3.2,0,art:15:p1,art:15:p1,paragraph,True,False,True,False,
+R0161,kg,0,NFR-3.2,0,art:15:p1,art:15:p1,paragraph,True,True,True,True,"selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 15 Accuracy, robustness and cybersecurity"
+R0162,full-act,0,NFR-3.2,1,art:15:p4,art:15:p4,paragraph,True,True,True,True,full text of the Act
+R0163,chunk-rag,0,NFR-3.2,1,art:73:p2,art:73:p2,paragraph,True,True,True,True,vector similarity to the requirement
+R0164,llm-only,0,NFR-3.2,1,art:9:p2,art:9:p2,paragraph,True,True,True,False,
+R0165,chunk-rag,0,NFR-3.2,0,art:9:p2:a,art:9:p2,point,True,True,True,True,vector similarity to the requirement
+R0166,chunk-rag,0,NFR-3.4,1,art:13:p3:b,art:13:p3,point,True,True,True,True,vector similarity to the requirement
+R0167,chunk-rag,0,NFR-3.4,0,art:14:p3:a,art:14:p3,point,True,True,True,True,vector similarity to the requirement
+R0168,full-act,0,NFR-3.4,0,art:15:p1,art:15:p1,paragraph,True,True,True,True,full text of the Act
+R0169,llm-only,0,NFR-3.4,0,art:15:p1,art:15:p1,paragraph,True,False,True,False,
+R0170,kg,0,NFR-3.4,0,art:15:p3,art:15:p3,paragraph,True,True,True,True,"selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 15 Accuracy, robustness and cybersecurity"
+R0171,full-act,0,NFR-3.4,3,art:15:p3,art:15:p3,paragraph,True,True,True,True,full text of the Act
+R0172,llm-only,0,NFR-3.4,1,art:15:p4,art:15:p4,paragraph,True,True,True,False,
+R0173,kg,0,NFR-3.4,1,art:15:p4,art:15:p4,paragraph,True,True,True,True,"selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 15 Accuracy, robustness and cybersecurity"
+R0174,full-act,0,NFR-3.4,2,art:15:p5,art:15:p5,paragraph,True,True,True,True,full text of the Act
+R0175,llm-only,0,NFR-3.4,2,art:9:p2,art:9:p2,paragraph,True,True,True,False,
+R0176,kg,0,NFR-3.4,2,art:9:p8,art:9:p8,paragraph,True,True,True,True,selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 9 Risk management system
+R0177,full-act,0,NFR-3.4,1,art:9:p8,art:9:p8,paragraph,True,True,True,True,full text of the Act
+R0178,llm-only,0,NFR-3.5,1,art:13:p1,art:13:p1,paragraph,True,True,True,False,
+R0179,llm-only,0,NFR-3.5,0,art:15:p1,art:15:p1,paragraph,True,True,True,False,
+R0180,kg,0,NFR-3.5,0,art:15:p1,art:15:p1,paragraph,True,True,True,True,"selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 15 Accuracy, robustness and cybersecurity"
+R0181,full-act,0,NFR-3.5,0,art:15:p3,art:15:p3,paragraph,True,True,True,True,full text of the Act
+R0182,full-act,0,NFR-3.5,2,art:15:p4,art:15:p4,paragraph,True,True,True,True,full text of the Act
+R0183,kg,0,NFR-3.5,1,art:15:p4,art:15:p4,paragraph,True,True,True,True,"selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 15 Accuracy, robustness and cybersecurity"
+R0184,full-act,0,NFR-3.5,1,art:9:p8,art:9:p8,paragraph,True,True,True,True,full text of the Act
+R0185,llm-only,0,NFR-3.6,0,art:12:p2,art:12:p2,paragraph,True,False,False,False,
+R0186,chunk-rag,0,NFR-3.6,0,art:12:p2,art:12:p2,paragraph,True,True,True,True,vector similarity to the requirement
+R0187,full-act,0,NFR-3.6,0,art:12:p2,art:12:p2,paragraph,True,True,True,True,full text of the Act
+R0188,full-act,0,NFR-3.6,2,art:13:p3:f,art:13:p3,point,True,True,True,True,full text of the Act
+R0189,llm-only,0,NFR-3.6,2,art:15:p5,art:15:p5,paragraph,True,True,True,False,
+R0190,full-act,0,NFR-3.6,1,art:19:p1,art:19:p1,paragraph,True,True,True,True,full text of the Act
+R0191,chunk-rag,0,NFR-3.6,1,art:19:p1,art:19:p1,paragraph,True,True,True,True,vector similarity to the requirement
+R0192,llm-only,0,NFR-3.6,1,art:19:p1,art:19:p1,paragraph,True,False,False,False,
+R0193,chunk-rag,0,NFR-3.6,2,art:72:p2,art:72:p2,paragraph,True,True,True,True,vector similarity to the requirement
+R0194,llm-only,0,NFR-4.2,0,art:10:p2,art:10:p2,paragraph,True,True,True,False,
+R0195,full-act,0,NFR-4.2,0,art:10:p5,art:10:p5,paragraph,True,True,True,True,full text of the Act
+R0196,llm-only,0,NFR-4.3,0,art:10:p2,art:10:p2,paragraph,True,True,True,False,
+R0197,full-act,0,NFR-4.3,0,art:19:p1,art:19:p1,paragraph,True,True,True,True,full text of the Act
+R0198,llm-only,0,NFR-4.6,1,art:10:p2,art:10:p2,paragraph,True,False,False,False,
+R0199,full-act,0,NFR-4.6,0,art:10:p2:b,art:10:p2,point,True,True,True,True,full text of the Act
+R0200,chunk-rag,0,NFR-4.6,0,art:10:p2:c,art:10:p2,point,True,True,True,True,vector similarity to the requirement
+R0201,kg,0,NFR-4.6,0,art:10:p2:c,art:10:p2,point,True,True,True,True,selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 10 Data and data governance
+R0202,full-act,0,NFR-4.6,1,art:10:p3,art:10:p3,paragraph,True,True,True,True,full text of the Act
+R0203,llm-only,0,NFR-4.6,0,art:10:p5,art:10:p5,paragraph,True,False,False,False,
+R0204,chunk-rag,0,NFR-4.6,1,art:10:p5:a,art:10:p5,point,True,True,True,True,vector similarity to the requirement
+R0205,llm-only,0,NFR-4.6,2,art:11:p1,art:11:p1,paragraph,True,False,True,False,
+R0206,full-act,0,NFR-5.2,0,art:15:p5,art:15:p5,paragraph,True,True,True,True,full text of the Act
+R0207,llm-only,0,NFR-5.2,0,art:15:p5,art:15:p5,paragraph,True,True,True,False,
+R0208,llm-only,0,NFR-5.5,0,art:12:p1,art:12:p1,paragraph,True,True,True,False,
+R0209,chunk-rag,0,NFR-5.5,1,art:12:p2,art:12:p2,paragraph,True,True,True,True,vector similarity to the requirement
+R0210,kg,0,NFR-5.5,0,art:12:p2,art:12:p2,paragraph,True,True,True,True,selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 12 Record-keeping
+R0211,full-act,0,NFR-5.5,0,art:12:p2,art:12:p2,paragraph,True,True,True,True,full text of the Act
+R0212,kg,0,NFR-5.5,2,art:15:p5,art:15:p5,paragraph,True,True,True,True,"selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 15 Accuracy, robustness and cybersecurity"
+R0213,kg,0,NFR-5.5,1,art:19:p1,art:19:p1,paragraph,True,True,True,True,selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Obligations of providers and deployers of high-risk AI systems and other parties > Article 19 Automatically generated logs
+R0214,chunk-rag,0,NFR-5.5,0,art:19:p1,art:19:p1,paragraph,True,True,True,True,vector similarity to the requirement
+R0215,full-act,0,NFR-5.5,1,art:19:p1,art:19:p1,paragraph,True,True,True,True,full text of the Act
+R0216,llm-only,0,NFR-5.6,0,art:14:p4,art:14:p4,paragraph,True,True,True,False,
+R0217,full-act,0,NFR-5.6,1,art:14:p4:d,art:14:p4,point,True,True,True,True,full text of the Act
+R0218,llm-only,0,NFR-5.6,1,art:15:p5,art:15:p5,paragraph,True,True,True,False,
+R0219,kg,0,NFR-5.6,0,art:15:p5,art:15:p5,paragraph,True,True,True,True,"selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 15 Accuracy, robustness and cybersecurity"
+R0220,full-act,0,NFR-5.6,0,art:15:p5,art:15:p5,paragraph,True,True,True,True,full text of the Act
+R0221,chunk-rag,0,NFR-6.4,1,art:12:p1,art:12:p1,paragraph,True,True,True,True,vector similarity to the requirement
+R0222,llm-only,0,NFR-6.4,1,art:12:p1,art:12:p1,paragraph,True,True,True,False,
+R0223,kg,0,NFR-6.4,0,art:15:p4,art:15:p4,paragraph,True,True,True,True,"selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 15 Accuracy, robustness and cybersecurity"
+R0224,chunk-rag,0,NFR-6.4,0,art:15:p4,art:15:p4,paragraph,True,True,True,True,vector similarity to the requirement
+R0225,llm-only,0,NFR-6.4,0,art:15:p4,art:15:p4,paragraph,True,True,True,False,
+R0226,llm-only,0,NFR-7.3,0,art:15:p1,art:15:p1,paragraph,True,False,True,False,
+R0227,full-act,0,NFR-7.3,0,art:9:p8,art:9:p8,paragraph,True,True,True,True,full text of the Act
+R0228,kg,0,NFR-7.6,0,art:15:p5,art:15:p5,paragraph,True,True,True,True,"selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 15 Accuracy, robustness and cybersecurity"
+R0229,llm-only,0,NFR-7.6,0,art:15:p5,art:15:p5,paragraph,True,True,True,False,
+R0230,llm-only,0,NFR-8.5,1,art:10:p2,art:10:p2,paragraph,True,False,False,False,
+R0231,full-act,0,NFR-8.5,2,art:10:p2:b,art:10:p2,point,True,True,True,True,full text of the Act
+R0232,llm-only,0,NFR-8.5,2,art:11:p1,art:11:p1,paragraph,True,True,True,False,
+R0233,kg,0,NFR-8.5,0,art:15:p1,art:15:p1,paragraph,True,True,True,True,"selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 15 Accuracy, robustness and cybersecurity"
+R0234,llm-only,0,NFR-8.5,0,art:15:p1,art:15:p1,paragraph,True,False,True,False,
+R0235,kg,0,NFR-8.5,2,art:17:p1:a,art:17:p1,point,True,True,True,True,selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Obligations of providers and deployers of high-risk AI systems and other parties > Article 17 Quality management system (closest match: Article 17(1)(k))
+R0236,full-act,0,NFR-8.5,1,art:43:p4,art:43:p4,paragraph,True,True,True,True,full text of the Act
+R0237,kg,0,NFR-8.5,1,art:72:p2,art:72:p2,paragraph,True,True,True,True,"selected from the Act's index: ch:IX POST-MARKET MONITORING, INFORMATION SHARING AND MARKET SURVEILLANCE / Post-market monitoring > Article 72 Post-market monitoring by providers and post-market monitoring plan for high-risk AI systems"
+R0238,full-act,0,NFR-8.5,0,art:9:p8,art:9:p8,paragraph,True,True,True,True,full text of the Act
+R0239,full-act,0,NFR-9.3,2,art:11:p1,art:11:p1,paragraph,True,True,True,True,full text of the Act
+R0240,llm-only,0,NFR-9.3,2,art:11:p1,art:11:p1,paragraph,True,True,True,False,
+R0241,llm-only,0,NFR-9.3,1,art:15:p1,art:15:p1,paragraph,True,True,True,False,
+R0242,kg,0,NFR-9.3,0,art:15:p1,art:15:p1,paragraph,True,True,True,True,"selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Requirements for high-risk AI systems > Article 15 Accuracy, robustness and cybersecurity"
+R0243,full-act,0,NFR-9.3,1,art:15:p1,art:15:p1,paragraph,True,True,True,True,full text of the Act
+R0244,kg,0,NFR-9.3,1,art:17:p1:a,art:17:p1,point,True,True,True,True,selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Obligations of providers and deployers of high-risk AI systems and other parties > Article 17 Quality management system (closest match: Article 17(1)(h))
+R0245,kg,0,NFR-9.3,2,art:20:p1,art:20:p1,paragraph,True,True,True,True,selected from the Act's index: ch:III HIGH-RISK AI SYSTEMS / Obligations of providers and deployers of high-risk AI systems and other parties > Article 20 Corrective actions and duty of information
+R0246,chunk-rag,0,NFR-9.3,0,art:43:p4,art:43:p4,paragraph,True,True,True,True,vector similarity to the requirement
+R0247,llm-only,0,NFR-9.3,0,art:43:p4,art:43:p4,paragraph,True,False,False,False,
+R0248,full-act,0,NFR-9.3,0,art:43:p4,art:43:p4,paragraph,True,True,True,True,full text of the Act
+R0249,llm-only,0,NFR-9.3,3,art:72:p1,art:72:p1,paragraph,True,True,True,False,

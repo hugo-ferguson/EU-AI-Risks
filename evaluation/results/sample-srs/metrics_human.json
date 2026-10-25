@@ -1,0 +1,159 @@
+{
+  "source": "human",
+  "threshold": null,
+  "setups": {
+    "kg": {
+      "requirements": 16,
+      "not_assessed": 0,
+      "risks": 47,
+      "provisions_supplied_mean": 28.875,
+      "rq1_precision": 0.872,
+      "rq1_precision_ci": [
+        0.748,
+        0.94
+      ],
+      "rq1_recall": 0.673,
+      "rq2_exists": 1.0,
+      "rq2_supported": 0.851,
+      "rq2_supported_ci": [
+        0.723,
+        0.926
+      ],
+      "rq3_specific": 1.0,
+      "rq3_quote_match": 1.0,
+      "rq3_quote_match_loose": 1.0,
+      "rq4_input_tokens_mean": 14681.125,
+      "rq4_output_tokens_mean": 1222.375,
+      "rq4_tokens_per_good_risk": 6696
+    },
+    "llm-only": {
+      "requirements": 16,
+      "not_assessed": 0,
+      "risks": 44,
+      "provisions_supplied_mean": 0.0,
+      "rq1_precision": 0.864,
+      "rq1_precision_ci": [
+        0.733,
+        0.936
+      ],
+      "rq1_recall": 0.538,
+      "rq2_exists": 1.0,
+      "rq2_supported": 0.727,
+      "rq2_supported_ci": [
+        0.582,
+        0.837
+      ],
+      "rq3_specific": 1.0,
+      "rq3_quote_match": 0.795,
+      "rq3_quote_match_loose": 0.864,
+      "rq4_input_tokens_mean": 2635.0,
+      "rq4_output_tokens_mean": 1116.688,
+      "rq4_tokens_per_good_risk": 2001
+    },
+    "full-act": {
+      "requirements": 16,
+      "not_assessed": 0,
+      "risks": 43,
+      "provisions_supplied_mean": 591.0,
+      "rq1_precision": 0.93,
+      "rq1_precision_ci": [
+        0.814,
+        0.976
+      ],
+      "rq1_recall": 0.538,
+      "rq2_exists": 1.0,
+      "rq2_supported": 0.767,
+      "rq2_supported_ci": [
+        0.623,
+        0.868
+      ],
+      "rq3_specific": 1.0,
+      "rq3_quote_match": 1.0,
+      "rq3_quote_match_loose": 1.0,
+      "rq4_input_tokens_mean": 120813.0,
+      "rq4_output_tokens_mean": 1141.625,
+      "rq4_tokens_per_good_risk": 60977
+    },
+    "chunk-rag": {
+      "requirements": 16,
+      "not_assessed": 0,
+      "risks": 33,
+      "provisions_supplied_mean": 28.0,
+      "rq1_precision": 0.939,
+      "rq1_precision_ci": [
+        0.804,
+        0.983
+      ],
+      "rq1_recall": 0.481,
+      "rq2_exists": 1.0,
+      "rq2_supported": 0.848,
+      "rq2_supported_ci": [
+        0.691,
+        0.933
+      ],
+      "rq3_specific": 1.0,
+      "rq3_quote_match": 1.0,
+      "rq3_quote_match_loose": 1.0,
+      "rq4_input_tokens_mean": 9042.688,
+      "rq4_output_tokens_mean": 932.688,
+      "rq4_tokens_per_good_risk": 5911
+    }
+  },
+  "pool_size": 52,
+  "recall_differences": {
+    "llm-only": {
+      "difference": 0.135,
+      "ci": [
+        0.039,
+        0.238
+      ]
+    },
+    "full-act": {
+      "difference": 0.135,
+      "ci": [
+        0.037,
+        0.245
+      ]
+    },
+    "chunk-rag": {
+      "difference": 0.192,
+      "ci": [
+        0.035,
+        0.39
+      ]
+    }
+  },
+  "kg_routes": {
+    "table of contents": {
+      "found": 38,
+      "only_route": 26
+    },
+    "concept links": {
+      "found": 12,
+      "only_route": 0
+    },
+    "reference expansion": {
+      "found": 0,
+      "only_route": 0
+    },
+    "vector fallback": {
+      "found": 0,
+      "only_route": 0
+    },
+    "Article 3 definition": {
+      "found": 0,
+      "only_route": 0
+    }
+  },
+  "kg_one_off": {
+    "load": {
+      "input": 110008,
+      "output": 13394
+    },
+    "classification": {
+      "input": 2747,
+      "output": 104
+    }
+  },
+  "agreement": {}
+}

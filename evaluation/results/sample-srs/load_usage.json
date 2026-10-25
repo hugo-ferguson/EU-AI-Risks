@@ -1,0 +1,10 @@
+{
+  "model": "anthropic/claude-sonnet-5-5",
+  "usage": {
+    "calls": 176,
+    "input": 110008,
+    "output": 13394,
+    "cache_read": 0,
+    "cache_write": 0
+  }
+}
